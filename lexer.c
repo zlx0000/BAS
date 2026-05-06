@@ -375,6 +375,7 @@ int lexer(char *bf, Token *tokens, int lineNum)
 {
 	int col = 0;
 	char *bfend = bf;
+	TokenType prev = TOKEN_TYPE_NULL;
 	while(*bfend != '\0') bfend++;
 	if (bfend == bf) return 0;
 	DFA_state states[TOKEN_TYPE_END];
@@ -466,9 +467,10 @@ next:
 		}
 	}
 	if (m.type != TOKEN_TYPE_NULL) {
-		if (tokenslen >= 1) {
-			if (tokens[tokenslen-1].type == INT_TOKEN
-				|| tokens[tokenslen-1].type == FLOAT_TOKEN) {
+		prev = m.type;
+		if (prev != TOKEN_TYPE_NULL) {
+			if (prev == INT_TOKEN
+				|| prev == FLOAT_TOKEN) {
 				if (m.type == IDENT_TOKEN) {
 					fprintf(stderr, "unexpected token at %d,%d: `%s`\n", lineNum, col, t);
 					return -1;
