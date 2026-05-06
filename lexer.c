@@ -467,15 +467,11 @@ next:
 		}
 	}
 	if (m.type != TOKEN_TYPE_NULL) {
-		prev = m.type;
-		if (prev != TOKEN_TYPE_NULL) {
-			if (prev == INT_TOKEN
-				|| prev == FLOAT_TOKEN) {
-				if (m.type == IDENT_TOKEN) {
-					fprintf(stderr, "unexpected token at %d,%d: `%s`\n", lineNum, col, t);
-					return -1;
-				}
-			}
+		if (((prev == INT_TOKEN
+			|| prev == FLOAT_TOKEN))
+			&& (m.type == IDENT_TOKEN)) {
+			fprintf(stderr, "unexpected token at %d,%d: `%s`\n", lineNum, col, t);
+			return -1;
 		}
 		if (m.type != SPACE_TOKEN) {
 			strncpy(tokens[tokenslen].lexeme, start, m.len);
@@ -486,6 +482,7 @@ next:
 			tokens[tokenslen].colNum = col;
 			tokenslen++;
 		}
+		prev = m.type;
 		start = m.end;
 		end = start;
 		col = start - bf;
