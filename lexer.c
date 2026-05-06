@@ -466,7 +466,7 @@ next:
 		}
 	}
 	if (m.type != TOKEN_TYPE_NULL) {
-		if (tokenslen >= 1){
+		if (tokenslen >= 1) {
 			if (tokens[tokenslen-1].type == INT_TOKEN
 				|| tokens[tokenslen-1].type == FLOAT_TOKEN) {
 				if (m.type == IDENT_TOKEN) {
