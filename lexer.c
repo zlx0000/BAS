@@ -355,7 +355,7 @@ static Literal literal(TokenType t, char *lexeme)
 							c += lexeme[i] - '0';
 							i++;
 						}
-						if (c <= INT8_MAX)
+						if (c <= UINT8_MAX)
 							r.string[j++] = (char)c;
 						else
 							r.string[j++] = lexeme[i];
