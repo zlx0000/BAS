@@ -80,11 +80,11 @@ ParseTreeNode *parseRelOperator(ParserContext *context)
 {
 	ParseTreeNode *node =
 			(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
-	if (IN_RANGE && context->tokenPtr->type == OP_TOKEN) {
+	if (IN_RANGE && context->tokenPtr->type == RELOP_TOKEN) {
 		if (strcmp(context->tokenPtr->lexeme, ">") == 0)
-			node->type = LT;
+			node->type = GT;
 		else if (strcmp(context->tokenPtr->lexeme, ">=") == 0)
-			node->type = LE;
+			node->type = GE;
 		else if (strcmp(context->tokenPtr->lexeme, "<") == 0)
 			node->type = LT;
 		else if (strcmp(context->tokenPtr->lexeme, "<=") == 0)
