@@ -488,8 +488,8 @@ ParseTreeNode *parseAddExpr(ParserContext *context)
 	node->type = ADD_EXPR;
 	node->children[cnt] = parseMulExpr(context);
 	cnt++;
-	while (IN_RANGE && (strcasecmp(context->tokenPtr->lexeme, "+") == 0
-				|| strcasecmp(context->tokenPtr->lexeme, "-") == 0)) {
+	while (IN_RANGE && (strcmp(context->tokenPtr->lexeme, "+") == 0
+				|| strcmp(context->tokenPtr->lexeme, "-") == 0)) {
 		struct ParseTreeNode *node2 = parseAddOperand(context);
 		ERR_RET(node2);
 		node->children[1] = node2;
