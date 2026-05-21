@@ -6,7 +6,7 @@
 		str,context->tokenPtr->lineNum, context->tokenPtr->colNum,                  \
 		context->tokenPtr->lexeme); context->err = true ;return NULL;}
 #define IN_RANGE (context->len < context->tokenLen)
-#define LAST_TOKEN (context->len == context->tokenLen)
+#define LAST_TOKEN (context->len == context->tokenLen-1)
 #define ERR_RET(node) {if (!node) {context->err=true; return NULL;}}
 #define CONSUME_TOKEN {if (!IN_RANGE) \
 		{ERR("Token stream ended")}; context->tokenPtr++; \
