@@ -50,7 +50,11 @@ repl:
 			return 0;
 		Token *tokens =
 		(Token *)calloc(1, sizeof(Token) * MAX_TOKEN);
-
+		Program *prog = (Program *)calloc(1, sizeof(Program));
+		if (prog == NULL) {
+			perror("Memory allocation failed");
+			exit(EXIT_FAILURE);
+		}
 		int len = lexer(str, tokens, line);
 		if (len > 0) {
 			line++;
@@ -58,6 +62,15 @@ repl:
 				printf("%d,%d: %s (%s)\n", tokens[i].lineNum, tokens[i].colNum,
 					tokens[i].lexeme, token_type_to_string(tokens[i].type));
 		}
+		ParserContext ctx;
+    	ctx.tokens = tokens;
+		ctx.tokenLen = len;
+		ctx.len = 0;
+    	ctx.tokenPtr = ctx.tokens;
+	    ctx.prog = prog;
+		ctx.prog->lineCount = 1;
+		ctx.err = false;
+		ParseTreeNode *p = parseLine(&ctx);
 		goto repl;
     }
 	if (*argv[1]) {
@@ -133,6 +146,7 @@ next:
     ParserContext ctx;
     ctx.tokens = tokens;
 	ctx.tokenLen = len;
+	ctx.len = 0;
     ctx.tokenPtr = ctx.tokens;
     ctx.prog = prog;
 	ctx.prog->lineCount = 1;

@@ -34,6 +34,7 @@ statement       ::= let-stmt
                   | input-stmt
                   | if-stmt
                   | for-stmt
+                  | for-tail
                   | goto-stmt
                   | gosub-stmt
                   | return-stmt

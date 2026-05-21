@@ -62,7 +62,9 @@ typedef enum {
 	IF,
 	THEN,
 	PRINT,
+	PRINT_LIST,
 	INPUT,
+	INPUT_LIST,
 	FOR,
 	TO,
 	STEP,
@@ -82,8 +84,12 @@ typedef enum {
 	LE,
 	GE,
 	NE,
+	EQ,
 	AND_OP,
 	OR_OP,
+	ADD_OP,
+	MUL_OP,
+	UNARY_OP,
 	NOT,
 	COMMA,
 	SEMICOLON,
@@ -122,6 +128,7 @@ typedef struct {
 typedef struct {
 	Token *tokens;
 	int tokenLen;
+	int len;
 	Program *prog;
 	// char token[64];
 	Token *tokenPtr;
@@ -143,7 +150,10 @@ ParseTreeNode *parseLetStatement(ParserContext *context);
 ParseTreeNode *parseExpr(ParserContext *context);
 ParseTreeNode *parseIfStatement(ParserContext *context);
 ParseTreeNode *parsePrintStatement(ParserContext *context);
+ParseTreeNode *parsePrintList(ParserContext *context);
+ParseTreeNode *parsePrintItem(ParserContext *context);
 ParseTreeNode *parseInputStatement(ParserContext *context);
+ParseTreeNode *parseInputList(ParserContext *context);
 ParseTreeNode *parseIdentifier(ParserContext *context);
 ParseTreeNode *parseEqual(ParserContext *context);
 ParseTreeNode *parseTerm(ParserContext *context);
