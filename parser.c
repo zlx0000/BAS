@@ -332,8 +332,9 @@ ParseTreeNode *parsePrintList(ParserContext *context)
 		ERR_RET(node->children[1]);
 		if (node->children[i] == NULL)
 			ERR("Expecting print items in PRINT statement");
+		i++;
 	} while (IN_RANGE);
-	node->childCount = --i;
+	node->childCount = i;
 	return node;
 }
 
@@ -383,7 +384,7 @@ ParseTreeNode *parseInputList(ParserContext *context)
 			ERR("Expecting identifiers in PRINT statement");
 		}
 	} while (IN_RANGE);
-	node->childCount = --i;
+	node->childCount = i;
 	return node;
 }
 
@@ -413,21 +414,19 @@ ParseTreeNode *parseOrExpr(ParserContext *context)
 {
 	ParseTreeNode *node =
 		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
-	node->childCount = 0;
+	int cnt = 0;
 	node->type = OR_EXPR;
-	node->children[0] = parseAndExpr(context);
-	ERR_RET(node->children[0]);
-	node->childCount++;
-	if (IN_RANGE && strcasecmp(context->tokenPtr->lexeme, "OR") == 0) {
+	node->children[cnt++] = parseAndExpr(context);
+	while (IN_RANGE && (context->tokenPtr->type == KEYWORD_TOKEN
+				|| strcasecmp(context->tokenPtr->lexeme, "OR") == 0)) {
 		struct ParseTreeNode *node2 = parseOrOperand(context);
 		ERR_RET(node2);
-		node->children[1] = node2;
-		node->childCount++;
+		node->children[cnt++] = node2;
 		struct ParseTreeNode *node3 = parseAndExpr(context);
 		ERR_RET(node3);
-		node->children[2] = node3;
-		node->childCount++;
+		node->children[cnt++] = node3;
 	}
+	node->childCount = cnt;
 	return node;
 }
 
@@ -451,16 +450,15 @@ ParseTreeNode *parseAndExpr(ParserContext *context)
 		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
 	int cnt = 0;
 	node->type = AND_EXPR;
-	node->children[cnt] = parseAddExpr(context);
-	cnt++;
+	node->children[cnt++] = parseAddExpr(context);
 	while (IN_RANGE && strcasecmp(context->tokenPtr->lexeme, "AND") == 0) {
 		struct ParseTreeNode *node2 = parseAndOperand(context);
 		ERR_RET(node2);
-		node->children[1] = node2;
+		node->children[cnt++] = node2;
 		cnt++;
 		struct ParseTreeNode *node3 = parseAddExpr(context);
 		ERR_RET(node3);
-		node->children[2] = node3;
+		node->children[cnt++] = node3;
 		cnt++;
 	}
 	node->childCount = cnt;
@@ -486,18 +484,15 @@ ParseTreeNode *parseAddExpr(ParserContext *context)
 		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
 	int cnt = 0;
 	node->type = ADD_EXPR;
-	node->children[cnt] = parseMulExpr(context);
-	cnt++;
+	node->children[cnt++] = parseMulExpr(context);
 	while (IN_RANGE && (strcmp(context->tokenPtr->lexeme, "+") == 0
 				|| strcmp(context->tokenPtr->lexeme, "-") == 0)) {
 		struct ParseTreeNode *node2 = parseAddOperand(context);
 		ERR_RET(node2);
-		node->children[1] = node2;
-		cnt++;
+		node->children[cnt++] = node2;
 		struct ParseTreeNode *node3 = parseMulExpr(context);
 		ERR_RET(node3);
-		node->children[2] = node3;
-		cnt++;
+		node->children[cnt++] = node3;
 	}
 	node->childCount = cnt;
 	return node;
@@ -507,23 +502,19 @@ ParseTreeNode *parseMulExpr(ParserContext *context)
 {
 	ParseTreeNode *node =
 		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
-	node->childCount = 0;
-
-	node->children[0] = parseUnary(context);
-	if (IN_RANGE && (!strcmp(context->tokenPtr->lexeme, "*") ||
-		!strcmp(context->tokenPtr->lexeme, "/"))) {
+	int cnt = 0;
+	node->type = MUL_EXPR;
+	node->children[cnt++] = parseUnary(context);
+	while (IN_RANGE && (strcmp(context->tokenPtr->lexeme, "*") == 0
+				|| strcmp(context->tokenPtr->lexeme, "/") == 0)) {
 		struct ParseTreeNode *node2 = parseMulOperand(context);
 		ERR_RET(node2);
-		node->children[1] = node2;
-		node->childCount++;
+		node->children[cnt++] = node2;
 		struct ParseTreeNode *node3 = parseUnary(context);
 		ERR_RET(node3);
-		node->children[2] = node3;
-		node->childCount++;
-	} else {
-		node->children[1] = NULL;
-		node->children[2] = NULL;
+		node->children[cnt++] = node3;
 	}
+	node->childCount = cnt;
 	return node;
 }
 
@@ -536,7 +527,6 @@ ParseTreeNode *parseUnary(ParserContext *context)
 	if (IN_RANGE && (strcmp(context->tokenPtr->lexeme, "+") == 0 ||
 		strcmp(context->tokenPtr->lexeme, "-") == 0 ||
 		strcmp(context->tokenPtr->lexeme, "NOT") == 0)) {
-		CONSUME_TOKEN;
 		struct ParseTreeNode *node2 = parseUnaryOperand(context);
 		ERR_RET(node2);
 		node->children[0] = node2;
