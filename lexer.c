@@ -300,18 +300,21 @@ static DFA_state is_paren(char *t)
 
 static DFA_state is_relop(char *t)
 {
+    bool pending = false;
+    size_t len_t = strlen(t);
+
     for (int i = 0; i < RELOPS_SIZE; i++) {
-        size_t len_t = strlen(t);
         size_t len_k = strlen(relops[i]);
 
         if (strncmp(t, relops[i], len_t) == 0) {
             if (len_t == len_k)
                 return MATCH;
             else
-                return PENDING;
+                pending = true;
         }
     }
-    return MISMATCH;
+
+    return pending ? PENDING : MISMATCH;
 }
 
 static bool possible(DFA_state *s)

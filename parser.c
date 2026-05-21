@@ -484,21 +484,22 @@ ParseTreeNode *parseAddExpr(ParserContext *context)
 {
 	ParseTreeNode *node =
 		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
-	node->childCount = 0;
-
-	node->children[0] = parseMulExpr(context);
-	ERR_RET(node->children[0]);
-	if (IN_RANGE && (!strcmp(context->tokenPtr->lexeme, "+") ||
-		!strcmp(context->tokenPtr->lexeme, "-"))) {
+	int cnt = 0;
+	node->type = ADD_EXPR;
+	node->children[cnt] = parseMulExpr(context);
+	cnt++;
+	while (IN_RANGE && (strcasecmp(context->tokenPtr->lexeme, "+") == 0
+				|| strcasecmp(context->tokenPtr->lexeme, "-") == 0)) {
 		struct ParseTreeNode *node2 = parseAddOperand(context);
 		ERR_RET(node2);
 		node->children[1] = node2;
-		node->childCount++;
+		cnt++;
 		struct ParseTreeNode *node3 = parseMulExpr(context);
 		ERR_RET(node3);
 		node->children[2] = node3;
-		node->childCount++;
+		cnt++;
 	}
+	node->childCount = cnt;
 	return node;
 }
 
