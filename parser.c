@@ -442,6 +442,7 @@ ParseTreeNode *parseOrOperand(ParserContext *context)
 		node->childCount = 0;
 		CONSUME_TOKEN;
 	}
+	return node;
 }
 
 ParseTreeNode *parseAndExpr(ParserContext *context)
@@ -476,6 +477,7 @@ ParseTreeNode *parseAndOperand(ParserContext *context)
 		node->childCount = 0;
 		CONSUME_TOKEN;
 	}
+	return node;
 }
 
 ParseTreeNode *parseAddExpr(ParserContext *context)
