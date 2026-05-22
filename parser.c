@@ -322,14 +322,14 @@ ParseTreeNode *parsePrintList(ParserContext *context)
 		if (i > 128)
 			ERR("too many print items");
 		if (i > 0) {
-			if (IN_RANGE && context->tokenPtr->type == SEMICOLON_TOKEN &&
-				context->tokenPtr->type == COMMA_TOKEN) {
+			if (IN_RANGE && (context->tokenPtr->type == SEMICOLON_TOKEN ||
+				context->tokenPtr->type == COMMA_TOKEN)) {
 				CONSUME_TOKEN;
 			} else
 				ERR("Expected commas or semicolons");
 		}
 		node->children[i] = parseExpr(context);
-		ERR_RET(node->children[1]);
+		ERR_RET(node->children[i]);
 		if (node->children[i] == NULL)
 			ERR("Expected print items in PRINT statement");
 		i++;
@@ -366,8 +366,8 @@ ParseTreeNode *parseInputList(ParserContext *context)
 		if (i > 128)
 			ERR("too many input items");
 		if (i > 0) {
-			if (IN_RANGE && context->tokenPtr->type == SEMICOLON_TOKEN &&
-				context->tokenPtr->type == COMMA_TOKEN) {
+			if (IN_RANGE && (context->tokenPtr->type == SEMICOLON_TOKEN ||
+				context->tokenPtr->type == COMMA_TOKEN)) {
 				CONSUME_TOKEN;
 			} else
 				ERR("Expected commas or semicolons");
