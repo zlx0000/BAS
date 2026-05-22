@@ -246,8 +246,8 @@ ParseTreeNode *parseLetStatement(ParserContext *context)
 	node->childCount = 0;
 	node->type = LET;
 	node->token = context->tokenPtr;
-	if (context->tokenPtr->type != KEYWORD_TOKEN
-		|| strcasecmp(context->tokenPtr->lexeme, "LET") == 0)
+	if (context->tokenPtr->type == KEYWORD_TOKEN
+		&& strcasecmp(context->tokenPtr->lexeme, "LET") == 0)
 		CONSUME_TOKEN;
 
 	node->children[0] = parseIdentifier(context);

@@ -110,7 +110,7 @@ repl:
 	prog->lines = (ParseTreeNode **)calloc(
 		1, sizeof(ParseTreeNode *) * 16384);
 	if (prog->lines == NULL) {
-		perror("Memory allocation failed.");
+		perror("Memory allocation failed");
 		free(prog);
 		free(bf);
 		exit(EXIT_FAILURE);
@@ -118,7 +118,8 @@ repl:
 
 	Token *tokens =
 		(Token *)calloc(1, sizeof(Token) * MAX_TOKEN);
-		char *start = bf;
+
+	char *start = bf;
 	char *end = start;
 	int slen = 0;
 next:
@@ -126,8 +127,6 @@ next:
 		*end++;
 		slen++;
 	}
-	if (slen == 0)
-		return 0;
 	strncpy(str, start, slen);
 	str[slen] = '\0';
 	slen = 0;
@@ -136,14 +135,14 @@ next:
 		end = start;
 	}
     printf("%s\n", str);
-	int len = lexer(bf, tokens, 1);
+	int len = lexer(str, tokens, line);
 	line++;
 	if (len < 0)
 		return len;
 	for (size_t i = 0; i < len; i++)
 		printf("%d,%d: %s (%s)\n", tokens[i].lineNum, tokens[i].colNum,
 			tokens[i].lexeme, token_type_to_string(tokens[i].type));
-    ParserContext ctx;
+	ParserContext ctx;
     ctx.tokens = tokens;
 	ctx.tokenLen = len;
 	ctx.len = 0;
@@ -152,5 +151,7 @@ next:
 	ctx.prog->lineCount = 1;
 	ctx.err = false;
     ParseTreeNode *p = parseLine(&ctx);
+	if (end == bf + size)
+		return 0;
 	goto next;
 }
