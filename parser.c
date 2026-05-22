@@ -1,7 +1,7 @@
 #include "gbasic.h"
 
 #define ERR(str) {if (!IN_RANGE) {fprintf(stderr,\
-		 "token stream ends prematurely\n");\
+		 "token stream ended prematurely\n");\
 		return NULL;}fprintf(stderr, "%s at %d,%d: `%s`,\n",\
 		str,context->tokenPtr->lineNum, context->tokenPtr->colNum,                  \
 		context->tokenPtr->lexeme); context->err = true ;return NULL;}
@@ -9,7 +9,7 @@
 #define LAST_TOKEN (context->len == context->tokenLen-1)
 #define ERR_RET(node) {if (!node) {context->err=true; return NULL;}}
 #define CONSUME_TOKEN {if (!IN_RANGE) \
-		{ERR("Token stream ended")}; context->tokenPtr++; \
+		{ERR("Token stream ended prematurely")}; context->tokenPtr++; \
 		context->len++;}
 
 void parse(ParserContext *context)
@@ -38,7 +38,7 @@ ParseTreeNode *parseLine(ParserContext *context)
 	ERR_RET(node->children[1]);
 	node->childCount++;
 	if (IN_RANGE) {
-		ERR("Token stream does not end");
+		ERR("Token stream did not end");
 		return NULL;
 	}
 	//parseEOL(context);
@@ -55,7 +55,7 @@ ParseTreeNode *parseIdentifier(ParserContext *context)
 		node->token = context->tokenPtr;
 		CONSUME_TOKEN;
 	}else {
-			ERR("Expecting identifiers");
+			ERR("Expected identifiers");
 	}
 	return node;
 }
@@ -71,7 +71,7 @@ ParseTreeNode *parseEqual(ParserContext *context)
 		node->token = context->tokenPtr;
 		CONSUME_TOKEN;
 	}else {
-			ERR("Expecting `=`");
+			ERR("Expected `=`");
 	}
 	return node;
 }
@@ -92,12 +92,12 @@ ParseTreeNode *parseRelOperator(ParserContext *context)
 		else if (strcmp(context->tokenPtr->lexeme, "=") == 0)
 			node->type = EQ;
 		else
-			ERR("Expecting relops");
+			ERR("Expected relops");
 		node->childCount = 0;
 		node->token = context->tokenPtr;
 		CONSUME_TOKEN;
 	} else {
-			ERR("Expecting relops");
+			ERR("Expected relops");
 	}
 	return node;
 }
@@ -114,7 +114,7 @@ ParseTreeNode *parseAddOperand(ParserContext *context)
 		node->token = context->tokenPtr;
 		CONSUME_TOKEN;
 	}else {
-			ERR("Expecting `+` or `-`");
+			ERR("Expected `+` or `-`");
 	}
 	return node;
 }
@@ -131,7 +131,7 @@ ParseTreeNode *parseMulOperand(ParserContext *context)
 		node->token = context->tokenPtr;
 		CONSUME_TOKEN;
 	}else {
-			ERR("Expecting `*` or `/`");
+			ERR("Expected `*` or `/`");
 	}
 	return node;
 }
@@ -150,7 +150,7 @@ ParseTreeNode *parseUnaryOperand(ParserContext *context)
 		node->token = context->tokenPtr;
 		CONSUME_TOKEN;
 	}else {
-			ERR("Expecting `+`, `-` or NOT");
+			ERR("Expected `+`, `-` or NOT");
 	}
 	return node;
 }
@@ -272,7 +272,7 @@ ParseTreeNode *parseIfStatement(ParserContext *context)
 	node->token = context->tokenPtr;
 	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
 		strcasecmp(context->tokenPtr->lexeme, "IF") != 0)
-			ERR("Expecting IF token.\n");
+			ERR("Expected IF token.\n");
 	CONSUME_TOKEN;
 	node->children[0] = parseExpr(context);
 	ERR_RET(node->children[0]);
@@ -285,7 +285,7 @@ ParseTreeNode *parseIfStatement(ParserContext *context)
 	node->childCount++;
 	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
 		strcasecmp(context->tokenPtr->lexeme, "THEN") != 0)
-			ERR("Expecting THEN in IF statement.\n");
+			ERR("Expected THEN in IF statement.\n");
 	CONSUME_TOKEN;
 	node->children[3] = parseLinenum(context);
 	ERR_RET(node->children[3]);
@@ -302,7 +302,7 @@ ParseTreeNode *parsePrintStatement(ParserContext *context)
 	node->token = context->tokenPtr;
 	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
 		strcasecmp(context->tokenPtr->lexeme, "PRINT") != 0)
-			ERR("Expecting PRINT token.\n");
+			ERR("Expected PRINT token.\n");
 	CONSUME_TOKEN;
 	node->children[0] = parsePrintList(context);
 	ERR_RET(node->children[0]);
@@ -326,12 +326,12 @@ ParseTreeNode *parsePrintList(ParserContext *context)
 				context->tokenPtr->type == COMMA_TOKEN) {
 				CONSUME_TOKEN;
 			} else
-				ERR("Expecting commas or semicolons");
+				ERR("Expected commas or semicolons");
 		}
 		node->children[i] = parseExpr(context);
 		ERR_RET(node->children[1]);
 		if (node->children[i] == NULL)
-			ERR("Expecting print items in PRINT statement");
+			ERR("Expected print items in PRINT statement");
 		i++;
 	} while (IN_RANGE);
 	node->childCount = i;
@@ -347,7 +347,7 @@ ParseTreeNode *parseInputStatement(ParserContext *context)
 	node->token = context->tokenPtr;
 	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
 		strcasecmp(context->tokenPtr->lexeme, "INPUT") != 0)
-			ERR("Expecting INPUT token");
+			ERR("Expected INPUT token");
 	CONSUME_TOKEN;
 	node->children[0] = parseInputList(context);
 	ERR_RET(node->children[0]);
@@ -370,7 +370,7 @@ ParseTreeNode *parseInputList(ParserContext *context)
 				context->tokenPtr->type == COMMA_TOKEN) {
 				CONSUME_TOKEN;
 			} else
-				ERR("Expecting commas or semicolons");
+				ERR("Expected commas or semicolons");
 		}
 		if (IN_RANGE && context->tokenPtr->type == IDENT_TOKEN) {
 			ParseTreeNode *n =
@@ -381,7 +381,7 @@ ParseTreeNode *parseInputList(ParserContext *context)
 			node->children[i++] = n;
 			CONSUME_TOKEN;
 		} else {
-			ERR("Expecting identifiers in PRINT statement");
+			ERR("Expected identifiers in PRINT statement");
 		}
 	} while (IN_RANGE);
 	node->childCount = i;
@@ -394,7 +394,7 @@ ParseTreeNode *parseGotoStatement(ParserContext *context)
 		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
 	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
 		strcasecmp(context->tokenPtr->lexeme, "GOTO") != 0)
-			ERR("Expecting GOTO token.\n");
+			ERR("Expected GOTO token.\n");
 	CONSUME_TOKEN;
 	node->children[0] = parseLinenum(context);
 	ERR_RET(node->children[0]);
@@ -583,7 +583,7 @@ ParseTreeNode *parsePrimary(ParserContext *context)
 		if (IN_RANGE && strcmp(context->tokenPtr->lexeme, ")") == 0) {
 			CONSUME_TOKEN;
 		} else {
-			ERR("Expecting closing parenthesis");
+			ERR("Expected closing parenthesis");
 		}
 	} else {
 		ERR("Invalid primary expression");
