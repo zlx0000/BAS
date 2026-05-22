@@ -50,6 +50,7 @@ typedef enum {
 	ADD_EXPR,
 	MUL_EXPR,
 	UNARY,
+	PRIMARY,
 	LINENUM,
 	INTEGER,
 	FLOAT,

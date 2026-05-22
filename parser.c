@@ -553,7 +553,7 @@ ParseTreeNode *parsePrimary(ParserContext *context)
 	ParseTreeNode *node =
 		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
 	node->childCount = 0;
-
+	node->type = PRIMARY;
 	if (IN_RANGE && context->tokenPtr->type == INT_TOKEN) {
 		node->children[0] = parseIntegerLiteral(context);
 		ERR_RET(node->children[0]);
