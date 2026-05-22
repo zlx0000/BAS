@@ -208,7 +208,8 @@ ParseTreeNode *parseStringLiteral(ParserContext *context)
 ParseTreeNode *parseStatement(ParserContext *context)
 {
 	ParseTreeNode *node;
-	if (IN_RANGE && context->tokenPtr->type == KEYWORD_TOKEN) {
+	if (IN_RANGE && (context->tokenPtr->type == KEYWORD_TOKEN
+		|| context->tokenPtr->type == IDENT_TOKEN)) {
 		if (strcasecmp(context->tokenPtr->lexeme, "LET") == 0
 			|| context->tokenPtr->type == IDENT_TOKEN) {
 			node = parseLetStatement(context);
