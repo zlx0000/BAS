@@ -126,7 +126,7 @@ ParseTreeNode *parseMulOperand(ParserContext *context)
 	if (IN_RANGE && context->tokenPtr->type == OP_TOKEN
 		&& (strcmp(context->tokenPtr->lexeme, "*") == 0
 			|| strcmp(context->tokenPtr->lexeme, "/") == 0)) {
-		node->type = ADD_OP;
+		node->type = MUL_OP;
 		node->childCount = 0;
 		node->token = context->tokenPtr;
 		CONSUME_TOKEN;
@@ -456,11 +456,9 @@ ParseTreeNode *parseAndExpr(ParserContext *context)
 		struct ParseTreeNode *node2 = parseAndOperand(context);
 		ERR_RET(node2);
 		node->children[cnt++] = node2;
-		cnt++;
 		struct ParseTreeNode *node3 = parseAddExpr(context);
 		ERR_RET(node3);
 		node->children[cnt++] = node3;
-		cnt++;
 	}
 	node->childCount = cnt;
 	return node;
