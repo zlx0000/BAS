@@ -50,7 +50,7 @@ ParseTreeNode *parseIdentifier(ParserContext *context)
 	ParseTreeNode *node =
 			(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
 	if (IN_RANGE && context->tokenPtr->type == IDENT_TOKEN) {
-		node->type = IDENT_TOKEN;
+		node->type = IDENTI;
 		node->childCount = 0;
 		node->token = context->tokenPtr;
 		CONSUME_TOKEN;
