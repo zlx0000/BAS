@@ -539,7 +539,7 @@ ParseTreeNode *parseUnary(ParserContext *context)
 		node->children[1] = node3;
 		node->childCount++;
 	} else {
-		node->children[0] = NULL; // todo: add a placeholder for no unary operator
+		node->children[0] = NULL;
 		node->childCount++;
 		struct ParseTreeNode *node2 = parsePrimary(context);
 		ERR_RET(node2);
