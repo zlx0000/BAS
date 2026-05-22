@@ -418,7 +418,7 @@ ParseTreeNode *parseOrExpr(ParserContext *context)
 	node->type = OR_EXPR;
 	node->children[cnt++] = parseAndExpr(context);
 	while (IN_RANGE && (context->tokenPtr->type == KEYWORD_TOKEN
-				|| strcasecmp(context->tokenPtr->lexeme, "OR") == 0)) {
+				&& strcasecmp(context->tokenPtr->lexeme, "OR") == 0)) {
 		struct ParseTreeNode *node2 = parseOrOperand(context);
 		ERR_RET(node2);
 		node->children[cnt++] = node2;
@@ -487,8 +487,9 @@ ParseTreeNode *parseAddExpr(ParserContext *context)
 	int cnt = 0;
 	node->type = ADD_EXPR;
 	node->children[cnt++] = parseMulExpr(context);
-	while (IN_RANGE && (strcmp(context->tokenPtr->lexeme, "+") == 0
-				|| strcmp(context->tokenPtr->lexeme, "-") == 0)) {
+	while (IN_RANGE && context->tokenPtr->type == OP_TOKEN
+			&& (strcmp(context->tokenPtr->lexeme, "+") == 0
+			|| strcmp(context->tokenPtr->lexeme, "-") == 0)) {
 		struct ParseTreeNode *node2 = parseAddOperand(context);
 		ERR_RET(node2);
 		node->children[cnt++] = node2;
@@ -507,8 +508,9 @@ ParseTreeNode *parseMulExpr(ParserContext *context)
 	int cnt = 0;
 	node->type = MUL_EXPR;
 	node->children[cnt++] = parseUnary(context);
-	while (IN_RANGE && (strcmp(context->tokenPtr->lexeme, "*") == 0
-				|| strcmp(context->tokenPtr->lexeme, "/") == 0)) {
+	while (IN_RANGE && context->tokenPtr->type == OP_TOKEN
+			&& (strcmp(context->tokenPtr->lexeme, "*") == 0
+			|| strcmp(context->tokenPtr->lexeme, "/") == 0)) {
 		struct ParseTreeNode *node2 = parseMulOperand(context);
 		ERR_RET(node2);
 		node->children[cnt++] = node2;
