@@ -2,12 +2,13 @@
 
 #define ERR(str) {if (!IN_RANGE) {fprintf(stderr,\
 		 "token stream ended prematurely\n");\
+		free(node);\
 		return NULL;}fprintf(stderr, "%s at %d,%d: `%s`,\n",\
 		str,context->tokenPtr->lineNum, context->tokenPtr->colNum,                  \
 		context->tokenPtr->lexeme); context->err = true ;return NULL;}
 #define IN_RANGE (context->len < context->tokenLen)
 #define LAST_TOKEN (context->len == context->tokenLen-1)
-#define ERR_RET(node) {if (!node) {context->err=true; return NULL;}}
+#define ERR_RET(n) {if (!n) {context->err=true;free(node);return NULL;}}
 #define CONSUME_TOKEN {if (!IN_RANGE) \
 		{ERR("Token stream ended prematurely")}; context->tokenPtr++; \
 		context->len++;}
@@ -38,8 +39,12 @@ ParseTreeNode *parseLine(ParserContext *context)
 	ERR_RET(node->children[1]);
 	node->childCount++;
 	if (IN_RANGE) {
-		ERR("Token stream did not end");
-		return NULL;
+		fprintf(stderr, "%s at %d,%d: `%s`,\n",
+				"Token stream did not end",
+				context->tokenPtr->lineNum, 
+				context->tokenPtr->colNum,
+				context->tokenPtr->lexeme);
+		context->err = true;
 	}
 	//parseEOL(context);
 	return node;
@@ -238,12 +243,12 @@ ParseTreeNode *parseStatement(ParserContext *context)
 
 ParseTreeNode *parseLetStatement(ParserContext *context)
 {
+	ParseTreeNode *node =
+		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
 	if (!IN_RANGE || ((context->tokenPtr->type != KEYWORD_TOKEN
 		|| strcasecmp(context->tokenPtr->lexeme, "LET") != 0)
 		&& context->tokenPtr->type != IDENT_TOKEN))
 		ERR("Not a LET statement");
-	ParseTreeNode *node =
-		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
 	node->childCount = 0;
 	node->type = LET;
 	node->token = context->tokenPtr;

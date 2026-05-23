@@ -232,7 +232,7 @@ repl:
 		if (len > 0) {
 			p = parseLine(&ctx);
 		}
-		if (p)
+		if (p && !ctx.err)
 			print_tree(p, 1);
 		goto repl;
     }
