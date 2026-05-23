@@ -6,6 +6,11 @@
 		return NULL;}fprintf(stderr, "%s at %d,%d: `%s`,\n",\
 		str,context->tokenPtr->lineNum, context->tokenPtr->colNum,                  \
 		context->tokenPtr->lexeme); context->err = true ;return NULL;}
+#define ERR_NOFREE(str) {if (!IN_RANGE) {fprintf(stderr,\
+		 "token stream ended prematurely\n");\
+		return NULL;}fprintf(stderr, "%s at %d,%d: `%s`,\n",\
+		str,context->tokenPtr->lineNum, context->tokenPtr->colNum,                  \
+		context->tokenPtr->lexeme); context->err = true ;return NULL;}
 #define IN_RANGE (context->len < context->tokenLen)
 #define LAST_TOKEN (context->len == context->tokenLen-1)
 #define ERR_RET(n) {if (!n) {context->err=true;free(node);return NULL;}}
@@ -236,10 +241,10 @@ ParseTreeNode *parseStatement(ParserContext *context)
 			ERR_RET_NOFREE(node);
 		}
 		else {
-			ERR("Unknown statement type");
+			ERR_NOFREE("Unknown statement type");
 		}
 	} else
-		ERR("Not a statement type");
+		ERR_NOFREE("Not a statement type");
 
 	return node;
 }
