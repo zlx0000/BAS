@@ -130,7 +130,7 @@ typedef struct {
 	Token *tokens;
 	int tokenLen;
 	int len;
-	Program *prog;
+	//Program *prog;
 	// char token[64];
 	Token *tokenPtr;
 	bool err;

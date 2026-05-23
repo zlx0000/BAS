@@ -197,7 +197,7 @@ int main(int argc, char **argv)
 	FILE *fp = NULL;
 	char str[1024];
 	int line = 1;
-	ParseTreeNode *p;
+	ParseTreeNode *p = NULL;
 	if (argc <= 1) {
 repl:
 		printf(">");
@@ -214,6 +214,12 @@ repl:
 			perror("Memory allocation failed");
 			exit(EXIT_FAILURE);
 		}
+		prog->lineCount = 0;
+		prog->lines = (ParseTreeNode **)calloc(16384, sizeof(ParseTreeNode *));
+		if (prog->lines == NULL) {
+			perror("Memory allocation failed");
+			exit(EXIT_FAILURE);
+		}
 		int len = lexer(str, tokens, line);
 		if (len > 0) {
 			line++;
@@ -226,14 +232,15 @@ repl:
 		ctx.tokenLen = len;
 		ctx.len = 0;
     	ctx.tokenPtr = ctx.tokens;
-	    ctx.prog = prog;
-		ctx.prog->lineCount = 1;
 		ctx.err = false;
 		if (len > 0) {
 			p = parseLine(&ctx);
 		}
-		if (p && !ctx.err)
+		if (p && !ctx.err) {
 			print_tree(p, 1);
+			prog->lines[prog->lineCount] = p;
+			prog->lineCount = line;
+		}
 		goto repl;
     }
 	if (*argv[1]) {
@@ -310,8 +317,6 @@ next:
 	ctx.tokenLen = len;
 	ctx.len = 0;
     ctx.tokenPtr = ctx.tokens;
-    ctx.prog = prog;
-	ctx.prog->lineCount = 1;
 	ctx.err = false;
     p = parseLine(&ctx);
 	if (end == bf + size)

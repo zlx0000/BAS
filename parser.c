@@ -9,10 +9,12 @@
 #define IN_RANGE (context->len < context->tokenLen)
 #define LAST_TOKEN (context->len == context->tokenLen-1)
 #define ERR_RET(n) {if (!n) {context->err=true;free(node);return NULL;}}
+#define ERR_RET_NOFREE(n) {if (!n) {context->err=true;return NULL;}}
 #define CONSUME_TOKEN {if (!IN_RANGE) \
 		{ERR("Token stream ended prematurely")}; context->tokenPtr++; \
 		context->len++;}
 
+/*
 void parse(ParserContext *context)
 {
 	if (context->tokenPtr == NULL || context->prog == NULL) {
@@ -25,6 +27,7 @@ void parse(ParserContext *context)
 		lineNum++;
 	}
 }
+*/
 
 ParseTreeNode *parseLine(ParserContext *context)
 {
@@ -39,8 +42,8 @@ ParseTreeNode *parseLine(ParserContext *context)
 	ERR_RET(node->children[1]);
 	node->childCount++;
 	if (IN_RANGE) {
-		fprintf(stderr, "%s at %d,%d: `%s`,\n",
-				"Token stream did not end",
+		fprintf(stderr, "%s at %d,%d: `%s`\n",
+				"Unexpected token",
 				context->tokenPtr->lineNum, 
 				context->tokenPtr->colNum,
 				context->tokenPtr->lexeme);
@@ -163,7 +166,7 @@ ParseTreeNode *parseUnaryOperand(ParserContext *context)
 ParseTreeNode *parseLinenum(ParserContext *context)
 {
 	ParseTreeNode *node = parseIntegerLiteral(context);
-	ERR_RET(node);
+	ERR_RET_NOFREE(node);
 	//node->childCount = 0;
 	node->type = LINENUM;
 	return node;
@@ -218,19 +221,19 @@ ParseTreeNode *parseStatement(ParserContext *context)
 		if (strcasecmp(context->tokenPtr->lexeme, "LET") == 0
 			|| context->tokenPtr->type == IDENT_TOKEN) {
 			node = parseLetStatement(context);
-			ERR_RET(node);
+			ERR_RET_NOFREE(node);
 		}
 		else if (strcasecmp(context->tokenPtr->lexeme, "IF") == 0) {
 			node = parseIfStatement(context);
-			ERR_RET(node);
+			ERR_RET_NOFREE(node);
 		}
 		else if (strcasecmp(context->tokenPtr->lexeme, "PRINT") == 0) {
 			node = parsePrintStatement(context);
-			ERR_RET(node);
+			ERR_RET_NOFREE(node);
 		}
 		else if (strcasecmp(context->tokenPtr->lexeme, "INPUT") == 0) {
 			node = parseInputStatement(context);
-			ERR_RET(node);
+			ERR_RET_NOFREE(node);
 		}
 		else {
 			ERR("Unknown statement type");
@@ -412,7 +415,7 @@ ParseTreeNode *parseExpr(ParserContext *context)
 {
 	ParseTreeNode *node;
 	node = parseOrExpr(context);
-	ERR_RET(node);
+	ERR_RET_NOFREE(node);
 	return node;
 }
 
@@ -534,7 +537,7 @@ ParseTreeNode *parseUnary(ParserContext *context)
 	node->type = UNARY;
 	if (IN_RANGE && (strcmp(context->tokenPtr->lexeme, "+") == 0 ||
 		strcmp(context->tokenPtr->lexeme, "-") == 0 ||
-		strcmp(context->tokenPtr->lexeme, "NOT") == 0)) {
+		strcasecmp(context->tokenPtr->lexeme, "NOT") == 0)) {
 		struct ParseTreeNode *node2 = parseUnaryOperand(context);
 		ERR_RET(node2);
 		node->children[0] = node2;
@@ -544,13 +547,9 @@ ParseTreeNode *parseUnary(ParserContext *context)
 		node->children[1] = node3;
 		node->childCount++;
 	} else {
-		node->children[0] = (ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
-		node->children[0]->type=UNARY_OP;
-		node->children[0]->token = NULL;
-		node->childCount++;
 		struct ParseTreeNode *node2 = parsePrimary(context);
 		ERR_RET(node2);
-		node->children[1] = node2;
+		node->children[0] = node2;
 		node->childCount++;
 	}
 	return node;
