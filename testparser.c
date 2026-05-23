@@ -34,11 +34,170 @@ static const char *token_type_to_string(TokenType type)
 	}
 }
 
+static const char *node_type_to_string(NodeType type)
+{
+	switch (type) {
+		case NODE_TYPE_NULL:
+			return "NODE_TYPE_NULL";
+		case ROOT:
+			return "ROOT";
+		case EXPR:
+			return "EXPR";
+		case OR_EXPR:
+			return "OR_EXPR";
+		case AND_EXPR:
+			return "AND_EXPR";
+		case ADD_EXPR:
+			return "ADD_EXPR";
+		case MUL_EXPR:
+			return "MUL_EXPR";
+		case UNARY:
+			return "UNARY";
+		case PRIMARY:
+			return "PRIMARY";
+		case LINENUM:
+			return "LINENUM";
+		case INTEGER:
+			return "INTEGER";
+		case FLOAT:
+			return "FLOAT";
+		case INTEGERIDENT:
+			return "INTEGERIDENT";
+		case FLOATIDENT:
+			return "FLOATIDENT";
+		case STRING:
+			return "STRING";
+		case IDENTI:
+			return "IDENTI";
+		case REM:
+			return "REM";
+		case LET:
+			return "LET";
+		case IF:
+			return "IF";
+		case THEN:
+			return "THEN";
+		case PRINT:
+			return "PRINT";
+		case PRINT_LIST:
+			return "PRINT_LIST";
+		case INPUT:
+			return "INPUT";
+		case INPUT_LIST:
+			return "INPUT_LIST";
+		case FOR:
+			return "FOR";
+		case TO:
+			return "TO";
+		case STEP:
+			return "STEP";
+		case NEXT:
+			return "NEXT";
+		case GOTO:
+			return "GOTO";
+		case GOSUB:
+			return "GOSUB";
+		case RETURN:
+			return "RETURN";
+		case END:
+			return "END";
+		case PLUS:
+			return "PLUS";
+		case MINUS:
+			return "MINUS";
+		case STAR:
+			return "STAR";
+		case SLASH:
+			return "SLASH";
+		case CARET:
+			return "CARET";
+		case EQUALS:
+			return "EQUALS";
+		case LT:
+			return "LT";
+		case GT:
+			return "GT";
+		case LE:
+			return "LE";
+		case GE:
+			return "GE";
+		case NE:
+			return "NE";
+		case EQ:
+			return "EQ";
+		case AND_OP:
+			return "AND_OP";
+		case OR_OP:
+			return "OR_OP";
+		case ADD_OP:
+			return "ADD_OP";
+		case MUL_OP:
+			return "MUL_OP";
+		case UNARY_OP:
+			return "UNARY_OP";
+		case NOT:
+			return "NOT";
+		case COMMA:
+			return "COMMA";
+		case SEMICOLON:
+			return "SEMICOLON";
+		case COLON:
+			return "COLON";
+		case LPAREN:
+			return "LPAREN";
+		case RPAREN:
+			return "RPAREN";
+		default:
+			return "UNKNOWN_NODE_TYPE";
+	}
+}
+
+bool depth_arr[256];
+void print_tree(ParseTreeNode *t, unsigned int depth)
+{
+	if (depth >= sizeof(depth_arr))
+		return;
+	if (t->token)
+		printf("%s: %s\n", node_type_to_string(t->type), t->token->lexeme);
+	else
+		printf("%s\n", node_type_to_string(t->type));
+	if (depth >= 1) {
+		for (int i = 0; i < t->childCount; i++) {
+			if (i != t->childCount-1) {
+				for (int j = 1; j < depth; j++) {
+					if(depth_arr[j])
+						printf("│ ");
+					else
+						printf("  ");
+				}
+				printf("├─");
+				depth_arr[depth] = true;
+			} else {
+				for (int j = 1; j < depth; j++) {
+					if(depth_arr[j])
+						printf("│ ");
+					else
+						printf("  ");
+				}
+				printf("└─");
+				depth_arr[depth] = false;
+			}
+			print_tree(t->children[i], depth+1);
+		}
+	} else {
+		for (int i = 0; i < t->childCount; i++) {
+			print_tree(t->children[i], depth+1);
+		}
+	}
+}
+
 int main(int argc, char **argv)
 {
+	memset(depth_arr, false, sizeof(depth_arr));
 	FILE *fp = NULL;
 	char str[1024];
 	int line = 1;
+	ParseTreeNode *p;
 	if (argc <= 1) {
 repl:
 		printf(">");
@@ -70,7 +229,11 @@ repl:
 	    ctx.prog = prog;
 		ctx.prog->lineCount = 1;
 		ctx.err = false;
-		ParseTreeNode *p = parseLine(&ctx);
+		if (len > 0) {
+			p = parseLine(&ctx);
+		}
+		if (p)
+			print_tree(p, 1);
 		goto repl;
     }
 	if (*argv[1]) {
@@ -150,7 +313,7 @@ next:
     ctx.prog = prog;
 	ctx.prog->lineCount = 1;
 	ctx.err = false;
-    ParseTreeNode *p = parseLine(&ctx);
+    p = parseLine(&ctx);
 	if (end == bf + size)
 		return 0;
 	goto next;

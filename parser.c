@@ -539,7 +539,9 @@ ParseTreeNode *parseUnary(ParserContext *context)
 		node->children[1] = node3;
 		node->childCount++;
 	} else {
-		node->children[0] = NULL;
+		node->children[0] = (ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
+		node->children[0]->type=UNARY_OP;
+		node->children[0]->token = NULL;
 		node->childCount++;
 		struct ParseTreeNode *node2 = parsePrimary(context);
 		ERR_RET(node2);
@@ -568,13 +570,9 @@ ParseTreeNode *parsePrimary(ParserContext *context)
 		ERR_RET(node->children[0]);
 		node->childCount++;
 	} else if (IN_RANGE && context->tokenPtr->type == IDENT_TOKEN) {
-		ParseTreeNode *n =
-			(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
-		n->type = IDENTI;
-		n->childCount = 0;
-		n->token = context->tokenPtr;
-		node->children[0] = n;
-		CONSUME_TOKEN;
+		node->children[0] = parseIdentifier(context);
+		ERR_RET(node->children[0]);
+		node->childCount++;
 	} else if (IN_RANGE && strcmp(context->tokenPtr->lexeme, "(") == 0){
 		CONSUME_TOKEN;
 		struct ParseTreeNode *node2 = parseExpr(context);
