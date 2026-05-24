@@ -178,6 +178,7 @@ ParseTreeNode *parseUnaryOperand(ParserContext *context);
 typedef struct {
     enum {
         ERR_VAL,
+		LINENUM_VAL,
         INT_VAL,
         FLOAT_VAL,
         STRING_VAL
