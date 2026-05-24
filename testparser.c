@@ -241,6 +241,7 @@ repl:
 			prog->lines[prog->lineCount] = p;
 			prog->lineCount = line;
 		}
+		p = NULL;
 		goto repl;
     }
 	if (*argv[1]) {
