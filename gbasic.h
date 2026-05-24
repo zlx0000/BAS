@@ -171,3 +171,35 @@ ParseTreeNode *parsePrimary(ParserContext *context);
 ParseTreeNode *parseMulOperand(ParserContext *context);
 ParseTreeNode *parseRelOperator(ParserContext *context);
 ParseTreeNode *parseUnaryOperand(ParserContext *context);
+
+
+#define STASK_SIZE 1024
+
+typedef struct {
+    enum {
+        ERR_VAL,
+        INT_VAL,
+        FLOAT_VAL,
+        STRING_VAL
+    } type;
+    union {
+        int intVal;
+        float floatVal;
+        char stringVal[BFSIZE];
+    } value;
+	unsigned int refcnt;
+} Value;
+
+typedef struct {
+    size_t size;
+    Value st[STASK_SIZE];
+} Stack;
+
+typedef struct {
+    char name[BFSIZE];
+    Value val;
+} Variable;
+
+Value evalLine(ParseTreeNode node);
+Value evalExpr(ParseTreeNode node);
+Value evalPrint(ParseTreeNode node);
