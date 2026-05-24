@@ -299,7 +299,7 @@ ParseTreeNode *parseIfStatement(ParserContext *context)
 	node->childCount++;
 	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
 		strcasecmp(context->tokenPtr->lexeme, "THEN") != 0)
-			ERR("Expected THEN in IF statement.\n");
+			ERR("Expected THEN in IF statement");
 	CONSUME_TOKEN;
 	node->children[3] = parseLinenum(context);
 	ERR_RET(node->children[3]);
