@@ -262,10 +262,11 @@ ParseTreeNode *parseLetStatement(ParserContext *context)
 		ERR("Not a LET statement");
 	node->childCount = 0;
 	node->type = LET;
-	node->token = context->tokenPtr;
 	if (context->tokenPtr->type == KEYWORD_TOKEN
-		&& strcasecmp(context->tokenPtr->lexeme, "LET") == 0)
+		&& strcasecmp(context->tokenPtr->lexeme, "LET") == 0) {
+		node->token = context->tokenPtr;
 		CONSUME_TOKEN;
+	}
 
 	node->children[0] = parseIdentifier(context);
 	ERR_RET(node->children[0]);
