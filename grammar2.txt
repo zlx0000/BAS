@@ -44,7 +44,7 @@ statement       ::= let-stmt
 (* ── simple statements ────────────────────────────────────────────── *)
 let-stmt        ::= [ "LET" ] IDENTIFIER "=" expression
 print-stmt      ::= "PRINT" [ print-list ]
-input-stmt      ::= "INPUT" identifier-list
+input-stmt      ::= "INPUT" input-list
 goto-stmt       ::= "GOTO" LINENUM
 gosub-stmt      ::= "GOSUB" LINENUM
 return-stmt     ::= "RETURN"
@@ -52,7 +52,7 @@ end-stmt        ::= "END"
 rem-stmt        ::= COMMENT                          (* already swallowed *)
 
 (* ── IF ────────────────────────────────────────────────────────────── *)
-if-stmt         ::= "IF" expression RELOP expression "THEN" LINENUM
+if-stmt         ::= "IF" expression "THEN" LINENUM
 
 (* ── FOR / NEXT  (spans multiple numbered lines) ──────────────────── *)
 for-stmt        ::= "FOR" IDENTIFIER "=" expression "TO" expression
@@ -68,14 +68,15 @@ print-item      ::= expression
 (* ── expression grammar  (highest to lowest precedence) ───────────── *)
 expression      ::= or-expr
 or-expr         ::= and-expr { "OR" and-expr }
-and-expr        ::= add-expr { "AND" add-expr }
+and-expr        ::= rel-expr { "AND" rel-expr }
+rel-expr        ::= add-expr [ RELOP add-expr ]
 add-expr        ::= mul-expr { ( "+" | "-" ) mul-expr }
 mul-expr        ::= unary   { ( "*" | "/" ) unary   }
 unary           ::= [ "+" | "-" | "NOT" ] primary
 primary         ::= INTEGER-LIT | FLOAT-LIT | STRING-LIT | IDENTIFIER
                   | "(" expression ")"
 
-identifier-list ::= IDENTIFIER { "," IDENTIFIER }
+input-list ::= IDENTIFIER { "," IDENTIFIER }
 
 ──────────────────────────────────────────────────────────────────────────────
 SEMANTIC NOTES  (prose, not BNF)

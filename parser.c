@@ -291,18 +291,20 @@ ParseTreeNode *parseIfStatement(ParserContext *context)
 	node->children[0] = parseExpr(context);
 	ERR_RET(node->children[0]);
 	node->childCount++;
+	/*
 	node->children[1] = parseRelOperator(context);
 	ERR_RET(node->children[1]);
 	node->childCount++;
 	node->children[2] = parseExpr(context);
 	ERR_RET(node->children[2]);
 	node->childCount++;
+	*/
 	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
 		strcasecmp(context->tokenPtr->lexeme, "THEN") != 0)
 			ERR("Expected THEN in IF statement");
 	CONSUME_TOKEN;
-	node->children[3] = parseLinenum(context);
-	ERR_RET(node->children[3]);
+	node->children[1] = parseLinenum(context); //3
+	ERR_RET(node->children[1]); //3
 	node->childCount++;
 	return node;
 }
@@ -465,12 +467,12 @@ ParseTreeNode *parseAndExpr(ParserContext *context)
 		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
 	int cnt = 0;
 	node->type = AND_EXPR;
-	node->children[cnt++] = parseAddExpr(context);
+	node->children[cnt++] = parseRelExpr(context);
 	while (IN_RANGE && strcasecmp(context->tokenPtr->lexeme, "AND") == 0) {
 		struct ParseTreeNode *node2 = parseAndOperand(context);
 		ERR_RET(node2);
 		node->children[cnt++] = node2;
-		struct ParseTreeNode *node3 = parseAddExpr(context);
+		struct ParseTreeNode *node3 = parseRelExpr(context);
 		ERR_RET(node3);
 		node->children[cnt++] = node3;
 	}
@@ -491,6 +493,32 @@ ParseTreeNode *parseAndOperand(ParserContext *context)
 	}
 	return node;
 }
+
+#define IS_RELOP (strcmp(context->tokenPtr->lexeme, ">") == 0     \
+				  || strcmp(context->tokenPtr->lexeme, "<") == 0  \
+				  || strcmp(context->tokenPtr->lexeme, ">=") == 0 \
+				  || strcmp(context->tokenPtr->lexeme, "<=") == 0 \
+				  || strcmp(context->tokenPtr->lexeme, "=") == 0)
+ParseTreeNode *parseRelExpr(ParserContext *context)
+{
+	ParseTreeNode *node =
+		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
+	int cnt = 0;
+	node->type = REL_EXPR;
+	node->children[cnt++] = parseAddExpr(context);
+	if (IN_RANGE && context->tokenPtr->type == RELOP_TOKEN
+			&& IS_RELOP) {
+		struct ParseTreeNode *node2 = parseRelOperator(context);
+		ERR_RET(node2);
+		node->children[cnt++] = node2;
+		struct ParseTreeNode *node3 = parseAddExpr(context);
+		ERR_RET(node3);
+		node->children[cnt++] = node3;
+	}
+	node->childCount = cnt;
+	return node;
+}
+#undef IS_RELOP
 
 ParseTreeNode *parseAddExpr(ParserContext *context)
 {

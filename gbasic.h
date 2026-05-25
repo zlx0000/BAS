@@ -47,6 +47,7 @@ typedef enum {
 	EXPR,
 	OR_EXPR,
 	AND_EXPR,
+	REL_EXPR,
 	ADD_EXPR,
 	MUL_EXPR,
 	UNARY,
@@ -163,6 +164,7 @@ ParseTreeNode *parseOrExpr(ParserContext *context);
 ParseTreeNode *parseOrOperand(ParserContext *context);
 ParseTreeNode *parseAndExpr(ParserContext *context);
 ParseTreeNode *parseAndOperand(ParserContext *context);
+ParseTreeNode *parseRelExpr(ParserContext *context);
 ParseTreeNode *parseAddExpr(ParserContext *context);
 ParseTreeNode *parseAddOperand(ParserContext *context);
 ParseTreeNode *parseMulExpr(ParserContext *context);
@@ -179,6 +181,7 @@ typedef struct {
     enum {
         ERR_VAL,
 		LINENUM_VAL,
+		BOOL_VAL,
         INT_VAL,
         FLOAT_VAL,
         STRING_VAL
@@ -204,3 +207,5 @@ typedef struct {
 Value evalLine(ParseTreeNode node);
 Value evalExpr(ParseTreeNode node);
 Value evalPrint(ParseTreeNode node);
+Value evalOrExpr(ParseTreeNode node);
+Value evalAndExpr(ParseTreeNode node);

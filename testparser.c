@@ -47,6 +47,8 @@ static const char *node_type_to_string(NodeType type)
 			return "OR_EXPR";
 		case AND_EXPR:
 			return "AND_EXPR";
+		case REL_EXPR:
+			return "REL_EXPR";
 		case ADD_EXPR:
 			return "ADD_EXPR";
 		case MUL_EXPR:

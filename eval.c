@@ -23,7 +23,7 @@ static Value pop(Stack st)
     return st.st[st.size--];
 }
 
-static print_val(Value val)
+static void print_val(Value val)
 {
     switch (val.type) {
         case INT_VAL:
@@ -62,6 +62,30 @@ Value evalPrint(ParseTreeNode node)
         ret = evalExpr(*list->children[i]);
         if (IS_ERR(ret))
             return ret;
-        
+        print_val(ret);
+    }
+}
+
+Value evalExpr(ParseTreeNode node)
+{
+    return evalOrExpr(node);
+}
+
+Value evalOrExpr(ParseTreeNode node)
+{
+    unsigned int cnt = node.childCount;
+    if (cnt == 1) {
+        return evalAndExpr(*node.children[0]);
+    } else {
+        Value v = evalAndExpr(*node.children[0]);
+        for (int i = 1; i < cnt; i += 2) {
+            if (node.children[i]->type == AND_OP) {
+                if (strcasecmp(node.children[i]->token->lexeme, "AND") == 0) {
+                    Value tmp = evalAndExpr(*node.children[i+1]);
+                    
+                    
+                }
+            }
+        }
     }
 }
