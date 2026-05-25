@@ -517,6 +517,8 @@ ParseTreeNode *parseRelExpr(ParserContext *context)
 		struct ParseTreeNode *node3 = parseAddExpr(context);
 		ERR_RET(node3);
 		node->children[cnt++] = node3;
+	} else {
+		ERR("Expected relop");
 	}
 	node->childCount = cnt;
 	return node;
