@@ -18,6 +18,9 @@
 #define CONSUME_TOKEN {if (!IN_RANGE) \
 		{ERR("Token stream ended prematurely")}; context->tokenPtr++; \
 		context->len++;}
+#define CONSUME_TOKEN_NOFREE {if (!IN_RANGE) \
+		{ERR_NOFREE("Token stream ended prematurely")}; context->tokenPtr++; \
+		context->len++;}
 
 /*
 void parse(ParserContext *context)
