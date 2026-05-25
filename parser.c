@@ -335,7 +335,7 @@ ParseTreeNode *parsePrintList(ParserContext *context)
 	node->token = NULL;
 	int i = 0;
 	do {
-		if (i > 128)
+		if (i >= 128)
 			ERR("too many print items");
 		if (i > 0) {
 			if (IN_RANGE && (context->tokenPtr->type == SEMICOLON_TOKEN ||
@@ -379,7 +379,7 @@ ParseTreeNode *parseInputList(ParserContext *context)
 	node->token = NULL;
 	int i = 0;
 	do {
-		if (i > 128)
+		if (i >= 128)
 			ERR("too many input items");
 		if (i > 0) {
 			if (IN_RANGE && (context->tokenPtr->type == SEMICOLON_TOKEN ||
