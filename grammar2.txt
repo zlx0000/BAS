@@ -26,7 +26,7 @@ SYNTACTIC LAYER
 ──────────────────────────────────────────────────────────────────────────────
 program         ::= { line }
 
-line            ::= LINENUM statement NEWLINE
+//line            ::= LINENUM statement NEWLINE
 LINENUM         ::= INTEGER-LIT                      (* typically 0–65529 *)
 
 statement       ::= let-stmt
@@ -57,7 +57,7 @@ if-stmt         ::= "IF" expression "THEN" LINENUM
 (* ── FOR / NEXT  (spans multiple numbered lines) ──────────────────── *)
 for-stmt        ::= "FOR" IDENTIFIER "=" expression "TO" expression
                     [ "STEP" expression ]
-for-tail        ::= { line } "NEXT" [ IDENTIFIER ]   (* blank identifier ok *)
+for-tail        ::= "NEXT" [ IDENTIFIER ]   (* blank identifier ok *)
 
 (* ── PRINT details ────────────────────────────────────────────────── *)
 print-list      ::= print-item { ( "," | ";" ) print-item } [ "," | ";" ]?

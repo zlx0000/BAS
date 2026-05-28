@@ -1,6 +1,6 @@
 #include "gbasic.h"
 
-#define ERR(str) {fprintf(stderr, str);}
+#define ERR(str) {fprintf(stderr, str); return ERRVAL;}
 #define ERRVAL ((Value) {.type = ERR_VAL, .value.intVal=-1})
 #define IS_ERR(x) x.type == ERR_VAL
 
@@ -82,10 +82,39 @@ Value evalOrExpr(ParseTreeNode node)
             if (node.children[i]->type == AND_OP) {
                 if (strcasecmp(node.children[i]->token->lexeme, "AND") == 0) {
                     Value tmp = evalAndExpr(*node.children[i+1]);
-                    
-                    
+                    if (tmp.type == BOOL_VAL) {
+                        v.value.boolVal = v.value.boolVal && tmp.value.boolVal;
+                    }
+                    else if (tmp.type == INT_VAL) {
+                        v.value.boolVal = v.value.boolVal && tmp.value.boolVal;
+                        v.type = BOOL_VAL;
+                    }
                 }
             }
         }
+        return v;
+    }
+}
+
+Value evalAndExpr(ParseTreeNode node)
+{
+    unsigned int cnt = node.childCount;
+    if (cnt == 1) {
+        return evalAndExpr(*node.children[0]);
+    } else {
+        Value v = evalAndExpr(*node.children[0]);
+        for (int i = 1; i < cnt; i += 2) {
+            if (node.token->type == RELOP_TOKEN) {
+                Value tmp = evalAddExpr(*node.children[i+1]);
+                if (tmp.type == BOOL_VAL) {
+                    v.value.boolVal = v.value.boolVal && tmp.value.boolVal;
+                }
+                else if (tmp.type == INT_VAL) {
+                    v.value.boolVal = v.value.boolVal && tmp.value.boolVal;
+                    v.type = BOOL_VAL;
+                }
+            }
+        }
+        return v;
     }
 }

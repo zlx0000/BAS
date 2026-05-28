@@ -151,6 +151,11 @@ ParseTreeNode *parseStatement(ParserContext *context);
 ParseTreeNode *parseLetStatement(ParserContext *context);
 ParseTreeNode *parseExpr(ParserContext *context);
 ParseTreeNode *parseIfStatement(ParserContext *context);
+ParseTreeNode *parseForStatement(ParserContext *context);
+ParseTreeNode *parseForTail(ParserContext *context);
+ParseTreeNode *parseGoSubStatement(ParserContext *context);
+ParseTreeNode *parseReturnStatement(ParserContext *context);
+ParseTreeNode *parseGotoStatement(ParserContext *context);
 ParseTreeNode *parsePrintStatement(ParserContext *context);
 ParseTreeNode *parsePrintList(ParserContext *context);
 ParseTreeNode *parsePrintItem(ParserContext *context);
@@ -187,6 +192,7 @@ typedef struct {
         STRING_VAL
     } type;
     union {
+		bool boolVal;
         int intVal;
         float floatVal;
         char stringVal[BFSIZE];
@@ -209,3 +215,5 @@ Value evalExpr(ParseTreeNode node);
 Value evalPrint(ParseTreeNode node);
 Value evalOrExpr(ParseTreeNode node);
 Value evalAndExpr(ParseTreeNode node);
+Value evalRelExpr(ParseTreeNode node);
+Value evalAddExpr(ParseTreeNode node);

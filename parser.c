@@ -243,6 +243,26 @@ ParseTreeNode *parseStatement(ParserContext *context)
 			node = parseInputStatement(context);
 			ERR_RET_NOFREE(node);
 		}
+		else if (strcasecmp(context->tokenPtr->lexeme, "FOR") == 0) {
+			node = parseForStatement(context);
+			ERR_RET_NOFREE(node);
+		}
+		else if (strcasecmp(context->tokenPtr->lexeme, "NEXT") == 0) {
+			node = parseForTail(context);
+			ERR_RET_NOFREE(node);
+		}
+		else if (strcasecmp(context->tokenPtr->lexeme, "GOSUB") == 0) {
+			node = parseGoSubStatement(context);
+			ERR_RET_NOFREE(node);
+		}
+		else if (strcasecmp(context->tokenPtr->lexeme, "RETURN") == 0) {
+			node = parseReturnStatement(context);
+			ERR_RET_NOFREE(node);
+		}
+		else if (strcasecmp(context->tokenPtr->lexeme, "GOTO") == 0) {
+			node = parseGotoStatement(context);
+			ERR_RET_NOFREE(node);
+		}
 		else {
 			ERR_NOFREE("Unknown statement type");
 		}
@@ -415,10 +435,97 @@ ParseTreeNode *parseGotoStatement(ParserContext *context)
 	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
 		strcasecmp(context->tokenPtr->lexeme, "GOTO") != 0)
 			ERR("Expected GOTO token.\n");
+	node->token = context->tokenPtr;
 	CONSUME_TOKEN;
+	node->type = GOTO;
 	node->children[0] = parseLinenum(context);
 	ERR_RET(node->children[0]);
 	node->childCount++;
+	return node;
+}
+
+ParseTreeNode *parseGoSubStatement(ParserContext *context)
+{
+	ParseTreeNode *node =
+		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
+	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
+		strcasecmp(context->tokenPtr->lexeme, "GOSUB") != 0)
+			ERR("Expected GOSUB token.\n");
+	node->token = context->tokenPtr;
+	CONSUME_TOKEN;
+	node->type == GOSUB;
+	node->children[0] = parseLinenum(context);
+	ERR_RET(node->children[0]);
+	node->childCount++;
+	return node;
+}
+
+ParseTreeNode *parseReturnStatement(ParserContext *context)
+{
+	ParseTreeNode *node =
+		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
+	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
+		strcasecmp(context->tokenPtr->lexeme, "RETURN") != 0)
+			ERR("Expected RETURN token.\n");
+	node->token = context->tokenPtr;
+	CONSUME_TOKEN;
+	node->type = RETURN;
+	node->childCount = 0;
+	return node;
+}
+
+ParseTreeNode *parseForStatement(ParserContext *context)
+{
+	ParseTreeNode *node =
+		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
+	node->childCount = 0;
+	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
+		strcasecmp(context->tokenPtr->lexeme, "FOR") != 0)
+			ERR("Expected FOR token.\n");
+	node->token = context->tokenPtr;
+	CONSUME_TOKEN;
+	node->type = FOR;
+	node->children[0] = parseIdentifier(context);
+	ERR_RET(node->children[0]);
+	node->childCount++;
+	node->children[1] = parseEqual(context);
+	ERR_RET(node->children[1]);
+	node->childCount++;
+	node->children[2] = parseExpr(context);
+	ERR_RET(node->children[2]);
+	node->childCount++;
+	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
+		strcasecmp(context->tokenPtr->lexeme, "TO") != 0)
+			ERR("Expected TO token.\n");
+	CONSUME_TOKEN;
+	node->children[3] = parseExpr(context);
+	ERR_RET(node->children[3]);
+	node->childCount++;
+	if (IN_RANGE && context->tokenPtr->type == KEYWORD_TOKEN
+		&& strcasecmp(context->tokenPtr->lexeme, "STEP") == 0) {
+		CONSUME_TOKEN;
+		node->children[4] = parseExpr(context);
+		ERR_RET(node->children[4]);
+		node->childCount++;
+	}
+	return node;
+}
+
+ParseTreeNode *parseForTail(ParserContext *context)
+{
+	ParseTreeNode *node =
+		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
+	node->childCount = 0;
+	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
+		strcasecmp(context->tokenPtr->lexeme, "NEXT") != 0)
+			ERR("Expected NEXT token.\n");
+	node->token = context->tokenPtr;
+	CONSUME_TOKEN;
+	node->token = context->tokenPtr;
+	node->type = NEXT;
+	node->children[0] = parseIdentifier(context);
+	ERR_RET(node->children[0]);
+	node->childCount = 1;
 	return node;
 }
 
