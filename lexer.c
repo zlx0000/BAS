@@ -1,3 +1,6 @@
+// Copyright (C) 2026 leo z <zlx20010815@gmail.com>
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #include "gbasic.h"
 #include "keywords.h"
 
