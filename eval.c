@@ -5,7 +5,7 @@
 
 #define ERR(str) {fprintf(stderr, str); return ERRVAL;}
 #define ERRVAL ((Value) {.type = ERR_VAL, .value.intVal=-1})
-#define IS_ERR(x) x.type == ERR_VAL
+#define IS_ERR(x) (x.type == ERR_VAL)
 
 static Value push(Stack st, Value val)
 {
