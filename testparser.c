@@ -154,7 +154,7 @@ static const char *node_type_to_string(NodeType type)
 	}
 }
 
-bool depth_arr[256];
+static bool depth_arr[256];
 void print_tree(ParseTreeNode *t, unsigned int depth)
 {
 	if (depth >= sizeof(depth_arr))
@@ -195,7 +195,6 @@ void print_tree(ParseTreeNode *t, unsigned int depth)
 
 int main(int argc, char **argv)
 {
-	memset(depth_arr, false, sizeof(depth_arr));
 	FILE *fp = NULL;
 	char str[1024];
 	int line = 1;
