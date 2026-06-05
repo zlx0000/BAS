@@ -333,7 +333,7 @@ static Literal literal(TokenType t, char *lexeme)
 {
 	Literal r;
 	memset(&r, 0, sizeof(r));
-	bool escape = false;
+	bool escape;
 	switch (t) {
 		case INT_TOKEN:
 			r.intValue = atoi(lexeme);
