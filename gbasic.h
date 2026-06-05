@@ -186,6 +186,11 @@ ParseTreeNode *parseUnaryOperand(ParserContext *context);
 #define STASK_SIZE 1024
 
 typedef struct {
+	char *str;
+	size_t refcnt;
+} String;
+
+typedef struct {
     enum {
         ERR_VAL,
 		LINENUM_VAL,
@@ -195,12 +200,11 @@ typedef struct {
         STRING_VAL
     } type;
     union {
-		bool boolVal;
+		int8_t boolVal;
         int intVal;
         float floatVal;
-        char stringVal[BFSIZE];
+        String *string;
     } value;
-	unsigned int refcnt;
 } Value;
 
 typedef struct {

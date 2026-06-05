@@ -36,7 +36,7 @@ static void print_val(Value val)
             printf("%f ", val.value.floatVal);
             break;
         case STRING_VAL:
-            printf("%s ", val.value.stringVal);
+            printf("%s ", val.value.string);
             break;
     }
 }
@@ -103,7 +103,51 @@ Value evalAndExpr(ParseTreeNode node)
 {
     unsigned int cnt = node.childCount;
     if (cnt == 1) {
-        return evalAndExpr(*node.children[0]);
+        return evalRelExpr(*node.children[0]);
+    } else {
+        Value v = evalAndExpr(*node.children[0]);
+        for (int i = 1; i < cnt; i += 2) {
+            if (node.token->type == EQ || node.token->type == LT
+                || node.token->type == GT || node.token->type == LE
+                || node.token->type == GE) {
+                TokenType t = node.token->type;
+                Value tmp = evalRelExpr(*node.children[i+1]);
+                switch (t) {
+                    case EQ:
+                        if (v.type == BOOL_VAL) {
+                            v.type = BOOL_VAL;
+                            if (tmp.type == BOOL_VAL)
+                                v.value.boolVal = (v.value.boolVal == tmp.value.boolVal);
+                            else if (tmp.type == INT_VAL)
+                                v.value.boolVal = (v.value.boolVal == tmp.value.intVal);
+                            else if (tmp.type == FLOAT_VAL)
+                                v.value.boolVal = ((float)v.value.boolVal == tmp.value.floatVal);
+                            else
+                                ERR("incompatible types");
+                        }
+                        else if (v.type == INT_VAL) {
+                            v.type = BOOL_VAL;
+                            if (tmp.type == BOOL_VAL)
+                                v.value.boolVal = (v.value.intVal == tmp.value.boolVal);
+                            else if (tmp.type == INT_VAL)
+                                v.value.boolVal = (v.value.intVal == tmp.value.intVal);
+                            else if (tmp.type == FLOAT_VAL)
+                                v.value.boolVal = ((float)v.value.intVal == tmp.value.floatVal);
+                            else
+                                ERR("incompatible types");
+                        }
+                }
+            }
+        }
+        return v;
+    }
+}
+
+Value evalRelExpr(ParseTreeNode node)
+{
+    unsigned int cnt = node.childCount;
+    if (cnt == 1) {
+        return evalAddExpr(*node.children[0]);
     } else {
         Value v = evalAndExpr(*node.children[0]);
         for (int i = 1; i < cnt; i += 2) {
