@@ -333,6 +333,7 @@ static Literal literal(TokenType t, char *lexeme)
 {
 	Literal r;
 	memset(&r, 0, sizeof(r));
+	bool escape = false;
 	switch (t) {
 		case INT_TOKEN:
 			r.intValue = atoi(lexeme);
@@ -341,7 +342,7 @@ static Literal literal(TokenType t, char *lexeme)
 			r.floatValue = atof(lexeme);
 			return r;
 		case STRING_TOKEN:
-			bool escape = false;
+			escape = false;
 			int j = 0;
 			for (int i = 1; i < strlen(lexeme)-1; i++) {
 				if (lexeme[i] == '\\') {
