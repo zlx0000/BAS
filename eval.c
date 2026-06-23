@@ -94,7 +94,7 @@ static Value pop(Stack st)
     return st.st[st.size--];
 }
 
-static void print_val(Value val)
+static void printVal(Value val)
 {
     switch (val.type) {
         case BOOL_VAL:
@@ -150,7 +150,7 @@ Value evalPrint(ParseTreeNode node)
         ret = evalExpr(*list->children[i]);
         if (IS_ERR(ret))
             ERR("eval err", ret.value.errVal);
-        print_val(ret);
+        printVal(ret);
     }
 }
 
