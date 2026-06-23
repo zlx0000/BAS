@@ -199,6 +199,7 @@ int main(int argc, char **argv)
 	char str[1024];
 	int line = 1;
 	ParseTreeNode *p = NULL;
+    init_eval();
 	if (argc <= 1) {
 repl:
 		printf(">");
@@ -237,6 +238,7 @@ repl:
 			print_tree(p, 1);
 			prog.lines[prog.lineCount] = p;
 			prog.lineCount = line;
+            evalLine(*p);
 		}
 		p = NULL;
 		goto repl;

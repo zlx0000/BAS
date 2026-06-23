@@ -28,7 +28,7 @@
 
 #define IS_EOL(c) ((c) == '\0')
 
-typedef enum { //the order of which reflects the precedence.
+typedef enum TokenType { //the order of which reflects the precedence.
 	TOKEN_TYPE_NULL = 0,
     STRING_TOKEN,
     KEYWORD_TOKEN,
@@ -44,7 +44,7 @@ typedef enum { //the order of which reflects the precedence.
     TOKEN_TYPE_END
 } TokenType;
 
-typedef enum {
+typedef enum NodeType {
 	NODE_TYPE_NULL = 0,
 	ROOT,
 	EXPR,
@@ -103,7 +103,7 @@ typedef enum {
 	RPAREN
 } NodeType;
 
-typedef union {
+typedef union Literal {
 	double floatValue;
 	int intValue;
 	char string[BFSIZE];
@@ -125,12 +125,12 @@ typedef struct ParseTreeNode {
 	struct ParseTreeNode *children[128];
 } ParseTreeNode;
 
-typedef struct {
+typedef struct Program {
 	int lineCount;
 	ParseTreeNode **lines;
 } Program;
 
-typedef struct {
+typedef struct ParserContext {
 	Token *tokens;
 	int tokenLen;
 	int len;
@@ -183,15 +183,15 @@ ParseTreeNode *parseRelOperator(ParserContext *context);
 ParseTreeNode *parseUnaryOperand(ParserContext *context);
 
 
-#define STASK_SIZE 1024
+#define STASK_SIZE 8192
 
 typedef struct {
 	char *str;
 	size_t refcnt;
 } String;
 
-typedef struct {
-    enum {
+typedef struct Value {
+    enum ValueType {
         ERR_VAL,
 		LINENUM_VAL,
 		BOOL_VAL,
@@ -199,28 +199,48 @@ typedef struct {
         FLOAT_VAL,
         STRING_VAL
     } type;
-    union {
+    union ValueVal {
 		int8_t boolVal;
         int intVal;
         float floatVal;
-        String *string;
+        String string;
+		enum ErrVal {
+			ERR_VAL_NULL,
+			UNKNOWN_STATEMENT,
+			VAR_NOT_FOUND,
+			VAR_ALREADY_EXIST,
+			STACK_OVERFLOW,
+			UNKNOWN_BOOL_VALUE,
+			INCOMPATIBLE_TYPES,
+			ERR_VAR_END
+		} errVal;
     } value;
 } Value;
 
-typedef struct {
+typedef struct Stack {
     size_t size;
     Value st[STASK_SIZE];
 } Stack;
 
-typedef struct {
+typedef struct Variable {
     char name[BFSIZE];
     Value val;
 } Variable;
 
+typedef struct VarListNode {
+	Variable var;
+	struct VarListNode *next;
+} VarListNode;
+
+void init_eval();
 Value evalLine(ParseTreeNode node);
 Value evalExpr(ParseTreeNode node);
 Value evalPrint(ParseTreeNode node);
+Value evalLet(ParseTreeNode node);
 Value evalOrExpr(ParseTreeNode node);
 Value evalAndExpr(ParseTreeNode node);
 Value evalRelExpr(ParseTreeNode node);
 Value evalAddExpr(ParseTreeNode node);
+Value evalMulExpr(ParseTreeNode node);
+Value evalUnary(ParseTreeNode node);
+Value evalPrimary(ParseTreeNode node);

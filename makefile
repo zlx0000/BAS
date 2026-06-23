@@ -7,6 +7,9 @@ lexer.o: lexer.c gbasic.h keywords.h
 parser.o : parser.c gbasic.h keywords.h
 	gcc -c ./parser.c -o ./parser.o -g
 
+eval.o : eval.c gbasic.h keywords.h
+	gcc -c ./eval.c -o ./eval.o -g
+
 testlexer: testlexer.o lexer.o keywords.h
 	gcc ./testlexer.o ./lexer.o -o testlexer -g
 
@@ -15,3 +18,9 @@ testparser.o: testparser.c gbasic.h keywords.h
 
 testparser: testparser.o lexer.o parser.o keywords.h
 	gcc ./testparser.o ./lexer.o ./parser.o -o testparser -g
+
+testeval.o: testeval.c gbasic.h keywords.h
+	gcc -c ./testeval.c -o ./testeval.o -g
+
+testeval: testeval.o lexer.o parser.o eval.o keywords.h
+	gcc ./testeval.o ./lexer.o ./parser.o ./eval.o -o testeval -g
