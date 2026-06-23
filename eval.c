@@ -404,8 +404,8 @@ Value evalAddExpr(ParseTreeNode node)
         return evalMulExpr(*node.children[0]);
     } else {
         Value v = evalMulExpr(*node.children[0]);
-        enum ValueType t = v.type;
         for (int i = 1; i < cnt; i += 2) {
+            enum ValueType t = v.type;
             if (node.children[i]->type == ADD_OP) {
                 Value tmp = evalMulExpr(*node.children[i+1]);
                 v.type = INT_VAL;
@@ -493,9 +493,10 @@ Value evalMulExpr(ParseTreeNode node)
         return evalUnary(*node.children[0]);
     } else {
         Value v = evalUnary(*node.children[0]);
-        enum ValueType t = v.type;
+        
         for (int i = 1; i < cnt; i += 2) {
             if (node.children[i]->type == MUL_OP) {
+                enum ValueType t = v.type;
                 Value tmp = evalUnary(*node.children[i+1]);
                 v.type = INT_VAL;
                 if (t == BOOL_VAL) {
