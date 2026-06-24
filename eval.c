@@ -167,7 +167,7 @@ Value evalOrExpr(ParseTreeNode node)
     } else {
         Value v = evalAndExpr(*node.children[0]);
         for (int i = 1; i < cnt; i += 2) {
-            if (node.children[i]->type == AND_OP) {
+            if (node.children[i]->type == OR_OP) {
                 Value tmp = evalAndExpr(*node.children[i+1]);
                 v.type = BOOL_VAL;
                 if (v.type == BOOL_VAL) {
@@ -650,7 +650,6 @@ Value evalPrimary(ParseTreeNode node)
     }
     else if (node.children[0]->type == STRING) {
         v.type = STRING_VAL;
-        v.value.string.str = (char *)malloc(sizeof(node.children[0]->token->literal.string) + 1);
         v.value.string.str = node.children[0]->token->literal.string;
         v.value.string.refcnt = 1;
     }
