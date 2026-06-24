@@ -200,7 +200,7 @@ typedef struct Value {
         STRING_VAL
     } type;
     union ValueVal {
-		int8_t boolVal;
+		bool boolVal;
         int intVal;
         float floatVal;
         String string;
