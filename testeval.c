@@ -1,5 +1,7 @@
 #include "gbasic.h"
 
+Program prog;
+
 static const char *token_type_to_string(TokenType type)
 {
 	switch (type) {
@@ -211,7 +213,6 @@ repl:
 			return 0;
 		Token *tokens =
 		(Token *)calloc(1, sizeof(Token) * MAX_TOKEN);
-		Program prog;
 		prog.lineCount = 0;
 		prog.lines = (ParseTreeNode **)calloc(16384, sizeof(ParseTreeNode *));
 		if (prog.lines == NULL) {

@@ -107,7 +107,7 @@ typedef union Literal {
 	double floatValue;
 	int intValue;
 	char string[BFSIZE];
-	int linenum;
+	//int linenum;
 } Literal;
 
 typedef struct {
@@ -183,7 +183,7 @@ ParseTreeNode *parseRelOperator(ParserContext *context);
 ParseTreeNode *parseUnaryOperand(ParserContext *context);
 
 
-#define STASK_SIZE 8192
+#define STASK_SIZE 256
 
 typedef struct {
 	char *str;
@@ -194,6 +194,9 @@ typedef struct Value {
     enum ValueType {
         ERR_VAL,
 		LINENUM_VAL,
+		IDENTI_VAL,
+		SUB_CTX,
+		FOR_CTX,
 		BOOL_VAL,
         INT_VAL,
         FLOAT_VAL,
@@ -204,14 +207,26 @@ typedef struct Value {
         int intVal;
         float floatVal;
         String string;
+		int lineNum;
+		char *identi;
+		struct SubCtx {
+			int lineNum;
+		} subctx;
+		struct ForCtx {
+			char *identi;
+			int start;
+			int next;
+		} forCtx;
 		enum ErrVal {
 			ERR_VAL_NULL,
 			UNKNOWN_STATEMENT,
 			VAR_NOT_FOUND,
 			VAR_ALREADY_EXIST,
 			STACK_OVERFLOW,
+			STACK_UNDERFLOW,
 			UNKNOWN_BOOL_VALUE,
 			INCOMPATIBLE_TYPES,
+			LINENUM_NOT_FOUND,
 			ERR_VAR_END
 		} errVal;
     } value;
@@ -223,7 +238,7 @@ typedef struct Stack {
 } Stack;
 
 typedef struct Variable {
-    char name[BFSIZE];
+    char *name;
     Value val;
 } Variable;
 
@@ -232,11 +247,15 @@ typedef struct VarListNode {
 	struct VarListNode *next;
 } VarListNode;
 
+extern int pc;
+extern Program prog;
+
 void init_eval();
 Value evalLine(ParseTreeNode node);
 Value evalExpr(ParseTreeNode node);
 Value evalPrint(ParseTreeNode node);
 Value evalLet(ParseTreeNode node);
+Value evalIf(ParseTreeNode node);
 Value evalOrExpr(ParseTreeNode node);
 Value evalAndExpr(ParseTreeNode node);
 Value evalRelExpr(ParseTreeNode node);

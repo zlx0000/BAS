@@ -24,3 +24,9 @@ testeval.o: testeval.c gbasic.h keywords.h
 
 testeval: testeval.o lexer.o parser.o eval.o keywords.h
 	gcc ./testeval.o ./lexer.o ./parser.o ./eval.o -o testeval -g
+
+gbasic.o: gbasic.c gbasic.h keywords.h
+	gcc -c ./gbasic.c -o ./gbasic.o -g
+
+gbasic: gbasic.o lexer.o parser.o eval.o keywords.h
+	gcc ./gbasic.o ./lexer.o ./parser.o ./eval.o -o gbasic -g

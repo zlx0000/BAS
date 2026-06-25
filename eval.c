@@ -7,12 +7,22 @@
 #define ERRVAL(err) ((Value) {.type = ERR_VAL, .value.errVal = err})
 #define IS_ERR(x) (x.type == ERR_VAL)
 
-VarListNode varList;
+static VarListNode varList;
+static Stack st;
+
+int lineNum_to_pc(int lineNum)
+{
+    for (int i = 0; i < prog.lineCount; i++) {
+        if (prog.lines[i]->children[0]->token->literal.intValue == lineNum)
+            return i;
+    }
+    return -1;
+}
 
 void init_eval()
 {
     varList.next = NULL;
-    memset(varList.var.name, 0, sizeof(varList.var.name));
+    varList.var.name = NULL;
 }
 
 static Value retriveVar(char *name) {
@@ -46,12 +56,12 @@ static Value insertVar(char *name, Value val)
 {
     VarListNode *cur = &varList;
     VarListNode *v = malloc(sizeof(VarListNode));
-    strcpy(v->var.name, name);
+    v->var.name = name;
     v->var.val = val;
     while (cur->next != NULL) {
         cur = cur->next;
         if (strcasecmp(cur->var.name, name) == 0) {
-            ERR("variable already exist", VAR_ALREADY_EXIST);
+            return modVar(name, val);
         }
     }
     v->next = varList.next;
@@ -79,7 +89,7 @@ static Value delVar(char *name)
 
 static Value push(Stack st, Value val)
 {
-    if (st.size == STASK_SIZE) {
+    if (__glibc_unlikely(st.size == STASK_SIZE)) {
         ERR("stack overflow", STACK_OVERFLOW);
     }
     st.st[st.size++] = val;
@@ -88,10 +98,18 @@ static Value push(Stack st, Value val)
 
 static Value pop(Stack st)
 {
-    if (st.size == 0) {
-        ERR("stack overflow", STACK_OVERFLOW);
+    if (__glibc_unlikely(st.size == 0)) {
+        ERR("stack underflow", STACK_UNDERFLOW);
     }
     return st.st[st.size--];
+}
+
+static Value peek(Stack st)
+{
+    if (__glibc_unlikely(st.size == 0)) {
+        ERR("stack underflow", STACK_UNDERFLOW);
+    }
+    return st.st[st.size];
 }
 
 static void printVal(Value val)
@@ -125,6 +143,9 @@ Value evalLine(ParseTreeNode node)
         case PRINT:
             evalPrint(*statement);
             break;
+        case IF:
+            evalIf(*statement);
+            break;
         default:
             ERR("unknown statement", UNKNOWN_STATEMENT);
     }
@@ -135,10 +156,14 @@ Value evalLet(ParseTreeNode node)
     char *name = node.children[0]->token->lexeme;
     Value v = evalExpr(*node.children[2]);
     if (node.token == NULL) {
+        pc++;
         return modVar(name, v);
     } else {
+        pc++;
         return insertVar(name, v);
     }
+    pc++;
+    return v;
 }
 
 Value evalPrint(ParseTreeNode node)
@@ -152,7 +177,80 @@ Value evalPrint(ParseTreeNode node)
             ERR("eval err", ret.value.errVal);
         printVal(ret);
     }
+    pc++;
+    return ret;
 }
+
+Value evalIf(ParseTreeNode node)
+{
+    ParseTreeNode *expr = node.children[0];
+    ParseTreeNode *line = node.children[1];
+    Value v = evalExpr(*expr);
+    bool flag = false;
+    enum ValueType t = v.type;
+    switch (t) {
+        case BOOL_VAL:
+            flag = v.value.boolVal;
+            break;
+        case INT_VAL:
+            flag = v.value.intVal;
+            break;
+        case FLOAT_VAL:
+            flag = v.value.floatVal;
+            break;
+        default:
+            ERR("incompatible types", INCOMPATIBLE_TYPES);
+    }
+    if (flag) {
+        pc = lineNum_to_pc(line->token->literal.intValue);
+        if (pc == -1) {
+            ERR("no such line", LINENUM_NOT_FOUND);
+        }
+    }
+    else
+        pc++;
+    return v;
+}
+
+Value evalFor(ParseTreeNode node)
+{
+    char *id =  node.children[0]->token->lexeme;
+    Value ctx = {
+        .type = IDENTI_VAL,
+        .value.forCtx = {
+            .identi = id,
+            .start = pc,
+            .next = -1,
+        },
+    };
+    Value from = evalExpr(*node.children[2]);
+    Value to = evalExpr(*node.children[3]);
+    Value step = evalExpr(*node.children[4]);
+    Value top = peek(st);
+    if (top.type == ERR_VAL
+        && top.value.errVal == STACK_UNDERFLOW) {
+        push(st, ctx);
+    }
+    else if (__glibc_likely(top.type == FOR_CTX)) {
+        if (__glibc_likely(top.value.forCtx.start == pc)) {
+            if (__glibc_likely(strcasecmp(top.value.forCtx.identi, id) == 0)) {
+                if (__glibc_unlikely(retriveVar(top.value.forCtx.identi).value.intVal > to.value.intVal
+                    || retriveVar(top.value.forCtx.identi).value.intVal < from.value.intVal)) {
+                    pc = top.value.forCtx.next;
+                } else {
+                    pc++;
+                }
+            } else {
+                ERR("stack error", ERR_VAL_NULL);
+            }
+        } else {
+
+        }
+    } else {
+        push(st,ctx);
+    }
+}
+
 
 Value evalExpr(ParseTreeNode node)
 {
