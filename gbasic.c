@@ -222,6 +222,8 @@ repl:
 	(Token *)calloc(1, sizeof(Token) * MAX_TOKEN);
 	int len = lexer(str, tokens, prog.lineCount);
 	if (len > 0) {
+		Token *t = realloc(tokens, (len + 1) * sizeof(Token));
+		tokens = t ? t : tokens;
 	    ctx.tokens = tokens;
 		ctx.tokenLen = len;
 		ctx.len = 0;
@@ -229,8 +231,9 @@ repl:
 		ctx.err = false;
 		p = parseLine(&ctx);
 		if (p && !ctx.err) {
+			if (pc < 0) {}
 			prog.lines[prog.lineCount++] = p;
-			while (pc < prog.lineCount) {
+			while (pc >= 0 && pc < prog.lineCount) {
 				evalLine(*prog.lines[pc]);
 			}
 		}

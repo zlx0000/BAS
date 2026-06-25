@@ -250,6 +250,8 @@ typedef struct VarListNode {
 extern int pc;
 extern Program prog;
 
+int lineNum_to_pc(int lineNum);
+
 void init_eval();
 Value evalLine(ParseTreeNode node);
 Value evalExpr(ParseTreeNode node);
