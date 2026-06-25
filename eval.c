@@ -203,9 +203,8 @@ Value evalIf(ParseTreeNode node)
     }
     if (flag) {
         pc = lineNum_to_pc(line->token->literal.intValue);
-        if (pc == -1) {
-            ERR("no such line", LINENUM_NOT_FOUND);
-        }
+        if (pc == -1)
+            expectedLineNum = line->token->literal.intValue;
     }
     else
         pc++;

@@ -248,6 +248,7 @@ typedef struct VarListNode {
 } VarListNode;
 
 extern int pc;
+extern int expectedLineNum;
 extern Program prog;
 
 int lineNum_to_pc(int lineNum);

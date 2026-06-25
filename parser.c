@@ -456,7 +456,7 @@ ParseTreeNode *parseGoSubStatement(ParserContext *context)
 			ERR("Expected GOSUB token.\n");
 	node->token = context->tokenPtr;
 	CONSUME_TOKEN;
-	node->type == GOSUB;
+	node->type = GOSUB;
 	node->children[0] = parseLinenum(context);
 	ERR_RET(node->children[0]);
 	node->childCount++;
