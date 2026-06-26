@@ -4,6 +4,15 @@ Program prog;
 int pc;
 int expectedLineNum;
 
+bool find_lineNum(Program p, int n)
+{
+	for (int i = 0; i < p.lineCount; i++) {
+		if (p.lines[i]->children[0]->token->literal.intValue == n)
+			return true;
+	}
+	return false;
+}
+
 int main(int argc, char **argv)
 {
 	char str[1024];
@@ -41,6 +50,13 @@ repl:
 	    ctx.tokenPtr = ctx.tokens;
 		ctx.err = false;
 		p = parseLine(&ctx);
+		if (find_lineNum(prog, p->children[0]->token->literal.intValue)) {
+			fprintf(stderr, "duplicate lineNum\n");
+			free_tree(p);
+			free(tokens);
+			ret.type = INT_VAL;
+			goto repl;
+		}
 		if (p && !ctx.err) {
 			prog.lines[prog.lineCount++] = p;
 			if (pc < 0) {
