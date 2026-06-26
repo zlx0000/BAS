@@ -50,14 +50,14 @@ repl:
 	    ctx.tokenPtr = ctx.tokens;
 		ctx.err = false;
 		p = parseLine(&ctx);
-		if (find_lineNum(prog, p->children[0]->token->literal.intValue)) {
-			fprintf(stderr, "duplicate lineNum\n");
-			free_tree(p);
-			free(tokens);
-			ret.type = INT_VAL;
-			goto repl;
-		}
 		if (p && !ctx.err) {
+				if (find_lineNum(prog, p->children[0]->token->literal.intValue)) {
+				fprintf(stderr, "duplicate lineNum\n");
+				free_tree(p);
+				free(tokens);
+				ret.type = INT_VAL;
+				goto repl;
+			}
 			prog.lines[prog.lineCount++] = p;
 			if (pc < 0) {
 				if (p->children[0]->token->literal.intValue == expectedLineNum) {
