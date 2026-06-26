@@ -6,6 +6,7 @@
 #define ERR(str, err) {fprintf(stderr, "%s\n", str); return ERRVAL(err);}
 #define ERRVAL(err) ((Value) {.type = ERR_VAL, .value.errVal = err})
 #define IS_ERR(x) (x.type == ERR_VAL)
+#define ERR_RETURN_EVAL(err) {if (__glibc_unlikely(IS_ERR(err))) return ERRVAL(err.value.errVal);}
 
 static VarListNode varList;
 static Stack st;
@@ -23,6 +24,7 @@ void init_eval()
 {
     varList.next = NULL;
     varList.var.name = NULL;
+    st.size = 0;
 }
 
 static Value retriveVar(char *name) {
@@ -87,29 +89,29 @@ static Value delVar(char *name)
     ERR("no variables of this name", VAR_NOT_FOUND);
 }
 
-static Value push(Stack st, Value val)
+static Value push(Stack *st, Value val)
 {
-    if (__glibc_unlikely(st.size == STASK_SIZE)) {
+    if (__glibc_unlikely(st->size == STASK_SIZE)) {
         ERR("stack overflow", STACK_OVERFLOW);
     }
-    st.st[st.size++] = val;
+    st->st[st->size++] = val;
     return val;
 }
 
-static Value pop(Stack st)
+static Value pop(Stack *st)
 {
-    if (__glibc_unlikely(st.size == 0)) {
+    if (__glibc_unlikely(st->size == 0)) {
         ERR("stack underflow", STACK_UNDERFLOW);
     }
-    return st.st[st.size--];
+    return st->st[(st->size--) - 1];
 }
 
-static Value peek(Stack st)
+static Value peek(Stack *st)
 {
-    if (__glibc_unlikely(st.size == 0)) {
-        ERR("stack underflow", STACK_UNDERFLOW);
+    if (__glibc_unlikely(st->size == 0)) {
+        return ERRVAL(STACK_UNDERFLOW);
     }
-    return st.st[st.size];
+    return st->st[st->size - 1];
 }
 
 static void printVal(Value val)
@@ -138,14 +140,17 @@ Value evalLine(ParseTreeNode node)
     ParseTreeNode *statement = node.children[1];
     switch (statement->type) {
         case LET:
-            evalLet(*statement);
-            break;
+            return evalLet(*statement);
         case PRINT:
-            evalPrint(*statement);
-            break;
+            return evalPrint(*statement);
         case IF:
-            evalIf(*statement);
-            break;
+            return evalIf(*statement);
+        case FOR:
+            return evalFor(*statement);
+        case NEXT:
+            return evalNext(*statement);
+        case GOTO:
+            return evalGoto(*statement);
         default:
             ERR("unknown statement", UNKNOWN_STATEMENT);
     }
@@ -213,29 +218,43 @@ Value evalIf(ParseTreeNode node)
 
 Value evalFor(ParseTreeNode node)
 {
-    char *id =  node.children[0]->token->lexeme;
+    char *id = node.children[0]->token->lexeme;
+    Value from = evalExpr(*node.children[2]);
+    ERR_RETURN_EVAL(from);
+    Value to = evalExpr(*node.children[3]);
+    Value step;
+    if (node.children[4] != NULL) {
+        step = evalExpr(*node.children[4]);
+        ERR_RETURN_EVAL(step);
+    } else {
+        step = (Value) {
+            .type = INT_VAL,
+            .value.intVal = 1,
+        };
+    }
     Value ctx = {
-        .type = IDENTI_VAL,
+        .type = FOR_CTX,
         .value.forCtx = {
             .identi = id,
-            .start = pc,
+            .pc = pc,
             .next = -1,
+            .step.intStep = step.value.intVal,
         },
     };
-    Value from = evalExpr(*node.children[2]);
-    Value to = evalExpr(*node.children[3]);
-    Value step = evalExpr(*node.children[4]);
-    Value top = peek(st);
+    Value top = peek(&st);
     if (top.type == ERR_VAL
         && top.value.errVal == STACK_UNDERFLOW) {
-        push(st, ctx);
+        push(&st, ctx);
+        insertVar(id, from);
+        pc++;
     }
     else if (__glibc_likely(top.type == FOR_CTX)) {
-        if (__glibc_likely(top.value.forCtx.start == pc)) {
+        if (__glibc_likely(top.value.forCtx.pc == pc)) {
             if (__glibc_likely(strcasecmp(top.value.forCtx.identi, id) == 0)) {
                 if (__glibc_unlikely(retriveVar(top.value.forCtx.identi).value.intVal > to.value.intVal
                     || retriveVar(top.value.forCtx.identi).value.intVal < from.value.intVal)) {
                     pc = top.value.forCtx.next;
+                    pop(&st);
                 } else {
                     pc++;
                 }
@@ -243,13 +262,45 @@ Value evalFor(ParseTreeNode node)
                 ERR("stack error", ERR_VAL_NULL);
             }
         } else {
-
+            push(&st, ctx);
+            insertVar(id, from);
+            pc++;
         }
     } else {
-        push(st,ctx);
+        push(&st,ctx);
+        insertVar(id, from);
+        pc++;
     }
 }
 
+Value evalNext(ParseTreeNode node)
+{
+    Value top = peek(&st);
+    if (top.type != FOR_CTX)
+        ERR("NOT_IN_FOR", ERR_VAL_NULL);
+    char *id = node.children[0]->token->lexeme;
+    Value v = retriveVar(id);
+    ERR_RETURN_EVAL(v);
+    Value newVar = {
+        .type = INT_VAL,
+        .value.intVal = v.value.intVal + top.value.forCtx.step.intStep,
+    };
+    modVar(id, newVar);
+    if (top.value.forCtx.next == -1) {
+        ERR_RETURN_EVAL(pop(&st));
+        top.value.forCtx.next = pc + 1;
+        ERR_RETURN_EVAL(push(&st, top));
+    }
+    pc = top.value.forCtx.pc;
+    return newVar;
+}
+
+Value evalGoto(ParseTreeNode node)
+{
+    pc = lineNum_to_pc(node.children[0]->token->literal.intValue);
+    if (pc == -1)
+        expectedLineNum = node.children[0]->token->literal.intValue;
+}
 
 Value evalExpr(ParseTreeNode node)
 {
@@ -263,9 +314,11 @@ Value evalOrExpr(ParseTreeNode node)
         return evalAndExpr(*node.children[0]);
     } else {
         Value v = evalAndExpr(*node.children[0]);
+        ERR_RETURN_EVAL(v);
         for (int i = 1; i < cnt; i += 2) {
             if (node.children[i]->type == OR_OP) {
                 Value tmp = evalAndExpr(*node.children[i+1]);
+                ERR_RETURN_EVAL(tmp);
                 v.type = BOOL_VAL;
                 if (v.type == BOOL_VAL) {
                     if (tmp.type == BOOL_VAL)
@@ -312,9 +365,11 @@ Value evalAndExpr(ParseTreeNode node)
         return evalRelExpr(*node.children[0]);
     } else {
         Value v = evalRelExpr(*node.children[0]);
+        ERR_RETURN_EVAL(v);
         for (int i = 1; i < cnt; i += 2) {
             if (node.children[i]->type == AND_OP) {
                 Value tmp = evalRelExpr(*node.children[i+1]);
+                ERR_RETURN_EVAL(tmp);
                 v.type = BOOL_VAL;
                 if (v.type == BOOL_VAL) {
                     if (tmp.type == BOOL_VAL)
@@ -361,12 +416,14 @@ Value evalRelExpr(ParseTreeNode node)
         return evalAddExpr(*node.children[0]);
     } else {
         Value v = evalAddExpr(*node.children[0]);
+        ERR_RETURN_EVAL(v);
         for (int i = 1; i < cnt; i += 2) {
             if (node.children[i]->type == EQ || node.children[i]->type == LT
                 || node.children[i]->type == GT || node.children[i]->type == LE
                 || node.children[i]->type == GE) {
                 TokenType t = node.children[i]->type;
                 Value tmp = evalAddExpr(*node.children[i+1]);
+                ERR_RETURN_EVAL(tmp);
                 switch (t) {
                     case EQ:
                         if (v.type == BOOL_VAL) {
@@ -501,10 +558,12 @@ Value evalAddExpr(ParseTreeNode node)
         return evalMulExpr(*node.children[0]);
     } else {
         Value v = evalMulExpr(*node.children[0]);
+        ERR_RETURN_EVAL(v);
         for (int i = 1; i < cnt; i += 2) {
             enum ValueType t = v.type;
             if (node.children[i]->type == ADD_OP) {
                 Value tmp = evalMulExpr(*node.children[i+1]);
+                ERR_RETURN_EVAL(tmp);
                 v.type = INT_VAL;
                 if (t == BOOL_VAL) {
                     if (tmp.type == BOOL_VAL) {
@@ -590,11 +649,12 @@ Value evalMulExpr(ParseTreeNode node)
         return evalUnary(*node.children[0]);
     } else {
         Value v = evalUnary(*node.children[0]);
-        
+        ERR_RETURN_EVAL(v);
         for (int i = 1; i < cnt; i += 2) {
             if (node.children[i]->type == MUL_OP) {
                 enum ValueType t = v.type;
                 Value tmp = evalUnary(*node.children[i+1]);
+                ERR_RETURN_EVAL(tmp);
                 v.type = INT_VAL;
                 if (t == BOOL_VAL) {
                     if (tmp.type == BOOL_VAL) {
@@ -678,6 +738,7 @@ Value evalUnary(ParseTreeNode node)
         return evalPrimary(*node.children[0]);
     } else {
         Value v = evalPrimary(*node.children[1]);
+        ERR_RETURN_EVAL(v);
         enum ValueType t = v.type;
         if (node.children[0]->type == UNARY_OP) {
             if (strcmp(node.children[0]->token->lexeme, "+") == 0) {

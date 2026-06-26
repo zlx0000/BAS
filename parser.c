@@ -40,6 +40,14 @@ void parse(ParserContext *context)
 }
 */
 
+void free_tree(ParseTreeNode *node)
+{
+	for (int i = 0; i < node->childCount; i++) {
+		free_tree(node->children[i]);
+	}
+	free(node);
+}
+
 ParseTreeNode *parseLine(ParserContext *context)
 {
 	ParseTreeNode *node =

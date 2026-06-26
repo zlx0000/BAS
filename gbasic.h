@@ -143,6 +143,8 @@ typedef struct ParserContext {
 int lexer(char *bf, Token *tokens, int lineNum);
 void parse(ParserContext *context);
 
+
+void free_tree(ParseTreeNode *node);
 // advance the token pointer by one after successfully parsing a token
 ParseTreeNode *parseLine(ParserContext *context);
 ParseTreeNode *parseLinenum(ParserContext *context);
@@ -214,8 +216,12 @@ typedef struct Value {
 		} subctx;
 		struct ForCtx {
 			char *identi;
-			int start;
+			int pc;
 			int next;
+			union {
+				int intStep;
+				float floatStep;
+			} step;
 		} forCtx;
 		enum ErrVal {
 			ERR_VAL_NULL,
@@ -259,6 +265,9 @@ Value evalExpr(ParseTreeNode node);
 Value evalPrint(ParseTreeNode node);
 Value evalLet(ParseTreeNode node);
 Value evalIf(ParseTreeNode node);
+Value evalFor(ParseTreeNode node);
+Value evalNext(ParseTreeNode node);
+Value evalGoto(ParseTreeNode node);
 Value evalOrExpr(ParseTreeNode node);
 Value evalAndExpr(ParseTreeNode node);
 Value evalRelExpr(ParseTreeNode node);

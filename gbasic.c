@@ -19,6 +19,9 @@ int main(int argc, char **argv)
 	expectedLineNum = -1;
     init_eval();
 repl:
+	Value ret = {
+		.type = INT_VAL,
+	};
 	printf(">");
 	if (!fgets(str, sizeof(str), stdin)) {
       	printf("\n");
@@ -46,7 +49,14 @@ repl:
 				}
 			}
 			while (pc >= 0 && pc < prog.lineCount) {
-				evalLine(*prog.lines[pc]);
+				if (__glibc_unlikely(ret.type == ERR_VAL)) {
+					prog.lineCount--;
+					free_tree(p);
+					free(tokens);
+					ret.type = INT_VAL;
+					goto repl;
+				}
+				ret = evalLine(*prog.lines[pc]);
 			}
 		}
 		p = NULL;
