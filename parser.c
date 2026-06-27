@@ -152,13 +152,14 @@ ParseTreeNode *parseMulOperand(ParserContext *context)
 			(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
 	if (IN_RANGE && context->tokenPtr->type == OP_TOKEN
 		&& (strcmp(context->tokenPtr->lexeme, "*") == 0
-			|| strcmp(context->tokenPtr->lexeme, "/") == 0)) {
+			|| strcmp(context->tokenPtr->lexeme, "/") == 0
+			|| strcmp(context->tokenPtr->lexeme, "%") == 0)) {
 		node->type = MUL_OP;
 		node->childCount = 0;
 		node->token = context->tokenPtr;
 		CONSUME_TOKEN;
 	}else {
-			ERR("Expected `*` or `/`");
+			ERR("Expected `*`, `/` or `%`");
 	}
 	return node;
 }
@@ -672,7 +673,8 @@ ParseTreeNode *parseMulExpr(ParserContext *context)
 	node->children[cnt++] = parseUnary(context);
 	while (IN_RANGE && context->tokenPtr->type == OP_TOKEN
 			&& (strcmp(context->tokenPtr->lexeme, "*") == 0
-			|| strcmp(context->tokenPtr->lexeme, "/") == 0)) {
+			|| strcmp(context->tokenPtr->lexeme, "/") == 0
+			|| strcmp(context->tokenPtr->lexeme, "%") == 0 )) {
 		struct ParseTreeNode *node2 = parseMulOperand(context);
 		ERR_RET(node2);
 		node->children[cnt++] = node2;

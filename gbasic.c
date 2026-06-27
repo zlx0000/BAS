@@ -79,5 +79,6 @@ repl:
 		goto repl;
 	} else {
 		free(tokens);
+		goto repl;
 	}
 }

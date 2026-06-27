@@ -662,12 +662,16 @@ Value evalMulExpr(ParseTreeNode node)
                             v.value.intVal = (v.value.boolVal * tmp.value.boolVal);
                         else if (strcmp(node.children[i]->token->lexeme, "/") == 0)
                             v.value.intVal = (v.value.boolVal / tmp.value.boolVal);
+                        else if (strcmp(node.children[i]->token->lexeme, "%") == 0)
+                            v.value.intVal = (v.value.boolVal % tmp.value.boolVal);
                     }
                     else if (tmp.type == INT_VAL) {
                         if (strcmp(node.children[i]->token->lexeme, "*") == 0)
                             v.value.intVal = (v.value.boolVal * tmp.value.intVal);
                         else if (strcmp(node.children[i]->token->lexeme, "/") == 0)
                             v.value.intVal = (v.value.boolVal / tmp.value.intVal);
+                        else if (strcmp(node.children[i]->token->lexeme, "%") == 0)
+                            v.value.intVal = (v.value.boolVal % tmp.value.intVal);
                     }
                     else if (tmp.type == FLOAT_VAL) {
                         v.type = FLOAT_VAL;
@@ -675,6 +679,8 @@ Value evalMulExpr(ParseTreeNode node)
                             v.value.floatVal = (v.value.boolVal * tmp.value.floatVal);
                         else if (strcmp(node.children[i]->token->lexeme, "/") == 0)
                             v.value.floatVal = (v.value.boolVal / tmp.value.floatVal);
+                        else if (strcmp(node.children[i]->token->lexeme, "%") == 0)
+                            ERR("incompatible types", INCOMPATIBLE_TYPES);
                     }
                     else
                         ERR("incompatible types", INCOMPATIBLE_TYPES);
@@ -685,12 +691,16 @@ Value evalMulExpr(ParseTreeNode node)
                             v.value.intVal = (v.value.intVal * tmp.value.boolVal);
                         else if (strcmp(node.children[i]->token->lexeme, "/") == 0)
                             v.value.intVal = (v.value.intVal / tmp.value.boolVal);
+                         else if (strcmp(node.children[i]->token->lexeme, "%") == 0)
+                            v.value.intVal = (v.value.intVal % tmp.value.boolVal);
                     }
                     else if (tmp.type == INT_VAL) {
                         if (strcmp(node.children[i]->token->lexeme, "*") == 0)
                             v.value.intVal = (v.value.intVal * tmp.value.intVal);
                         else if (strcmp(node.children[i]->token->lexeme, "/") == 0)
                             v.value.intVal = (v.value.intVal / tmp.value.intVal);
+                        else if (strcmp(node.children[i]->token->lexeme, "%") == 0)
+                            v.value.intVal = (v.value.intVal % tmp.value.intVal);
                     }
                     else if (tmp.type == FLOAT_VAL) {
                         v.type = FLOAT_VAL;
@@ -698,12 +708,16 @@ Value evalMulExpr(ParseTreeNode node)
                             v.value.floatVal = (v.value.intVal * tmp.value.floatVal);
                         else if (strcmp(node.children[i]->token->lexeme, "/") == 0)
                             v.value.floatVal = (v.value.intVal / tmp.value.floatVal);
+                        else if (strcmp(node.children[i]->token->lexeme, "%") == 0)
+                            ERR("incompatible types", INCOMPATIBLE_TYPES);
                     }
                     else
                         ERR("incompatible types", INCOMPATIBLE_TYPES);
                 }
                 else if (t == FLOAT_VAL) {
                     v.type = FLOAT_VAL;
+                    if (strcmp(node.children[i]->token->lexeme, "%") == 0)
+                        ERR("incompatible types", INCOMPATIBLE_TYPES);
                     if (tmp.type == BOOL_VAL) {
                         if (strcmp(node.children[i]->token->lexeme, "*") == 0)
                             v.value.floatVal = (v.value.floatVal * tmp.value.boolVal);
