@@ -223,7 +223,6 @@ static DFA_state is_ident(char *t)
 			case alpha:
 				if (IS_ALPHA(*p))
 					s = alpha_and_digits;
-				
 				else
 					return MISMATCH;
 				p++;
