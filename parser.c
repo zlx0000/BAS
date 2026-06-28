@@ -62,7 +62,7 @@ ParseTreeNode *parseLine(ParserContext *context)
 	node->childCount++;
 	if (IN_RANGE) {
 		fprintf(stderr, "%s at %d,%d: `%s`\n",
-				"Expected line number",
+				"Unexpected token",
 				context->tokenPtr->lineNum, 
 				context->tokenPtr->colNum,
 				context->tokenPtr->lexeme);
