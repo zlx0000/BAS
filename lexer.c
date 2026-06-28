@@ -231,7 +231,8 @@ static DFA_state is_ident(char *t)
 			case alpha_and_digits:
 				if (IS_CHAR(*p))
 					s = alpha_and_digits;
-				else if (*p == '$' || *p == '%')
+				//else if (*p == '$' || *p == '%')
+				else if (*p == '$')
 					s = suffix;
 				else if (IS_EOL(*p))
 					return MATCH;
