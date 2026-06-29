@@ -9,7 +9,7 @@ INTEGER-LIT     ::= [ "+" | "-" ] DIGIT { DIGIT }
 FLOAT-LIT       ::= [ "+" | "-" ] DIGIT { DIGIT } "." DIGIT { DIGIT }
 STRING-LIT      ::= '"' { '""' | ¬'"' } '"'           (* "" doubles a quote *)
 
-IDENTIFIER      ::= LETTER { LETTER | DIGIT } [ "$" | "%" ]
+IDENTIFIER      ::= LETTER { LETTER | DIGIT } [ "(" expression ")" ]
 
 (* Keywords and operators are recognised only at token boundaries *)
 KEYWORD         ::= "LET" | "PRINT" | "INPUT" | "IF" | "THEN" | "FOR" | "TO"

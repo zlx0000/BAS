@@ -64,6 +64,7 @@ typedef enum NodeType {
 	IDENTI,
 	REM,
 	LET,
+	DIM,
 	IF,
 	THEN,
 	PRINT,
@@ -162,6 +163,7 @@ ParseTreeNode *parseGoSubStatement(ParserContext *context);
 ParseTreeNode *parseReturnStatement(ParserContext *context);
 ParseTreeNode *parseGotoStatement(ParserContext *context);
 ParseTreeNode *parsePrintStatement(ParserContext *context);
+ParseTreeNode *parseDimStatement(ParserContext *context);
 ParseTreeNode *parsePrintList(ParserContext *context);
 ParseTreeNode *parsePrintItem(ParserContext *context);
 ParseTreeNode *parseInputStatement(ParserContext *context);
@@ -202,14 +204,22 @@ typedef struct Value {
 		BOOL_VAL,
         INT_VAL,
         FLOAT_VAL,
-        STRING_VAL
-    } type;
+        STRING_VAL,
+		ARR_VAL,
+		POINTER_VAL
+	} type;
     union ValueVal {
 		bool boolVal;
         int intVal;
         float floatVal;
         String string;
+		struct Array {
+			struct Value *ptr;
+			int size;
+			size_t refcnt;
+		} arr;
 		int lineNum;
+		struct Value *pointer;
 		char *identi;
 		struct SubCtx {
 			int lineNum;
@@ -233,6 +243,9 @@ typedef struct Value {
 			UNKNOWN_BOOL_VALUE,
 			INCOMPATIBLE_TYPES,
 			LINENUM_NOT_FOUND,
+			INDEX_OUT_OF_RANGE,
+			OUT_OF_MEMORY,
+			UNINIT_VAL,
 			ERR_VAR_END
 		} errVal;
     } value;
@@ -263,6 +276,7 @@ void init_eval();
 Value evalLine(ParseTreeNode node);
 Value evalExpr(ParseTreeNode node);
 Value evalPrint(ParseTreeNode node);
+Value evalDim(ParseTreeNode node);
 Value evalLet(ParseTreeNode node);
 Value evalIf(ParseTreeNode node);
 Value evalFor(ParseTreeNode node);

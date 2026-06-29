@@ -1,4 +1,5 @@
 #include "gbasic.h"
+#include <unistd.h>
 
 Program prog;
 int pc;
@@ -31,7 +32,9 @@ repl:
 	Value ret = {
 		.type = INT_VAL,
 	};
-	printf(">");
+	if (isatty(STDIN_FILENO)) {
+    	printf(">");
+	}
 	if (!fgets(str, sizeof(str), stdin)) {
       	printf("\n");
        	return 0;

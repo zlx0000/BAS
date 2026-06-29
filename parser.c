@@ -81,6 +81,19 @@ ParseTreeNode *parseIdentifier(ParserContext *context)
 		node->childCount = 0;
 		node->token = context->tokenPtr;
 		CONSUME_TOKEN;
+		if (IN_RANGE && context->tokenPtr->type == PAREN_TOKEN
+			&& strcmp(context->tokenPtr->lexeme, "(") == 0) {
+			CONSUME_TOKEN;
+			node->childCount = 1;
+			node->children[0] = parseExpr(context);
+			ERR_RET(node->children[0]);
+			if (IN_RANGE && context->tokenPtr->type == PAREN_TOKEN
+				&& strcmp(context->tokenPtr->lexeme, ")") == 0) {
+				CONSUME_TOKEN;
+			} else {
+				ERR("Expected closing parenthesis");
+			}
+		}
 	}else {
 			ERR("Expected identifiers");
 	}
@@ -275,6 +288,10 @@ ParseTreeNode *parseStatement(ParserContext *context)
 			node = parseGotoStatement(context);
 			ERR_RET_NOFREE(node);
 		}
+		else if (strcasecmp(context->tokenPtr->lexeme, "DIM") == 0) {
+			node = parseDimStatement(context);
+			ERR_RET_NOFREE(node);
+		}
 		else {
 			ERR_NOFREE("Unknown statement type");
 		}
@@ -308,6 +325,29 @@ ParseTreeNode *parseLetStatement(ParserContext *context)
 	node->childCount++;
 	node->children[2] = parseExpr(context);
 	ERR_RET(node->children[2]);
+	node->childCount++;
+
+  	return node;
+}
+
+ParseTreeNode *parseDimStatement(ParserContext *context)
+{
+	ParseTreeNode *node =
+		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
+	if (!IN_RANGE || ((context->tokenPtr->type != KEYWORD_TOKEN
+		|| strcasecmp(context->tokenPtr->lexeme, "DIM") != 0)
+		&& context->tokenPtr->type != IDENT_TOKEN))
+		ERR("Not a DIM statement");
+	node->childCount = 0;
+	node->type = DIM;
+	if (context->tokenPtr->type == KEYWORD_TOKEN
+		&& strcasecmp(context->tokenPtr->lexeme, "DIM") == 0) {
+		node->token = context->tokenPtr;
+		CONSUME_TOKEN;
+	}
+
+	node->children[0] = parseIdentifier(context);
+	ERR_RET(node->children[0]);
 	node->childCount++;
 
   	return node;

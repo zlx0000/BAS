@@ -71,6 +71,23 @@ static Value insertVar(char *name, Value val)
     return val;
 }
 
+static Value insertVar_strict(char *name, Value val)
+{
+    VarListNode *cur = &varList;
+    VarListNode *v = malloc(sizeof(VarListNode));
+    v->var.name = name;
+    v->var.val = val;
+    while (cur->next != NULL) {
+        cur = cur->next;
+        if (strcasecmp(cur->var.name, name) == 0) {
+            return ERRVAL(VAR_ALREADY_EXIST);
+        }
+    }
+    v->next = varList.next;
+    varList.next = v;
+    return val;
+}
+
 static Value delVar(char *name)
 {
     VarListNode *cur = &varList;
@@ -132,6 +149,32 @@ static void printVal(Value val)
         case STRING_VAL:
             printf("%s\n", val.value.string);
             break;
+        case ARR_VAL:
+            for (int i = 0; i < val.value.arr.size; i++)
+            {
+                Value *ptr = val.value.arr.ptr;
+                switch (ptr->type) {
+                    case BOOL_VAL:
+                        if (ptr->value.boolVal == true)
+                            printf("TRUE");
+                        else if (ptr->value.boolVal == false)
+                            printf("FALSE");
+                        break;
+                    case INT_VAL:
+                        printf("%d", ptr->value.intVal);
+                        break;
+                    case FLOAT_VAL:
+                        printf("%f", ptr->value.floatVal);
+                        break;
+                    case STRING_VAL:
+                        printf("%s", ptr->value.string);
+                        break;
+                }
+                if (i == val.value.arr.size - 1)
+                    printf("\n");
+                else
+                    printf(", ");
+            }
     }
 }
 
@@ -141,6 +184,8 @@ Value evalLine(ParseTreeNode node)
     switch (statement->type) {
         case LET:
             return evalLet(*statement);
+        case DIM:
+            return evalDim(*statement);
         case PRINT:
             return evalPrint(*statement);
         case IF:
@@ -160,15 +205,60 @@ Value evalLet(ParseTreeNode node)
 {
     char *name = node.children[0]->token->lexeme;
     Value v = evalExpr(*node.children[2]);
-    if (node.token == NULL) {
-        pc++;
-        return modVar(name, v);
+    ERR_RETURN_EVAL(v);
+    if (node.children[0]->childCount == 0
+        || node.children[0]->children[0] == NULL) {
+        char *name = node.children[0]->token->lexeme;
+        if (node.token == NULL) {
+            pc++;
+            return modVar(name, v);
+        } else {
+            pc++;
+            return insertVar(name, v);
+        }
     } else {
-        pc++;
-        return insertVar(name, v);
+        Value id = retriveVar(name);
+        ERR_RETURN_EVAL(id);
+        if (id.type != ARR_VAL)
+            ERR("not an array", INCOMPATIBLE_TYPES);
+        Value index_val = evalExpr(*node.children[0]->children[0]);
+        ERR_RETURN_EVAL(index_val);
+        if (index_val.type != INT_VAL)
+            ERR("index has to be INT type", INCOMPATIBLE_TYPES);
+        int index = index_val.value.intVal;
+        if (index >= id.value.arr.size)
+            ERR("index out of range", INDEX_OUT_OF_RANGE);
+        Value *base = id.value.arr.ptr;
+        Value *ptr = base + index;
+        ptr->type = v.type;
+        ptr->value = v.value;
     }
     pc++;
     return v;
+}
+
+Value evalDim(ParseTreeNode node)
+{
+    Value v;
+    char *name = node.children[0]->token->lexeme;
+    v.type = ARR_VAL;
+    if (node.children[0]->childCount == 0
+        || node.children[0]->children[0] == NULL) {
+        ERR("not an array", ERR_VAL_NULL);
+    }
+    Value size = evalExpr(*node.children[0]->children[0]);
+    if (size.type != INT_VAL)
+        ERR("size has to be INT type", INCOMPATIBLE_TYPES);
+    v.value.arr.refcnt = 1;
+    v.value.arr.ptr = (Value *)calloc(size.value.intVal, sizeof(Value));
+    if (v.value.arr.ptr == NULL)
+        ERR("out of memory", OUT_OF_MEMORY);
+    v.value.arr.size = size.value.intVal;
+    for (int i = 0; i < size.value.intVal; i++) {
+        v.value.arr.ptr[i].type = INT_VAL;
+    }
+    pc++;
+    return insertVar(name, v);
 }
 
 Value evalPrint(ParseTreeNode node)
@@ -448,6 +538,17 @@ Value evalRelExpr(ParseTreeNode node)
                             else
                                 ERR("incompatible types", INCOMPATIBLE_TYPES);
                         }
+                         else if (v.type == FLOAT_VAL) {
+                            v.type = BOOL_VAL;
+                            if (tmp.type == BOOL_VAL)
+                                v.value.boolVal = (v.value.floatVal == tmp.value.boolVal);
+                            else if (tmp.type == INT_VAL)
+                                v.value.boolVal = (v.value.floatVal == tmp.value.intVal);
+                            else if (tmp.type == FLOAT_VAL)
+                                v.value.boolVal = (v.value.floatVal == tmp.value.floatVal);
+                            else
+                                ERR("incompatible types", INCOMPATIBLE_TYPES);
+                        }
                         break;
                     case LT:
                         if (v.type == BOOL_VAL) {
@@ -469,6 +570,17 @@ Value evalRelExpr(ParseTreeNode node)
                                 v.value.boolVal = (v.value.intVal < tmp.value.intVal);
                             else if (tmp.type == FLOAT_VAL)
                                 v.value.boolVal = (v.value.intVal < tmp.value.floatVal);
+                            else
+                                ERR("incompatible types", INCOMPATIBLE_TYPES);
+                        }
+                        else if (v.type == FLOAT_VAL) {
+                            v.type = BOOL_VAL;
+                            if (tmp.type == BOOL_VAL)
+                                v.value.boolVal = (v.value.floatVal < tmp.value.boolVal);
+                            else if (tmp.type == INT_VAL)
+                                v.value.boolVal = (v.value.floatVal < tmp.value.intVal);
+                            else if (tmp.type == FLOAT_VAL)
+                                v.value.boolVal = (v.value.floatVal < tmp.value.floatVal);
                             else
                                 ERR("incompatible types", INCOMPATIBLE_TYPES);
                         }
@@ -496,6 +608,17 @@ Value evalRelExpr(ParseTreeNode node)
                             else
                                 ERR("incompatible types", INCOMPATIBLE_TYPES);
                         }
+                        else if (v.type == FLOAT_VAL) {
+                            v.type = BOOL_VAL;
+                            if (tmp.type == BOOL_VAL)
+                                v.value.boolVal = (v.value.floatVal > tmp.value.boolVal);
+                            else if (tmp.type == INT_VAL)
+                                v.value.boolVal = (v.value.floatVal > tmp.value.intVal);
+                            else if (tmp.type == FLOAT_VAL)
+                                v.value.boolVal = (v.value.floatVal > tmp.value.floatVal);
+                            else
+                                ERR("incompatible types", INCOMPATIBLE_TYPES);
+                        }
                         break;
                     case LE:
                         if (v.type == BOOL_VAL) {
@@ -517,6 +640,17 @@ Value evalRelExpr(ParseTreeNode node)
                                 v.value.boolVal = (v.value.intVal <= tmp.value.intVal);
                             else if (tmp.type == FLOAT_VAL)
                                 v.value.boolVal = (v.value.intVal <= tmp.value.floatVal);
+                            else
+                                ERR("incompatible types", INCOMPATIBLE_TYPES);
+                        }
+                        else if (v.type == FLOAT_VAL) {
+                            v.type = BOOL_VAL;
+                            if (tmp.type == BOOL_VAL)
+                                v.value.boolVal = (v.value.floatVal <= tmp.value.boolVal);
+                            else if (tmp.type == INT_VAL)
+                                v.value.boolVal = (v.value.floatVal <= tmp.value.intVal);
+                            else if (tmp.type == FLOAT_VAL)
+                                v.value.boolVal = (v.value.floatVal <= tmp.value.floatVal);
                             else
                                 ERR("incompatible types", INCOMPATIBLE_TYPES);
                         }
@@ -544,6 +678,19 @@ Value evalRelExpr(ParseTreeNode node)
                             else
                                 ERR("incompatible types", INCOMPATIBLE_TYPES);
                         }
+                        else if (v.type == FLOAT_VAL) {
+                            v.type = BOOL_VAL;
+                            if (tmp.type == BOOL_VAL)
+                                v.value.boolVal = (v.value.floatVal >= tmp.value.boolVal);
+                            else if (tmp.type == INT_VAL)
+                                v.value.boolVal = (v.value.floatVal >= tmp.value.intVal);
+                            else if (tmp.type == FLOAT_VAL)
+                                v.value.boolVal = (v.value.floatVal >= tmp.value.floatVal);
+                            else
+                                ERR("incompatible types", INCOMPATIBLE_TYPES);
+                        }
+                    default:
+                        ERR("incompatible types", INCOMPATIBLE_TYPES);
                 }
             }
         }
@@ -831,9 +978,31 @@ Value evalPrimary(ParseTreeNode node)
         v.value = tmp.value;
     }
     else if (node.children[0]->type == IDENTI) {
-        Value tmp = retriveVar(node.children[0]->token->lexeme);
-        v.type = tmp.type;
-        v.value = tmp.value;
+        if (node.children[0]->childCount == 0
+            || node.children[0]->children[0] == NULL) {
+            Value id = retriveVar(node.children[0]->token->lexeme);
+            ERR_RETURN_EVAL(id);
+            v.type = id.type;
+            v.value = id.value;
+        } else {
+            Value id = retriveVar(node.children[0]->token->lexeme);
+            ERR_RETURN_EVAL(id);
+            if (id.type != ARR_VAL)
+                ERR("not an array", INCOMPATIBLE_TYPES);
+            Value index_val = evalExpr(*node.children[0]->children[0]);
+            ERR_RETURN_EVAL(index_val);
+            if (index_val.type != INT_VAL)
+                ERR("index has to be INT type", INCOMPATIBLE_TYPES);
+            int index = index_val.value.intVal;
+            if (index >= id.value.arr.size)
+                ERR("index out of range", INDEX_OUT_OF_RANGE);
+            Value *base = id.value.arr.ptr;
+            Value *ptr = base + index;
+            v.type = ptr->type;
+            v.value = ptr->value;
+            if (IS_ERR(v))
+                ERR("uninitialized value", UNINIT_VAL);
+        }
     }
     return v;
 }
