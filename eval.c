@@ -41,6 +41,16 @@ static Value retriveVar(char *name) {
     ERR("variable not found", VAR_NOT_FOUND);
 }
 
+static bool findVar(char *name) {
+    VarListNode *cur = &varList;
+    while (cur->next != NULL) {
+        cur = cur->next;
+        if (strcasecmp(cur->var.name, name) == 0)
+            return true;
+    }
+    return false;
+}
+
 static Value modVar(char *name, Value val) {
     VarListNode *cur = &varList;
     while (cur->next != NULL) {
@@ -152,7 +162,7 @@ static void printVal(Value val)
         case ARR_VAL:
             for (int i = 0; i < val.value.arr.size; i++)
             {
-                Value *ptr = val.value.arr.ptr;
+                Value *ptr = val.value.arr.ptr + i;
                 switch (ptr->type) {
                     case BOOL_VAL:
                         if (ptr->value.boolVal == true)
@@ -240,6 +250,7 @@ Value evalLet(ParseTreeNode node)
 Value evalDim(ParseTreeNode node)
 {
     Value v;
+    Value oldV;
     char *name = node.children[0]->token->lexeme;
     v.type = ARR_VAL;
     if (node.children[0]->childCount == 0
@@ -249,6 +260,24 @@ Value evalDim(ParseTreeNode node)
     Value size = evalExpr(*node.children[0]->children[0]);
     if (size.type != INT_VAL)
         ERR("size has to be INT type", INCOMPATIBLE_TYPES);
+    if (findVar(name)
+        && !IS_ERR((oldV = retriveVar(name))) && oldV.type == ARR_VAL) {
+        Value *tmp = (Value *)realloc(v.value.arr.ptr,
+                    size.value.intVal * sizeof(Value));
+        if (tmp == NULL)
+            ERR("out of memory", OUT_OF_MEMORY);
+        v.value.arr.ptr = tmp;
+        if (oldV.value.arr.size < size.value.intVal) {
+            memset(v.value.arr.ptr + oldV.value.arr.size, 0,
+                    (size.value.intVal - oldV.value.arr.size) * sizeof(Value));
+            for (int i = 0; i < (size.value.intVal - oldV.value.arr.size); i++) {
+                (v.value.arr.ptr + oldV.value.arr.size + i)->type = INT_VAL;
+            }
+        }
+        v.value.arr.size = size.value.intVal;
+        pc++;
+        return modVar(name, v);
+    }
     v.value.arr.refcnt = 1;
     v.value.arr.ptr = (Value *)calloc(size.value.intVal, sizeof(Value));
     if (v.value.arr.ptr == NULL)
