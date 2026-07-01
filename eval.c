@@ -375,10 +375,10 @@ Value evalFor(ParseTreeNode node)
         if (__glibc_likely(top.value.forCtx.pc == pc)) {
             if (__glibc_likely(strcasecmp(top.value.forCtx.identi, id) == 0)) {
                 Value curVar = retriveVar(top.value.forCtx.identi);
-                if (__glibc_unlikely(curVar.value.intVal > from.value.intVal
-                                     && curVar.value.intVal > to.value.intVal
-                                     || curVar.value.intVal < from.value.intVal
-                                     && curVar.value.intVal < to.value.intVal)) {
+                if (__glibc_unlikely((curVar.value.intVal > from.value.intVal
+                                     && curVar.value.intVal > to.value.intVal)
+                                     || (curVar.value.intVal < from.value.intVal
+                                     && curVar.value.intVal < to.value.intVal))) {
                     pc = top.value.forCtx.next;
                     pop(&st);
                 } else {
