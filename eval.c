@@ -341,10 +341,14 @@ Value evalFor(ParseTreeNode node)
     Value from = evalExpr(*node.children[2]);
     ERR_RETURN_EVAL(from);
     Value to = evalExpr(*node.children[3]);
+    if (from.type != INT_VAL || to.type != INT_VAL)
+        ERR("not a integer", INCOMPATIBLE_TYPES);
     Value step;
     if (node.children[4] != NULL) {
         step = evalExpr(*node.children[4]);
         ERR_RETURN_EVAL(step);
+        if (step.type != INT_VAL)
+            ERR("not a integer", INCOMPATIBLE_TYPES);
     } else {
         step = (Value) {
             .type = INT_VAL,
@@ -370,8 +374,11 @@ Value evalFor(ParseTreeNode node)
     else if (__glibc_likely(top.type == FOR_CTX)) {
         if (__glibc_likely(top.value.forCtx.pc == pc)) {
             if (__glibc_likely(strcasecmp(top.value.forCtx.identi, id) == 0)) {
-                if (__glibc_unlikely(retriveVar(top.value.forCtx.identi).value.intVal > to.value.intVal
-                    || retriveVar(top.value.forCtx.identi).value.intVal < from.value.intVal)) {
+                Value curVar = retriveVar(top.value.forCtx.identi);
+                if (__glibc_unlikely(curVar.value.intVal > from.value.intVal
+                                     && curVar.value.intVal > to.value.intVal
+                                     || curVar.value.intVal < from.value.intVal
+                                     && curVar.value.intVal < to.value.intVal)) {
                     pc = top.value.forCtx.next;
                     pop(&st);
                 } else {
@@ -396,7 +403,7 @@ Value evalNext(ParseTreeNode node)
 {
     Value top = peek(&st);
     if (top.type != FOR_CTX)
-        ERR("NOT_IN_FOR", ERR_VAL_NULL);
+        ERR("not in a for loop", ERR_VAL_NULL);
     char *id = node.children[0]->token->lexeme;
     Value v = retriveVar(id);
     ERR_RETURN_EVAL(v);
