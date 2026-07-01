@@ -397,6 +397,7 @@ Value evalFor(ParseTreeNode node)
         insertVar(id, from);
         pc++;
     }
+    return step;
 }
 
 Value evalNext(ParseTreeNode node)
