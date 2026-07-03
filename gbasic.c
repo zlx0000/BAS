@@ -75,7 +75,7 @@ repl:
 					ret.type = INT_VAL;
 					goto repl;
 				}
-				ret = evalLine(*prog.lines[pc]);
+				ret = evalLine(prog.lines[pc]);
 			}
 		}
 		p = NULL;

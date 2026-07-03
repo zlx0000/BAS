@@ -188,38 +188,38 @@ static void printVal(Value val)
     }
 }
 
-Value evalLine(ParseTreeNode node)
+Value evalLine(ParseTreeNode *node)
 {
-    ParseTreeNode *statement = node.children[1];
+    ParseTreeNode *statement = node->children[1];
     switch (statement->type) {
         case LET:
-            return evalLet(*statement);
+            return evalLet(statement);
         case DIM:
-            return evalDim(*statement);
+            return evalDim(statement);
         case PRINT:
-            return evalPrint(*statement);
+            return evalPrint(statement);
         case IF:
-            return evalIf(*statement);
+            return evalIf(statement);
         case FOR:
-            return evalFor(*statement);
+            return evalFor(statement);
         case NEXT:
-            return evalNext(*statement);
+            return evalNext(statement);
         case GOTO:
-            return evalGoto(*statement);
+            return evalGoto(statement);
         default:
             ERR("unknown statement", UNKNOWN_STATEMENT);
     }
 }
 
-Value evalLet(ParseTreeNode node)
+Value evalLet(ParseTreeNode *node)
 {
-    char *name = node.children[0]->token->lexeme;
-    Value v = evalExpr(*node.children[2]);
+    char *name = node->children[0]->token->lexeme;
+    Value v = evalExpr(node->children[2]);
     ERR_RETURN_EVAL(v);
-    if (node.children[0]->childCount == 0
-        || node.children[0]->children[0] == NULL) {
-        char *name = node.children[0]->token->lexeme;
-        if (node.token == NULL) {
+    if (node->children[0]->childCount == 0
+        || node->children[0]->children[0] == NULL) {
+        char *name = node->children[0]->token->lexeme;
+        if (node->token == NULL) {
             pc++;
             return modVar(name, v);
         } else {
@@ -231,7 +231,7 @@ Value evalLet(ParseTreeNode node)
         ERR_RETURN_EVAL(id);
         if (id.type != ARR_VAL)
             ERR("not an array", INCOMPATIBLE_TYPES);
-        Value index_val = evalExpr(*node.children[0]->children[0]);
+        Value index_val = evalExpr(node->children[0]->children[0]);
         ERR_RETURN_EVAL(index_val);
         if (index_val.type != INT_VAL)
             ERR("index has to be INT type", INCOMPATIBLE_TYPES);
@@ -247,17 +247,17 @@ Value evalLet(ParseTreeNode node)
     return v;
 }
 
-Value evalDim(ParseTreeNode node)
+Value evalDim(ParseTreeNode *node)
 {
     Value v;
     Value oldV;
-    char *name = node.children[0]->token->lexeme;
+    char *name = node->children[0]->token->lexeme;
     v.type = ARR_VAL;
-    if (node.children[0]->childCount == 0
-        || node.children[0]->children[0] == NULL) {
+    if (node->children[0]->childCount == 0
+        || node->children[0]->children[0] == NULL) {
         ERR("not an array", ERR_VAL_NULL);
     }
-    Value size = evalExpr(*node.children[0]->children[0]);
+    Value size = evalExpr(node->children[0]->children[0]);
     if (size.type != INT_VAL)
         ERR("size has to be INT type", INCOMPATIBLE_TYPES);
     if (findVar(name)
@@ -290,13 +290,13 @@ Value evalDim(ParseTreeNode node)
     return insertVar(name, v);
 }
 
-Value evalPrint(ParseTreeNode node)
+Value evalPrint(ParseTreeNode *node)
 {
     Value ret;
-    ParseTreeNode *list = node.children[0];
+    ParseTreeNode *list = node->children[0];
     int cnt = list->childCount;
     for (int i = 0; i < cnt; i++) {
-        ret = evalExpr(*list->children[i]);
+        ret = evalExpr(list->children[i]);
         if (IS_ERR(ret))
             ERR("eval err", ret.value.errVal);
         printVal(ret);
@@ -305,11 +305,11 @@ Value evalPrint(ParseTreeNode node)
     return ret;
 }
 
-Value evalIf(ParseTreeNode node)
+Value evalIf(ParseTreeNode *node)
 {
-    ParseTreeNode *expr = node.children[0];
-    ParseTreeNode *line = node.children[1];
-    Value v = evalExpr(*expr);
+    ParseTreeNode *expr = node->children[0];
+    ParseTreeNode *line = node->children[1];
+    Value v = evalExpr(expr);
     bool flag = false;
     enum ValueType t = v.type;
     switch (t) {
@@ -335,17 +335,17 @@ Value evalIf(ParseTreeNode node)
     return v;
 }
 
-Value evalFor(ParseTreeNode node)
+Value evalFor(ParseTreeNode *node)
 {
-    char *id = node.children[0]->token->lexeme;
-    Value from = evalExpr(*node.children[2]);
+    char *id = node->children[0]->token->lexeme;
+    Value from = evalExpr(node->children[2]);
     ERR_RETURN_EVAL(from);
-    Value to = evalExpr(*node.children[3]);
+    Value to = evalExpr(node->children[3]);
     if (from.type != INT_VAL || to.type != INT_VAL)
         ERR("not a integer", INCOMPATIBLE_TYPES);
     Value step;
-    if (node.children[4] != NULL) {
-        step = evalExpr(*node.children[4]);
+    if (node->children[4] != NULL) {
+        step = evalExpr(node->children[4]);
         ERR_RETURN_EVAL(step);
         if (step.type != INT_VAL)
             ERR("not a integer", INCOMPATIBLE_TYPES);
@@ -400,12 +400,12 @@ Value evalFor(ParseTreeNode node)
     return step;
 }
 
-Value evalNext(ParseTreeNode node)
+Value evalNext(ParseTreeNode *node)
 {
     Value top = peek(&st);
     if (top.type != FOR_CTX)
         ERR("not in a for loop", ERR_VAL_NULL);
-    char *id = node.children[0]->token->lexeme;
+    char *id = node->children[0]->token->lexeme;
     Value v = retriveVar(id);
     ERR_RETURN_EVAL(v);
     Value newVar = {
@@ -422,29 +422,29 @@ Value evalNext(ParseTreeNode node)
     return newVar;
 }
 
-Value evalGoto(ParseTreeNode node)
+Value evalGoto(ParseTreeNode *node)
 {
-    pc = lineNum_to_pc(node.children[0]->token->literal.intValue);
+    pc = lineNum_to_pc(node->children[0]->token->literal.intValue);
     if (pc == -1)
-        expectedLineNum = node.children[0]->token->literal.intValue;
+        expectedLineNum = node->children[0]->token->literal.intValue;
 }
 
-Value evalExpr(ParseTreeNode node)
+Value evalExpr(ParseTreeNode *node)
 {
     return evalOrExpr(node);
 }
 
-Value evalOrExpr(ParseTreeNode node)
+Value evalOrExpr(ParseTreeNode *node)
 {
-    unsigned int cnt = node.childCount;
+    unsigned int cnt = node->childCount;
     if (cnt == 1) {
-        return evalAndExpr(*node.children[0]);
+        return evalAndExpr(node->children[0]);
     } else {
-        Value v = evalAndExpr(*node.children[0]);
+        Value v = evalAndExpr(node->children[0]);
         ERR_RETURN_EVAL(v);
         for (int i = 1; i < cnt; i += 2) {
-            if (node.children[i]->type == OR_OP) {
-                Value tmp = evalAndExpr(*node.children[i+1]);
+            if (node->children[i]->type == OR_OP) {
+                Value tmp = evalAndExpr(node->children[i+1]);
                 ERR_RETURN_EVAL(tmp);
                 v.type = BOOL_VAL;
                 if (v.type == BOOL_VAL) {
@@ -485,17 +485,17 @@ Value evalOrExpr(ParseTreeNode node)
     }
 }
 
-Value evalAndExpr(ParseTreeNode node)
+Value evalAndExpr(ParseTreeNode *node)
 {
-    unsigned int cnt = node.childCount;
+    unsigned int cnt = node->childCount;
     if (cnt == 1) {
-        return evalRelExpr(*node.children[0]);
+        return evalRelExpr(node->children[0]);
     } else {
-        Value v = evalRelExpr(*node.children[0]);
+        Value v = evalRelExpr(node->children[0]);
         ERR_RETURN_EVAL(v);
         for (int i = 1; i < cnt; i += 2) {
-            if (node.children[i]->type == AND_OP) {
-                Value tmp = evalRelExpr(*node.children[i+1]);
+            if (node->children[i]->type == AND_OP) {
+                Value tmp = evalRelExpr(node->children[i+1]);
                 ERR_RETURN_EVAL(tmp);
                 v.type = BOOL_VAL;
                 if (v.type == BOOL_VAL) {
@@ -536,20 +536,20 @@ Value evalAndExpr(ParseTreeNode node)
     }
 }
 
-Value evalRelExpr(ParseTreeNode node)
+Value evalRelExpr(ParseTreeNode *node)
 {
-    unsigned int cnt = node.childCount;
+    unsigned int cnt = node->childCount;
     if (cnt == 1) {
-        return evalAddExpr(*node.children[0]);
+        return evalAddExpr(node->children[0]);
     } else {
-        Value v = evalAddExpr(*node.children[0]);
+        Value v = evalAddExpr(node->children[0]);
         ERR_RETURN_EVAL(v);
         for (int i = 1; i < cnt; i += 2) {
-            if (node.children[i]->type == EQ || node.children[i]->type == LT
-                || node.children[i]->type == GT || node.children[i]->type == LE
-                || node.children[i]->type == GE) {
-                TokenType t = node.children[i]->type;
-                Value tmp = evalAddExpr(*node.children[i+1]);
+            if (node->children[i]->type == EQ || node->children[i]->type == LT
+                || node->children[i]->type == GT || node->children[i]->type == LE
+                || node->children[i]->type == GE) {
+                TokenType t = node->children[i]->type;
+                Value tmp = evalAddExpr(node->children[i+1]);
                 ERR_RETURN_EVAL(tmp);
                 switch (t) {
                     case EQ:
@@ -735,38 +735,38 @@ Value evalRelExpr(ParseTreeNode node)
     }
 }
 
-Value evalAddExpr(ParseTreeNode node)
+Value evalAddExpr(ParseTreeNode *node)
 {
-    unsigned int cnt = node.childCount;
+    unsigned int cnt = node->childCount;
     if (cnt == 1) {
-        return evalMulExpr(*node.children[0]);
+        return evalMulExpr(node->children[0]);
     } else {
-        Value v = evalMulExpr(*node.children[0]);
+        Value v = evalMulExpr(node->children[0]);
         ERR_RETURN_EVAL(v);
         for (int i = 1; i < cnt; i += 2) {
             enum ValueType t = v.type;
-            if (node.children[i]->type == ADD_OP) {
-                Value tmp = evalMulExpr(*node.children[i+1]);
+            if (node->children[i]->type == ADD_OP) {
+                Value tmp = evalMulExpr(node->children[i+1]);
                 ERR_RETURN_EVAL(tmp);
                 v.type = INT_VAL;
                 if (t == BOOL_VAL) {
                     if (tmp.type == BOOL_VAL) {
-                        if (strcmp(node.children[i]->token->lexeme, "+") == 0)
+                        if (strcmp(node->children[i]->token->lexeme, "+") == 0)
                             v.value.intVal = (v.value.boolVal + tmp.value.boolVal);
-                        else if (strcmp(node.children[i]->token->lexeme, "-") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "-") == 0)
                             v.value.intVal = (v.value.boolVal - tmp.value.boolVal);
                     }
                     else if (tmp.type == INT_VAL) {
-                        if (strcmp(node.children[i]->token->lexeme, "+") == 0)
+                        if (strcmp(node->children[i]->token->lexeme, "+") == 0)
                             v.value.intVal = (v.value.boolVal + tmp.value.intVal);
-                        else if (strcmp(node.children[i]->token->lexeme, "-") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "-") == 0)
                             v.value.intVal = (v.value.boolVal - tmp.value.intVal);
                     }
                     else if (tmp.type == FLOAT_VAL) {
                         v.type = FLOAT_VAL;
-                        if (strcmp(node.children[i]->token->lexeme, "+") == 0)
+                        if (strcmp(node->children[i]->token->lexeme, "+") == 0)
                             v.value.floatVal = (v.value.boolVal + tmp.value.floatVal);
-                        else if (strcmp(node.children[i]->token->lexeme, "-") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "-") == 0)
                             v.value.floatVal = (v.value.boolVal - tmp.value.floatVal);
                     }
                     else
@@ -774,22 +774,22 @@ Value evalAddExpr(ParseTreeNode node)
                 }
                 else if (t == INT_VAL) {
                     if (tmp.type == BOOL_VAL) {
-                        if (strcmp(node.children[i]->token->lexeme, "+") == 0)
+                        if (strcmp(node->children[i]->token->lexeme, "+") == 0)
                             v.value.intVal = (v.value.intVal + tmp.value.boolVal);
-                        else if (strcmp(node.children[i]->token->lexeme, "-") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "-") == 0)
                             v.value.intVal = (v.value.intVal - tmp.value.boolVal);
                     }
                     else if (tmp.type == INT_VAL) {
-                        if (strcmp(node.children[i]->token->lexeme, "+") == 0)
+                        if (strcmp(node->children[i]->token->lexeme, "+") == 0)
                             v.value.intVal = (v.value.intVal + tmp.value.intVal);
-                        else if (strcmp(node.children[i]->token->lexeme, "-") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "-") == 0)
                             v.value.intVal = (v.value.intVal - tmp.value.intVal);
                     }
                     else if (tmp.type == FLOAT_VAL) {
                         v.type = FLOAT_VAL;
-                        if (strcmp(node.children[i]->token->lexeme, "+") == 0)
+                        if (strcmp(node->children[i]->token->lexeme, "+") == 0)
                             v.value.floatVal = (v.value.intVal + tmp.value.floatVal);
-                        else if (strcmp(node.children[i]->token->lexeme, "-") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "-") == 0)
                             v.value.floatVal = (v.value.intVal - tmp.value.floatVal);
                     }
                     else
@@ -798,21 +798,21 @@ Value evalAddExpr(ParseTreeNode node)
                 else if (t == FLOAT_VAL) {
                     v.type = FLOAT_VAL;
                     if (tmp.type == BOOL_VAL) {
-                        if (strcmp(node.children[i]->token->lexeme, "+") == 0)
+                        if (strcmp(node->children[i]->token->lexeme, "+") == 0)
                             v.value.floatVal = (v.value.floatVal + tmp.value.boolVal);
-                        else if (strcmp(node.children[i]->token->lexeme, "-") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "-") == 0)
                             v.value.floatVal = (v.value.floatVal - tmp.value.boolVal);
                     }
                     else if (tmp.type == INT_VAL) {
-                        if (strcmp(node.children[i]->token->lexeme, "+") == 0)
+                        if (strcmp(node->children[i]->token->lexeme, "+") == 0)
                             v.value.floatVal = (v.value.floatVal + tmp.value.intVal);
-                        else if (strcmp(node.children[i]->token->lexeme, "-") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "-") == 0)
                             v.value.floatVal = (v.value.floatVal - tmp.value.intVal);
                     }
                     else if (tmp.type == FLOAT_VAL) {
-                        if (strcmp(node.children[i]->token->lexeme, "+") == 0)
+                        if (strcmp(node->children[i]->token->lexeme, "+") == 0)
                             v.value.floatVal = (v.value.floatVal + tmp.value.floatVal);
-                        else if (strcmp(node.children[i]->token->lexeme, "-") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "-") == 0)
                             v.value.floatVal = (v.value.floatVal - tmp.value.floatVal);
                     }
                     else
@@ -826,44 +826,44 @@ Value evalAddExpr(ParseTreeNode node)
     }
 }
 
-Value evalMulExpr(ParseTreeNode node)
+Value evalMulExpr(ParseTreeNode *node)
 {
-    unsigned int cnt = node.childCount;
+    unsigned int cnt = node->childCount;
     if (cnt == 1) {
-        return evalUnary(*node.children[0]);
+        return evalUnary(node->children[0]);
     } else {
-        Value v = evalUnary(*node.children[0]);
+        Value v = evalUnary(node->children[0]);
         ERR_RETURN_EVAL(v);
         for (int i = 1; i < cnt; i += 2) {
-            if (node.children[i]->type == MUL_OP) {
+            if (node->children[i]->type == MUL_OP) {
                 enum ValueType t = v.type;
-                Value tmp = evalUnary(*node.children[i+1]);
+                Value tmp = evalUnary(node->children[i+1]);
                 ERR_RETURN_EVAL(tmp);
                 v.type = INT_VAL;
                 if (t == BOOL_VAL) {
                     if (tmp.type == BOOL_VAL) {
-                        if (strcmp(node.children[i]->token->lexeme, "*") == 0)
+                        if (strcmp(node->children[i]->token->lexeme, "*") == 0)
                             v.value.intVal = (v.value.boolVal * tmp.value.boolVal);
-                        else if (strcmp(node.children[i]->token->lexeme, "/") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0)
                             v.value.intVal = (v.value.boolVal / tmp.value.boolVal);
-                        else if (strcmp(node.children[i]->token->lexeme, "%") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "%") == 0)
                             v.value.intVal = (v.value.boolVal % tmp.value.boolVal);
                     }
                     else if (tmp.type == INT_VAL) {
-                        if (strcmp(node.children[i]->token->lexeme, "*") == 0)
+                        if (strcmp(node->children[i]->token->lexeme, "*") == 0)
                             v.value.intVal = (v.value.boolVal * tmp.value.intVal);
-                        else if (strcmp(node.children[i]->token->lexeme, "/") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0)
                             v.value.intVal = (v.value.boolVal / tmp.value.intVal);
-                        else if (strcmp(node.children[i]->token->lexeme, "%") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "%") == 0)
                             v.value.intVal = (v.value.boolVal % tmp.value.intVal);
                     }
                     else if (tmp.type == FLOAT_VAL) {
                         v.type = FLOAT_VAL;
-                        if (strcmp(node.children[i]->token->lexeme, "*") == 0)
+                        if (strcmp(node->children[i]->token->lexeme, "*") == 0)
                             v.value.floatVal = (v.value.boolVal * tmp.value.floatVal);
-                        else if (strcmp(node.children[i]->token->lexeme, "/") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0)
                             v.value.floatVal = (v.value.boolVal / tmp.value.floatVal);
-                        else if (strcmp(node.children[i]->token->lexeme, "%") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "%") == 0)
                             ERR("incompatible types", INCOMPATIBLE_TYPES);
                     }
                     else
@@ -871,28 +871,28 @@ Value evalMulExpr(ParseTreeNode node)
                 }
                 else if (t == INT_VAL) {
                     if (tmp.type == BOOL_VAL) {
-                        if (strcmp(node.children[i]->token->lexeme, "*") == 0)
+                        if (strcmp(node->children[i]->token->lexeme, "*") == 0)
                             v.value.intVal = (v.value.intVal * tmp.value.boolVal);
-                        else if (strcmp(node.children[i]->token->lexeme, "/") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0)
                             v.value.intVal = (v.value.intVal / tmp.value.boolVal);
-                         else if (strcmp(node.children[i]->token->lexeme, "%") == 0)
+                         else if (strcmp(node->children[i]->token->lexeme, "%") == 0)
                             v.value.intVal = (v.value.intVal % tmp.value.boolVal);
                     }
                     else if (tmp.type == INT_VAL) {
-                        if (strcmp(node.children[i]->token->lexeme, "*") == 0)
+                        if (strcmp(node->children[i]->token->lexeme, "*") == 0)
                             v.value.intVal = (v.value.intVal * tmp.value.intVal);
-                        else if (strcmp(node.children[i]->token->lexeme, "/") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0)
                             v.value.intVal = (v.value.intVal / tmp.value.intVal);
-                        else if (strcmp(node.children[i]->token->lexeme, "%") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "%") == 0)
                             v.value.intVal = (v.value.intVal % tmp.value.intVal);
                     }
                     else if (tmp.type == FLOAT_VAL) {
                         v.type = FLOAT_VAL;
-                        if (strcmp(node.children[i]->token->lexeme, "*") == 0)
+                        if (strcmp(node->children[i]->token->lexeme, "*") == 0)
                             v.value.floatVal = (v.value.intVal * tmp.value.floatVal);
-                        else if (strcmp(node.children[i]->token->lexeme, "/") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0)
                             v.value.floatVal = (v.value.intVal / tmp.value.floatVal);
-                        else if (strcmp(node.children[i]->token->lexeme, "%") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "%") == 0)
                             ERR("incompatible types", INCOMPATIBLE_TYPES);
                     }
                     else
@@ -900,24 +900,24 @@ Value evalMulExpr(ParseTreeNode node)
                 }
                 else if (t == FLOAT_VAL) {
                     v.type = FLOAT_VAL;
-                    if (strcmp(node.children[i]->token->lexeme, "%") == 0)
+                    if (strcmp(node->children[i]->token->lexeme, "%") == 0)
                         ERR("incompatible types", INCOMPATIBLE_TYPES);
                     if (tmp.type == BOOL_VAL) {
-                        if (strcmp(node.children[i]->token->lexeme, "*") == 0)
+                        if (strcmp(node->children[i]->token->lexeme, "*") == 0)
                             v.value.floatVal = (v.value.floatVal * tmp.value.boolVal);
-                        else if (strcmp(node.children[i]->token->lexeme, "/") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0)
                             v.value.floatVal = (v.value.floatVal / tmp.value.boolVal);
                     }
                     else if (tmp.type == INT_VAL) {
-                        if (strcmp(node.children[i]->token->lexeme, "*") == 0)
+                        if (strcmp(node->children[i]->token->lexeme, "*") == 0)
                             v.value.floatVal = (v.value.floatVal * tmp.value.intVal);
-                        else if (strcmp(node.children[i]->token->lexeme, "/") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0)
                             v.value.floatVal = (v.value.floatVal / tmp.value.intVal);
                     }
                     else if (tmp.type == FLOAT_VAL) {
-                        if (strcmp(node.children[i]->token->lexeme, "*") == 0)
+                        if (strcmp(node->children[i]->token->lexeme, "*") == 0)
                             v.value.floatVal = (v.value.floatVal * tmp.value.floatVal);
-                        else if (strcmp(node.children[i]->token->lexeme, "/") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0)
                             v.value.floatVal = (v.value.floatVal / tmp.value.floatVal);
                     }
                     else
@@ -929,17 +929,17 @@ Value evalMulExpr(ParseTreeNode node)
     }
 }
 
-Value evalUnary(ParseTreeNode node)
+Value evalUnary(ParseTreeNode *node)
 {
-    unsigned int cnt = node.childCount;
+    unsigned int cnt = node->childCount;
     if (cnt == 1) {
-        return evalPrimary(*node.children[0]);
+        return evalPrimary(node->children[0]);
     } else {
-        Value v = evalPrimary(*node.children[1]);
+        Value v = evalPrimary(node->children[1]);
         ERR_RETURN_EVAL(v);
         enum ValueType t = v.type;
-        if (node.children[0]->type == UNARY_OP) {
-            if (strcmp(node.children[0]->token->lexeme, "+") == 0) {
+        if (node->children[0]->type == UNARY_OP) {
+            if (strcmp(node->children[0]->token->lexeme, "+") == 0) {
                 v.type = INT_VAL;
                 if (t == BOOL_VAL)
                     v.value.intVal = +v.value.boolVal;
@@ -952,7 +952,7 @@ Value evalUnary(ParseTreeNode node)
                 else
                     ERR("incompatible types", INCOMPATIBLE_TYPES);
             }
-            else if (strcmp(node.children[0]->token->lexeme, "-") == 0) {
+            else if (strcmp(node->children[0]->token->lexeme, "-") == 0) {
                 v.type = INT_VAL;
                 if (t == BOOL_VAL)
                     v.value.intVal = -v.value.boolVal;
@@ -965,7 +965,7 @@ Value evalUnary(ParseTreeNode node)
                 else
                     ERR("incompatible types", INCOMPATIBLE_TYPES);
             }
-            else if (strcasecmp(node.children[0]->token->lexeme, "NOT") == 0) {
+            else if (strcasecmp(node->children[0]->token->lexeme, "NOT") == 0) {
                 v.type = BOOL_VAL;
                 if (t == BOOL_VAL)
                     v.value.boolVal = !v.value.boolVal;
@@ -984,49 +984,49 @@ Value evalUnary(ParseTreeNode node)
     }
 }
 
-Value evalPrimary(ParseTreeNode node)
+Value evalPrimary(ParseTreeNode *node)
 {
     Value v;
-    if (node.children[0]->type == KEYWORD_TOKEN) {
+    if (node->children[0]->type == KEYWORD_TOKEN) {
         v.type = BOOL_VAL;
-        if (strcasecmp(node.token->lexeme, "FALSE") == 0)
+        if (strcasecmp(node->token->lexeme, "FALSE") == 0)
             v.value.boolVal = false;
-        else if (strcasecmp(node.token->lexeme, "TRUE") == 0)
+        else if (strcasecmp(node->token->lexeme, "TRUE") == 0)
             v.value.boolVal = true;
         else
             ERR("unknown bool value", UNKNOWN_BOOL_VALUE);
     }
-    else if (node.children[0]->type == INTEGER) {
+    else if (node->children[0]->type == INTEGER) {
         v.type = INT_VAL;
-        v.value.intVal = node.children[0]->token->literal.intValue;
+        v.value.intVal = node->children[0]->token->literal.intValue;
     }
-    else if (node.children[0]->type == FLOAT) {
+    else if (node->children[0]->type == FLOAT) {
         v.type = FLOAT_VAL;
-        v.value.floatVal = node.children[0]->token->literal.floatValue;
+        v.value.floatVal = node->children[0]->token->literal.floatValue;
     }
-    else if (node.children[0]->type == STRING) {
+    else if (node->children[0]->type == STRING) {
         v.type = STRING_VAL;
-        v.value.string.str = node.children[0]->token->literal.string;
+        v.value.string.str = node->children[0]->token->literal.string;
         v.value.string.refcnt = 1;
     }
-    else if (node.children[0]->type == OR_EXPR) {
-        Value tmp = evalOrExpr(*node.children[0]);
+    else if (node->children[0]->type == OR_EXPR) {
+        Value tmp = evalOrExpr(node->children[0]);
         v.type = tmp.type;
         v.value = tmp.value;
     }
-    else if (node.children[0]->type == IDENTI) {
-        if (node.children[0]->childCount == 0
-            || node.children[0]->children[0] == NULL) {
-            Value id = retriveVar(node.children[0]->token->lexeme);
+    else if (node->children[0]->type == IDENTI) {
+        if (node->children[0]->childCount == 0
+            || node->children[0]->children[0] == NULL) {
+            Value id = retriveVar(node->children[0]->token->lexeme);
             ERR_RETURN_EVAL(id);
             v.type = id.type;
             v.value = id.value;
         } else {
-            Value id = retriveVar(node.children[0]->token->lexeme);
+            Value id = retriveVar(node->children[0]->token->lexeme);
             ERR_RETURN_EVAL(id);
             if (id.type != ARR_VAL)
                 ERR("not an array", INCOMPATIBLE_TYPES);
-            Value index_val = evalExpr(*node.children[0]->children[0]);
+            Value index_val = evalExpr(node->children[0]->children[0]);
             ERR_RETURN_EVAL(index_val);
             if (index_val.type != INT_VAL)
                 ERR("index has to be INT type", INCOMPATIBLE_TYPES);
