@@ -262,7 +262,7 @@ Value evalDim(ParseTreeNode *node)
         ERR("size has to be INT type", INCOMPATIBLE_TYPES);
     if (findVar(name)
         && !IS_ERR((oldV = retriveVar(name))) && oldV.type == ARR_VAL) {
-        Value *tmp = (Value *)realloc(v.value.arr.ptr,
+        Value *tmp = (Value *)realloc(oldV.value.arr.ptr,
                     size.value.intVal * sizeof(Value));
         if (tmp == NULL)
             ERR("out of memory", OUT_OF_MEMORY);
@@ -271,6 +271,7 @@ Value evalDim(ParseTreeNode *node)
             memset(v.value.arr.ptr + oldV.value.arr.size, 0,
                     (size.value.intVal - oldV.value.arr.size) * sizeof(Value));
             for (int i = 0; i < (size.value.intVal - oldV.value.arr.size); i++) {
+                printf("f\n");
                 (v.value.arr.ptr + oldV.value.arr.size + i)->type = INT_VAL;
             }
         }
