@@ -67,15 +67,15 @@ static Value modVar(char *name, Value val) {
 static Value insertVar(char *name, Value val)
 {
     VarListNode *cur = &varList;
-    VarListNode *v = malloc(sizeof(VarListNode));
-    v->var.name = name;
-    v->var.val = val;
     while (cur->next != NULL) {
         cur = cur->next;
         if (strcasecmp(cur->var.name, name) == 0) {
             return modVar(name, val);
         }
     }
+    VarListNode *v = malloc(sizeof(VarListNode));
+    v->var.name = name;
+    v->var.val = val;
     v->next = varList.next;
     varList.next = v;
     return val;
