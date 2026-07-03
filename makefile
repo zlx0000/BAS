@@ -1,3 +1,5 @@
+.DEFAULT_GOAL := gbasic
+
 testlexer.o: testlexer.c gbasic.h keywords.h
 	gcc -c ./testlexer.c -o ./testlexer.o -g
 
@@ -30,3 +32,6 @@ gbasic.o: gbasic.c gbasic.h keywords.h
 
 gbasic: gbasic.o lexer.o parser.o eval.o keywords.h
 	gcc ./gbasic.o ./lexer.o ./parser.o ./eval.o -o gbasic -g
+
+clean:
+	rm ./*.o

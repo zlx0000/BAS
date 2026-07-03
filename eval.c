@@ -157,7 +157,7 @@ static void printVal(Value val)
             printf("%f\n", val.value.floatVal);
             break;
         case STRING_VAL:
-            printf("%s\n", val.value.string);
+            printf("%s\n", val.value.string.str);
             break;
         case ARR_VAL:
             for (int i = 0; i < val.value.arr.size; i++)
@@ -177,7 +177,7 @@ static void printVal(Value val)
                         printf("%f", ptr->value.floatVal);
                         break;
                     case STRING_VAL:
-                        printf("%s", ptr->value.string);
+                        printf("%s", ptr->value.string.str);
                         break;
                 }
                 if (i == val.value.arr.size - 1)
