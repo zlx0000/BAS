@@ -28,6 +28,9 @@
 
 #define IS_EOL(c) ((c) == '\0')
 
+# define __unlikely(cond)	__builtin_expect ((cond), 0)
+# define __likely(cond)	__builtin_expect ((cond), 1)
+
 typedef enum TokenType { //the order of which reflects the precedence.
 	TOKEN_TYPE_NULL = 0,
     STRING_TOKEN,

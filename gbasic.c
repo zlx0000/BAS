@@ -68,7 +68,7 @@ repl:
 				}
 			}
 			while (pc >= 0 && pc < prog.lineCount) {
-				if (__glibc_unlikely(ret.type == ERR_VAL)) {
+				if (__unlikely(ret.type == ERR_VAL)) {
 					prog.lineCount--;
 					free_tree(p);
 					free(tokens);

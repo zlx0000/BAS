@@ -6,7 +6,7 @@
 #define ERR(str, err) {fprintf(stderr, "%s\n", str); return ERRVAL(err);}
 #define ERRVAL(err) ((Value) {.type = ERR_VAL, .value.errVal = err})
 #define IS_ERR(x) (x.type == ERR_VAL)
-#define ERR_RETURN_EVAL(err) {if (__glibc_unlikely(IS_ERR(err))) return ERRVAL(err.value.errVal);}
+#define ERR_RETURN_EVAL(err) {if (__unlikely(IS_ERR(err))) return ERRVAL(err.value.errVal);}
 
 static VarListNode varList;
 static Stack st;
@@ -118,7 +118,7 @@ static Value delVar(char *name)
 
 static Value push(Stack *st, Value val)
 {
-    if (__glibc_unlikely(st->size == STASK_SIZE)) {
+    if (__unlikely(st->size == STASK_SIZE)) {
         ERR("stack overflow", STACK_OVERFLOW);
     }
     st->st[st->size++] = val;
@@ -127,7 +127,7 @@ static Value push(Stack *st, Value val)
 
 static Value pop(Stack *st)
 {
-    if (__glibc_unlikely(st->size == 0)) {
+    if (__unlikely(st->size == 0)) {
         ERR("stack underflow", STACK_UNDERFLOW);
     }
     return st->st[(st->size--) - 1];
@@ -135,7 +135,7 @@ static Value pop(Stack *st)
 
 static Value peek(Stack *st)
 {
-    if (__glibc_unlikely(st->size == 0)) {
+    if (__unlikely(st->size == 0)) {
         return ERRVAL(STACK_UNDERFLOW);
     }
     return st->st[st->size - 1];
@@ -372,11 +372,11 @@ Value evalFor(ParseTreeNode *node)
         insertVar(id, from);
         pc++;
     }
-    else if (__glibc_likely(top.type == FOR_CTX)) {
-        if (__glibc_likely(top.value.forCtx.pc == pc)) {
-            if (__glibc_likely(strcasecmp(top.value.forCtx.identi, id) == 0)) {
+    else if (__likely(top.type == FOR_CTX)) {
+        if (__likely(top.value.forCtx.pc == pc)) {
+            if (__likely(strcasecmp(top.value.forCtx.identi, id) == 0)) {
                 Value curVar = retriveVar(top.value.forCtx.identi);
-                if (__glibc_unlikely((curVar.value.intVal > from.value.intVal
+                if (__unlikely((curVar.value.intVal > from.value.intVal
                                      && curVar.value.intVal > to.value.intVal)
                                      || (curVar.value.intVal < from.value.intVal
                                      && curVar.value.intVal < to.value.intVal))) {
