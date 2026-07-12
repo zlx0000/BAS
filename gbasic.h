@@ -7,7 +7,6 @@
 #include <string.h>
 #include <stdint.h>
 #include <ctype.h>
-#include <sys/cdefs.h>
 
 #define MAX_TOKEN 25600
 #define BFSIZE 256
