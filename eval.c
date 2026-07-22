@@ -7,9 +7,12 @@
 #define ERRVAL(err) ((Value) {.type = ERR_VAL, .value.errVal = err})
 #define IS_ERR(x) (x.type == ERR_VAL)
 #define ERR_RETURN_EVAL(err) {if (__unlikely(IS_ERR(err))) return ERRVAL(err.value.errVal);}
+#define DEF_VAL ((Value){.type = INT_VAL, .value.intVal = 0})
 
 static VarListNode varList;
-static Stack st;
+static Stack for_st;
+static Stack if_st;
+enum If_State if_state = IF_BEFORE;
 
 int lineNum_to_pc(int lineNum)
 {
@@ -20,11 +23,26 @@ int lineNum_to_pc(int lineNum)
     return -1;
 }
 
+bool is_if_else_or_fi(ParseTreeNode *node)
+{
+    if (node->childCount == 1) {
+        return (node->children[0]->type == IF
+            ||node->children[0]->type == ELSE
+            || node->children[0]->type == FI);
+    }
+    else if (node->childCount == 2) {
+        return (node->children[0]->type == IF
+            ||node->children[1]->type == ELSE
+            || node->children[1]->type == FI);
+    }
+}
+
 void init_eval()
 {
     varList.next = NULL;
     varList.var.name = NULL;
-    st.size = 0;
+    for_st.size = 0;
+    if_st.size = 0;
 }
 
 static Value retriveVar(char *name) {
@@ -141,6 +159,14 @@ static Value peek(Stack *st)
     return st->st[st->size - 1];
 }
 
+static Value peek0(Stack *st)
+{
+    if (__unlikely(st->size == 0)) {
+        return ERRVAL(STACK_UNDERFLOW);
+    }
+    return st->st[0];
+}
+
 static void printVal(Value val)
 {
     switch (val.type) {
@@ -157,7 +183,7 @@ static void printVal(Value val)
             printf("%f\n", val.value.floatVal);
             break;
         case STRING_VAL:
-            printf("%s\n", val.value.string.str);
+            printf("%s", val.value.string.str);
             break;
         case ARR_VAL:
             for (int i = 0; i < val.value.arr.size; i++)
@@ -190,7 +216,7 @@ static void printVal(Value val)
 
 Value evalLine(ParseTreeNode *node)
 {
-    ParseTreeNode *statement = node->children[1];
+    ParseTreeNode *statement = node->children[node->childCount-1];
     switch (statement->type) {
         case LET:
             return evalLet(statement);
@@ -200,6 +226,10 @@ Value evalLine(ParseTreeNode *node)
             return evalPrint(statement);
         case IF:
             return evalIf(statement);
+        case ELSE:
+            return evalElse(statement);
+        case FI:
+            return evalFi(statement);
         case FOR:
             return evalFor(statement);
         case NEXT:
@@ -308,32 +338,149 @@ Value evalPrint(ParseTreeNode *node)
 
 Value evalIf(ParseTreeNode *node)
 {
-    ParseTreeNode *expr = node->children[0];
-    ParseTreeNode *line = node->children[1];
-    Value v = evalExpr(expr);
-    bool flag = false;
-    enum ValueType t = v.type;
-    switch (t) {
-        case BOOL_VAL:
-            flag = v.value.boolVal;
-            break;
-        case INT_VAL:
-            flag = v.value.intVal;
-            break;
-        case FLOAT_VAL:
-            flag = v.value.floatVal;
-            break;
-        default:
-            ERR("incompatible types", INCOMPATIBLE_TYPES);
-    }
-    if (flag) {
-        pc = lineNum_to_pc(line->token->literal.intValue);
-        if (pc == -1)
-            expectedLineNum = line->token->literal.intValue;
-    }
-    else
+    if (node->childCount == 1) {
+        ParseTreeNode *expr = node->children[0];
+        if (if_state == IF_EXPECTING_ELSE_OR_FI
+            || if_state == IF_EXPECTING_FI) {
+            Value frame = {
+                .type = IF_FRAME,
+                .value.ifFrame = {
+                    .entry = pc,
+                    .state = IF_EXPECTING_FI,
+                },
+            };
+            if_state = IF_EXPECTING_FI;
+            push(&if_st, frame);
+            pc++;
+            return DEF_VAL;
+        }
+        Value v = evalExpr(expr);
+        bool flag = false;
+        enum ValueType t = v.type;
+        switch (t) {
+            case BOOL_VAL:
+                flag = v.value.boolVal;
+                break;
+            case INT_VAL:
+                flag = v.value.intVal;
+                break;
+            case FLOAT_VAL:
+                flag = v.value.floatVal;
+                break;
+            default:
+                ERR("incompatible types", INCOMPATIBLE_TYPES);
+        }
+        if (flag) {
+            Value frame = {
+                .type = IF_FRAME,
+                .value.ifFrame = {
+                    .entry = pc,
+                    .state = IF_SKIP_ELSE,
+                },
+            };
+            if_state = IF_SKIP_ELSE;
+            push(&if_st, frame);
+        } else {
+            Value frame = {
+                .type = IF_FRAME,
+                .value.ifFrame = {
+                    .entry = pc,
+                    .state = IF_EXPECTING_ELSE_OR_FI
+                },
+            };
+            if_state = IF_EXPECTING_ELSE_OR_FI;
+            push(&if_st, frame);
+        }
         pc++;
-    return v;
+        return v;
+    }
+    else if (node->childCount == 2) {
+        ParseTreeNode *expr = node->children[0];
+        ParseTreeNode *line = node->children[1];
+        Value v = evalExpr(expr);
+        bool flag = false;
+        enum ValueType t = v.type;
+        switch (t) {
+            case BOOL_VAL:
+                flag = v.value.boolVal;
+                break;
+            case INT_VAL:
+                flag = v.value.intVal;
+                break;
+            case FLOAT_VAL:
+                flag = v.value.floatVal;
+                break;
+            default:
+                ERR("incompatible types", INCOMPATIBLE_TYPES);
+        }
+        if (flag) {
+            pc = lineNum_to_pc(line->token->literal.intValue);
+            if (pc == -1)
+                expectedLineNum = line->token->literal.intValue;
+        }
+        else
+            pc++;
+        return v;
+    }
+}
+
+Value evalElse(ParseTreeNode *node)
+{
+    Value top = peek(&if_st);
+    if (top.type != IF_FRAME)
+        ERR("not in a if statement", INCOMPATIBLE_TYPES);
+    switch (top.value.ifFrame.state) {
+        case IF_BEFORE:
+        case IF_CONT:
+            ERR("not in a IF statement", ERR_VAL_NULL);
+        case IF_SKIP_ELSE: {
+                Value frame = {
+                    .type = IF_FRAME,
+                    .value.ifFrame = {
+                        .entry = top.value.ifFrame.entry,
+                        .state = IF_EXPECTING_FI
+                    },
+                };
+                if_state = IF_EXPECTING_FI;
+                pop(&if_st);
+                push(&if_st, frame);
+                break;
+        }
+        case IF_EXPECTING_ELSE_OR_FI: {
+            Value frame = {
+                .type = IF_FRAME,
+                .value.ifFrame = {
+                    .entry = top.value.ifFrame.entry,
+                    .state = IF_CONT
+                },
+            };
+            if_state = IF_CONT;
+            pop(&if_st);
+            push(&if_st, frame);
+            break;
+        }
+        case IF_EXPECTING_FI:
+    }
+    pc++;
+    return top;
+}
+
+Value evalFi(ParseTreeNode *node)
+{
+    Value top = peek(&if_st);
+    if (top.type != IF_FRAME)
+        ERR("not in a if statement", INCOMPATIBLE_TYPES);
+    Value ret = pop(&if_st);
+    if (IS_ERR(ret)) {
+        ERR("not in a if statement", ret.value.errVal);
+    }
+    ret = peek(&if_st);
+    if (ret.type != IF_FRAME)
+        if_state = IF_BEFORE;
+    else
+        if_state = ret.value.ifFrame.state;
+    pc++;
+    return DEF_VAL;
 }
 
 Value evalFor(ParseTreeNode *node)
@@ -365,10 +512,10 @@ Value evalFor(ParseTreeNode *node)
             .step.intStep = step.value.intVal,
         },
     };
-    Value top = peek(&st);
+    Value top = peek(&for_st);
     if (top.type == ERR_VAL
         && top.value.errVal == STACK_UNDERFLOW) {
-        push(&st, ctx);
+        push(&for_st, ctx);
         insertVar(id, from);
         pc++;
     }
@@ -381,7 +528,7 @@ Value evalFor(ParseTreeNode *node)
                                      || (curVar.value.intVal < from.value.intVal
                                      && curVar.value.intVal < to.value.intVal))) {
                     pc = top.value.forCtx.next;
-                    pop(&st);
+                    pop(&for_st);
                 } else {
                     pc++;
                 }
@@ -389,12 +536,12 @@ Value evalFor(ParseTreeNode *node)
                 ERR("stack error", ERR_VAL_NULL);
             }
         } else {
-            push(&st, ctx);
+            push(&for_st, ctx);
             insertVar(id, from);
             pc++;
         }
     } else {
-        push(&st,ctx);
+        push(&for_st,ctx);
         insertVar(id, from);
         pc++;
     }
@@ -403,7 +550,7 @@ Value evalFor(ParseTreeNode *node)
 
 Value evalNext(ParseTreeNode *node)
 {
-    Value top = peek(&st);
+    Value top = peek(&for_st);
     if (top.type != FOR_CTX)
         ERR("not in a for loop", ERR_VAL_NULL);
     char *id = node->children[0]->token->lexeme;
@@ -415,9 +562,9 @@ Value evalNext(ParseTreeNode *node)
     };
     modVar(id, newVar);
     if (top.value.forCtx.next == -1) {
-        ERR_RETURN_EVAL(pop(&st));
+        ERR_RETURN_EVAL(pop(&for_st));
         top.value.forCtx.next = pc + 1;
-        ERR_RETURN_EVAL(push(&st, top));
+        ERR_RETURN_EVAL(push(&for_st, top));
     }
     pc = top.value.forCtx.pc;
     return newVar;

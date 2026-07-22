@@ -239,7 +239,7 @@ repl:
 			print_tree(p, 1);
 			prog.lines[prog.lineCount] = p;
 			prog.lineCount = line;
-            evalLine(*p);
+            evalLine(p);
 		}
 		p = NULL;
 		goto repl;

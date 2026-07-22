@@ -54,11 +54,15 @@ ParseTreeNode *parseLine(ParserContext *context)
 		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
 	node->childCount = 0;
 	node->type = ROOT;
-	node->children[0] = parseLinenum(context);
-	ERR_RET(node->children[0]);
-	node->childCount++;
-	node->children[1] = parseStatement(context);
-	ERR_RET(node->children[1]);
+	int i = 0;
+	if (IN_RANGE && context->tokenPtr->type == INT_TOKEN) {
+		node->children[i] = parseLinenum(context);
+		ERR_RET(node->children[i]);
+		node->childCount++;
+		i++;
+	}
+	node->children[i] = parseStatement(context);
+	ERR_RET(node->children[i]);
 	node->childCount++;
 	if (IN_RANGE) {
 		fprintf(stderr, "%s at %d,%d: `%s`\n",
@@ -260,6 +264,14 @@ ParseTreeNode *parseStatement(ParserContext *context)
 			node = parseIfStatement(context);
 			ERR_RET_NOFREE(node);
 		}
+		else if (strcasecmp(context->tokenPtr->lexeme, "ELSE") == 0) {
+			node = parseElseStatement(context);
+			ERR_RET_NOFREE(node);
+		}
+		else if (strcasecmp(context->tokenPtr->lexeme, "FI") == 0) {
+			node = parseFiStatement(context);
+			ERR_RET_NOFREE(node);
+		}
 		else if (strcasecmp(context->tokenPtr->lexeme, "PRINT") == 0) {
 			node = parsePrintStatement(context);
 			ERR_RET_NOFREE(node);
@@ -367,21 +379,39 @@ ParseTreeNode *parseIfStatement(ParserContext *context)
 	node->children[0] = parseExpr(context);
 	ERR_RET(node->children[0]);
 	node->childCount++;
-	/*
-	node->children[1] = parseRelOperator(context);
-	ERR_RET(node->children[1]);
-	node->childCount++;
-	node->children[2] = parseExpr(context);
-	ERR_RET(node->children[2]);
-	node->childCount++;
-	*/
+	if (IN_RANGE && context->tokenPtr->type == KEYWORD_TOKEN &&
+		strcasecmp(context->tokenPtr->lexeme, "THEN") == 0) {
+		CONSUME_TOKEN;
+		node->children[1] = parseLinenum(context); //3
+		ERR_RET(node->children[1]); //3
+		node->childCount++;
+	}
+	return node;
+}
+
+ParseTreeNode *parseElseStatement(ParserContext *context) {
+	ParseTreeNode *node =
+		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
+	node->childCount = 0;
+	node->type = ELSE;
 	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
-		strcasecmp(context->tokenPtr->lexeme, "THEN") != 0)
-			ERR("Expected THEN in IF statement");
+		strcasecmp(context->tokenPtr->lexeme, "ELSE") != 0)
+			ERR("Expected ELSE token.\n");
+	node->token = context->tokenPtr;
 	CONSUME_TOKEN;
-	node->children[1] = parseLinenum(context); //3
-	ERR_RET(node->children[1]); //3
-	node->childCount++;
+	return node;
+}
+
+ParseTreeNode *parseFiStatement(ParserContext *context) {
+	ParseTreeNode *node =
+		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
+	node->childCount = 0;
+	node->type = FI;
+	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
+		strcasecmp(context->tokenPtr->lexeme, "Fi") != 0)
+			ERR("Expected Fi token.\n");
+	node->token = context->tokenPtr;
+	CONSUME_TOKEN;
 	return node;
 }
 

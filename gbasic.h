@@ -70,6 +70,8 @@ typedef enum NodeType {
 	DIM,
 	IF,
 	THEN,
+	ELSE,
+	FI,
 	PRINT,
 	PRINT_LIST,
 	INPUT,
@@ -160,6 +162,8 @@ ParseTreeNode *parseStatement(ParserContext *context);
 ParseTreeNode *parseLetStatement(ParserContext *context);
 ParseTreeNode *parseExpr(ParserContext *context);
 ParseTreeNode *parseIfStatement(ParserContext *context);
+ParseTreeNode *parseElseStatement(ParserContext *context);
+ParseTreeNode *parseFiStatement(ParserContext *context);
 ParseTreeNode *parseForStatement(ParserContext *context);
 ParseTreeNode *parseForTail(ParserContext *context);
 ParseTreeNode *parseGoSubStatement(ParserContext *context);
@@ -204,6 +208,7 @@ typedef struct Value {
 		IDENTI_VAL,
 		SUB_CTX,
 		FOR_CTX,
+		IF_FRAME,
 		BOOL_VAL,
         INT_VAL,
         FLOAT_VAL,
@@ -236,6 +241,16 @@ typedef struct Value {
 				float floatStep;
 			} step;
 		} forCtx;
+		struct IfFrame {
+			int entry;
+			enum If_State {
+				IF_BEFORE,
+				IF_SKIP_ELSE,
+				IF_EXPECTING_ELSE_OR_FI,
+				IF_EXPECTING_FI,
+				IF_CONT
+			} state;
+		} ifFrame;
 		enum ErrVal {
 			ERR_VAL_NULL,
 			UNKNOWN_STATEMENT,
@@ -272,8 +287,10 @@ typedef struct VarListNode {
 extern int pc;
 extern int expectedLineNum;
 extern Program prog;
+extern enum If_State if_state;
 
 int lineNum_to_pc(int lineNum);
+bool is_if_else_or_fi(ParseTreeNode *node);
 
 void init_eval();
 Value evalLine(ParseTreeNode *node);
@@ -282,6 +299,8 @@ Value evalPrint(ParseTreeNode *node);
 Value evalDim(ParseTreeNode *node);
 Value evalLet(ParseTreeNode *node);
 Value evalIf(ParseTreeNode *node);
+Value evalElse(ParseTreeNode *node);
+Value evalFi(ParseTreeNode *node);
 Value evalFor(ParseTreeNode *node);
 Value evalNext(ParseTreeNode *node);
 Value evalGoto(ParseTreeNode *node);

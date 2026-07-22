@@ -77,6 +77,10 @@ static const char *node_type_to_string(NodeType type)
 			return "LET";
 		case IF:
 			return "IF";
+		case ELSE:
+			return "ELSE";
+		case FI:
+			return "FI";
 		case THEN:
 			return "THEN";
 		case PRINT:

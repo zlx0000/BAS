@@ -54,7 +54,7 @@ repl:
 		ctx.err = false;
 		p = parseLine(&ctx);
 		if (p && !ctx.err) {
-				if (find_lineNum(prog, p->children[0]->token->literal.intValue)) {
+				if (p->childCount > 1 && find_lineNum(prog, p->children[0]->token->literal.intValue)) {
 				fprintf(stderr, "duplicate lineNum\n");
 				free_tree(p);
 				free(tokens);
@@ -75,7 +75,14 @@ repl:
 					ret.type = INT_VAL;
 					goto repl;
 				}
-				ret = evalLine(prog.lines[pc]);
+				if (__unlikely(if_state == IF_EXPECTING_ELSE_OR_FI
+					|| if_state == IF_EXPECTING_FI)) {
+					if (is_if_else_or_fi(prog.lines[pc]))
+						ret = evalLine(prog.lines[pc]);
+					else
+						pc++;
+				} else
+					ret = evalLine(prog.lines[pc]);
 			}
 		}
 		p = NULL;
