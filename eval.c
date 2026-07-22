@@ -874,6 +874,7 @@ Value evalRelExpr(ParseTreeNode *node)
                             else
                                 ERR("incompatible types", INCOMPATIBLE_TYPES);
                         }
+                        break;
                     default:
                         ERR("incompatible types", INCOMPATIBLE_TYPES);
                 }
