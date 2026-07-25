@@ -118,3 +118,21 @@ IF SORTED
 ELSE
     PRINT "SORT FAILED\n"
 FI
+
+PRINT "TEST GOTO IN IF\n"
+GOTO 3
+
+IF 0
+    IF 1
+1       PRINT "TEST "
+        GOTO 2
+    ELSE
+        IF 0
+2           PRINT "PASSED\n"
+        ELSE
+3           IF 1 THEN 5
+        FI
+    FI
+ELSE
+5   GOTO 1
+FI
