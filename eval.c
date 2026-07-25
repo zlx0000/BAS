@@ -1039,12 +1039,12 @@ Value evalMulExpr(ParseTreeNode *node)
                             v.value.intVal = (v.value.boolVal * tmp.value.boolVal);
                         else if (strcmp(node->children[i]->token->lexeme, "/") == 0) {
                             if (tmp.value.boolVal == false)
-                                ERR("cannot devide by zero", DEVIDE_BY_ZERO);
+                                ERR("cannot divide by zero", DIVIDE_BY_ZERO);
                             v.value.intVal = (v.value.boolVal / tmp.value.boolVal);
                         }
                         else if (strcmp(node->children[i]->token->lexeme, "%") == 0) {
                             if (tmp.value.boolVal == false)
-                                ERR("cannot devide by zero", DEVIDE_BY_ZERO);
+                                ERR("cannot divide by zero", DIVIDE_BY_ZERO);
                             v.value.intVal = (v.value.boolVal % tmp.value.boolVal);
                         }
                     }
@@ -1053,12 +1053,12 @@ Value evalMulExpr(ParseTreeNode *node)
                             v.value.intVal = (v.value.boolVal * tmp.value.intVal);
                         else if (strcmp(node->children[i]->token->lexeme, "/") == 0) {
                             if (tmp.value.intVal == 0)
-                                ERR("cannot devide by zero", DEVIDE_BY_ZERO);
+                                ERR("cannot divide by zero", DIVIDE_BY_ZERO);
                             v.value.intVal = (v.value.boolVal / tmp.value.intVal);
                         }
                         else if (strcmp(node->children[i]->token->lexeme, "%") == 0) {
                             if (tmp.value.intVal == 0)
-                                ERR("cannot devide by zero", DEVIDE_BY_ZERO);
+                                ERR("cannot divide by zero", DIVIDE_BY_ZERO);
                             v.value.intVal = (v.value.boolVal % tmp.value.intVal);
                         }
                     }
@@ -1068,7 +1068,7 @@ Value evalMulExpr(ParseTreeNode *node)
                             v.value.floatVal = (v.value.boolVal * tmp.value.floatVal);
                         else if (strcmp(node->children[i]->token->lexeme, "/") == 0) {
                             if (tmp.value.floatVal == 0.0)
-                                ERR("cannot devide by zero", DEVIDE_BY_ZERO);
+                                ERR("cannot divide by zero", DIVIDE_BY_ZERO);
                             v.value.floatVal = (v.value.boolVal / tmp.value.floatVal);
                         }
                         else if (strcmp(node->children[i]->token->lexeme, "%") == 0)
@@ -1083,12 +1083,12 @@ Value evalMulExpr(ParseTreeNode *node)
                             v.value.intVal = (v.value.intVal * tmp.value.boolVal);
                         else if (strcmp(node->children[i]->token->lexeme, "/") == 0) {
                             if (tmp.value.boolVal == false)
-                                ERR("cannot devide by zero", DEVIDE_BY_ZERO);
+                                ERR("cannot divide by zero", DIVIDE_BY_ZERO);
                             v.value.intVal = (v.value.intVal / tmp.value.boolVal);
                         }
                          else if (strcmp(node->children[i]->token->lexeme, "%") == 0) {
                             if (tmp.value.boolVal == false)
-                                ERR("cannot devide by zero", DEVIDE_BY_ZERO);
+                                ERR("cannot divide by zero", DIVIDE_BY_ZERO);
                             v.value.intVal = (v.value.intVal % tmp.value.boolVal);
                         }
                     }
@@ -1097,12 +1097,12 @@ Value evalMulExpr(ParseTreeNode *node)
                             v.value.intVal = (v.value.intVal * tmp.value.intVal);
                         else if (strcmp(node->children[i]->token->lexeme, "/") == 0) {
                             if (tmp.value.intVal == 0)
-                                ERR("cannot devide by zero", DEVIDE_BY_ZERO);
+                                ERR("cannot divide by zero", DIVIDE_BY_ZERO);
                             v.value.intVal = (v.value.intVal / tmp.value.intVal);
                         }
                         else if (strcmp(node->children[i]->token->lexeme, "%") == 0) {
                             if (tmp.value.intVal == 0)
-                                ERR("cannot devide by zero", DEVIDE_BY_ZERO);
+                                ERR("cannot divide by zero", DIVIDE_BY_ZERO);
                             v.value.intVal = (v.value.intVal % tmp.value.intVal);
                         }
                     }
@@ -1112,7 +1112,7 @@ Value evalMulExpr(ParseTreeNode *node)
                             v.value.floatVal = (v.value.intVal * tmp.value.floatVal);
                         else if (strcmp(node->children[i]->token->lexeme, "/") == 0) {
                             if (tmp.value.floatVal == 0.0)
-                                ERR("cannot devide by zero", DEVIDE_BY_ZERO);
+                                ERR("cannot divide by zero", DIVIDE_BY_ZERO);
                             v.value.floatVal = (v.value.intVal / tmp.value.floatVal);
                         }
                         else if (strcmp(node->children[i]->token->lexeme, "%") == 0)
@@ -1130,7 +1130,7 @@ Value evalMulExpr(ParseTreeNode *node)
                             v.value.floatVal = (v.value.floatVal * tmp.value.boolVal);
                         else if (strcmp(node->children[i]->token->lexeme, "/") == 0) {
                             if (tmp.value.boolVal == false)
-                                ERR("cannot devide by zero", DEVIDE_BY_ZERO);
+                                ERR("cannot divide by zero", DIVIDE_BY_ZERO);
                             v.value.floatVal = (v.value.floatVal / tmp.value.boolVal);
                         }
                     }
@@ -1139,7 +1139,7 @@ Value evalMulExpr(ParseTreeNode *node)
                             v.value.floatVal = (v.value.floatVal * tmp.value.intVal);
                         else if (strcmp(node->children[i]->token->lexeme, "/") == 0) {
                             if (tmp.value.intVal == 0)
-                                ERR("cannot devide by zero", DEVIDE_BY_ZERO);
+                                ERR("cannot divide by zero", DIVIDE_BY_ZERO);
                             v.value.floatVal = (v.value.floatVal / tmp.value.intVal);
                         }
                     }
@@ -1148,7 +1148,7 @@ Value evalMulExpr(ParseTreeNode *node)
                             v.value.floatVal = (v.value.floatVal * tmp.value.floatVal);
                         else if (strcmp(node->children[i]->token->lexeme, "/") == 0) {
                             if (tmp.value.floatVal == 0.0)
-                                ERR("cannot devide by zero", DEVIDE_BY_ZERO);
+                                ERR("cannot divide by zero", DIVIDE_BY_ZERO);
                             v.value.floatVal = (v.value.floatVal / tmp.value.floatVal);
                         }
                     }
