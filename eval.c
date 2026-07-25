@@ -1037,25 +1037,40 @@ Value evalMulExpr(ParseTreeNode *node)
                     if (tmp.type == BOOL_VAL) {
                         if (strcmp(node->children[i]->token->lexeme, "*") == 0)
                             v.value.intVal = (v.value.boolVal * tmp.value.boolVal);
-                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0) {
+                            if (tmp.value.boolVal == false)
+                                ERR("cannot devide by zero", DEVIDE_BY_ZERO);
                             v.value.intVal = (v.value.boolVal / tmp.value.boolVal);
-                        else if (strcmp(node->children[i]->token->lexeme, "%") == 0)
+                        }
+                        else if (strcmp(node->children[i]->token->lexeme, "%") == 0) {
+                            if (tmp.value.boolVal == false)
+                                ERR("cannot devide by zero", DEVIDE_BY_ZERO);
                             v.value.intVal = (v.value.boolVal % tmp.value.boolVal);
+                        }
                     }
                     else if (tmp.type == INT_VAL) {
                         if (strcmp(node->children[i]->token->lexeme, "*") == 0)
                             v.value.intVal = (v.value.boolVal * tmp.value.intVal);
-                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0) {
+                            if (tmp.value.intVal == 0)
+                                ERR("cannot devide by zero", DEVIDE_BY_ZERO);
                             v.value.intVal = (v.value.boolVal / tmp.value.intVal);
-                        else if (strcmp(node->children[i]->token->lexeme, "%") == 0)
+                        }
+                        else if (strcmp(node->children[i]->token->lexeme, "%") == 0) {
+                            if (tmp.value.intVal == 0)
+                                ERR("cannot devide by zero", DEVIDE_BY_ZERO);
                             v.value.intVal = (v.value.boolVal % tmp.value.intVal);
+                        }
                     }
                     else if (tmp.type == FLOAT_VAL) {
                         v.type = FLOAT_VAL;
                         if (strcmp(node->children[i]->token->lexeme, "*") == 0)
                             v.value.floatVal = (v.value.boolVal * tmp.value.floatVal);
-                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0) {
+                            if (tmp.value.floatVal == 0.0)
+                                ERR("cannot devide by zero", DEVIDE_BY_ZERO);
                             v.value.floatVal = (v.value.boolVal / tmp.value.floatVal);
+                        }
                         else if (strcmp(node->children[i]->token->lexeme, "%") == 0)
                             ERR("incompatible types", INCOMPATIBLE_TYPES);
                     }
@@ -1066,25 +1081,40 @@ Value evalMulExpr(ParseTreeNode *node)
                     if (tmp.type == BOOL_VAL) {
                         if (strcmp(node->children[i]->token->lexeme, "*") == 0)
                             v.value.intVal = (v.value.intVal * tmp.value.boolVal);
-                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0) {
+                            if (tmp.value.boolVal == false)
+                                ERR("cannot devide by zero", DEVIDE_BY_ZERO);
                             v.value.intVal = (v.value.intVal / tmp.value.boolVal);
-                         else if (strcmp(node->children[i]->token->lexeme, "%") == 0)
+                        }
+                         else if (strcmp(node->children[i]->token->lexeme, "%") == 0) {
+                            if (tmp.value.boolVal == false)
+                                ERR("cannot devide by zero", DEVIDE_BY_ZERO);
                             v.value.intVal = (v.value.intVal % tmp.value.boolVal);
+                        }
                     }
                     else if (tmp.type == INT_VAL) {
                         if (strcmp(node->children[i]->token->lexeme, "*") == 0)
                             v.value.intVal = (v.value.intVal * tmp.value.intVal);
-                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0) {
+                            if (tmp.value.intVal == 0)
+                                ERR("cannot devide by zero", DEVIDE_BY_ZERO);
                             v.value.intVal = (v.value.intVal / tmp.value.intVal);
-                        else if (strcmp(node->children[i]->token->lexeme, "%") == 0)
+                        }
+                        else if (strcmp(node->children[i]->token->lexeme, "%") == 0) {
+                            if (tmp.value.intVal == 0)
+                                ERR("cannot devide by zero", DEVIDE_BY_ZERO);
                             v.value.intVal = (v.value.intVal % tmp.value.intVal);
+                        }
                     }
                     else if (tmp.type == FLOAT_VAL) {
                         v.type = FLOAT_VAL;
                         if (strcmp(node->children[i]->token->lexeme, "*") == 0)
                             v.value.floatVal = (v.value.intVal * tmp.value.floatVal);
-                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0) {
+                            if (tmp.value.floatVal == 0.0)
+                                ERR("cannot devide by zero", DEVIDE_BY_ZERO);
                             v.value.floatVal = (v.value.intVal / tmp.value.floatVal);
+                        }
                         else if (strcmp(node->children[i]->token->lexeme, "%") == 0)
                             ERR("incompatible types", INCOMPATIBLE_TYPES);
                     }
@@ -1098,20 +1128,29 @@ Value evalMulExpr(ParseTreeNode *node)
                     if (tmp.type == BOOL_VAL) {
                         if (strcmp(node->children[i]->token->lexeme, "*") == 0)
                             v.value.floatVal = (v.value.floatVal * tmp.value.boolVal);
-                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0) {
+                            if (tmp.value.boolVal == false)
+                                ERR("cannot devide by zero", DEVIDE_BY_ZERO);
                             v.value.floatVal = (v.value.floatVal / tmp.value.boolVal);
+                        }
                     }
                     else if (tmp.type == INT_VAL) {
                         if (strcmp(node->children[i]->token->lexeme, "*") == 0)
                             v.value.floatVal = (v.value.floatVal * tmp.value.intVal);
-                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0) {
+                            if (tmp.value.intVal == 0)
+                                ERR("cannot devide by zero", DEVIDE_BY_ZERO);
                             v.value.floatVal = (v.value.floatVal / tmp.value.intVal);
+                        }
                     }
                     else if (tmp.type == FLOAT_VAL) {
                         if (strcmp(node->children[i]->token->lexeme, "*") == 0)
                             v.value.floatVal = (v.value.floatVal * tmp.value.floatVal);
-                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "/") == 0) {
+                            if (tmp.value.floatVal == 0.0)
+                                ERR("cannot devide by zero", DEVIDE_BY_ZERO);
                             v.value.floatVal = (v.value.floatVal / tmp.value.floatVal);
+                        }
                     }
                     else
                         ERR("incompatible types", INCOMPATIBLE_TYPES);
