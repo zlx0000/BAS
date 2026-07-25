@@ -11,7 +11,7 @@
 
 static VarListNode varList;
 static Stack for_st;
-static Stack if_st;
+Stack if_st;
 enum If_State if_state = IF_BEFORE;
 
 int lineNum_to_pc(int lineNum)
@@ -43,6 +43,7 @@ void init_eval()
     varList.var.name = NULL;
     for_st.size = 0;
     if_st.size = 0;
+    shadow_st.size = 0;
 }
 
 static Value retriveVar(char *name) {
@@ -159,12 +160,11 @@ static Value peek(Stack *st)
     return st->st[st->size - 1];
 }
 
-static Value peek0(Stack *st)
-{
-    if (__unlikely(st->size == 0)) {
-        return ERRVAL(STACK_UNDERFLOW);
+void copy_stack(Stack *src, Stack* dst) {
+    dst->size = src->size;
+    for (int i = 0; i < src->size; i++) {
+        dst->st[i] = src->st[i];
     }
-    return st->st[0];
 }
 
 static void printVal(Value val)
@@ -340,6 +340,16 @@ Value evalIf(ParseTreeNode *node)
 {
     if (node->childCount == 1) {
         ParseTreeNode *expr = node->children[0];
+        {
+            Value frame = {
+                .type = IF_FRAME,
+                .value.ifFrame = {
+                    .entry = pc,
+                    .state = IF_SKIP_ELSE,
+                },
+            };
+            push(&shadow_st, frame);
+        }
         if (if_state == IF_EXPECTING_ELSE_OR_FI
             || if_state == IF_EXPECTING_FI) {
             Value frame = {
@@ -417,6 +427,13 @@ Value evalIf(ParseTreeNode *node)
             pc = lineNum_to_pc(line->token->literal.intValue);
             if (pc == -1)
                 expectedLineNum = line->token->literal.intValue;
+            else {
+                if (__likely(prog.shadow_st[pc].size > 0 && if_st.size > 0)) {
+                    copy_stack(&prog.shadow_st[pc], &if_st);
+                    copy_stack(&if_st, &shadow_st);
+                    if_state = if_st.st[if_st.size-1].value.ifFrame.state;
+                }
+            }
         }
         else
             pc++;
@@ -426,6 +443,20 @@ Value evalIf(ParseTreeNode *node)
 
 Value evalElse(ParseTreeNode *node)
 {
+    {
+        Value top = peek(&shadow_st);
+        if (top.type != IF_FRAME)
+            ERR("not in a if statement", INCOMPATIBLE_TYPES);
+        Value frame = {
+            .type = IF_FRAME,
+            .value.ifFrame = {
+                .entry = pc,
+                .state = IF_CONT,
+            },
+        };
+        pop(&shadow_st);
+        push(&shadow_st, frame);
+    }
     Value top = peek(&if_st);
     if (top.type != IF_FRAME)
         ERR("not in a if statement", INCOMPATIBLE_TYPES);
@@ -467,6 +498,12 @@ Value evalElse(ParseTreeNode *node)
 
 Value evalFi(ParseTreeNode *node)
 {
+    {
+        Value top = peek(&shadow_st);
+        if (top.type != IF_FRAME)
+            ERR("not in a if statement", INCOMPATIBLE_TYPES);
+        pop(&shadow_st);
+    }
     Value top = peek(&if_st);
     if (top.type != IF_FRAME)
         ERR("not in a if statement", INCOMPATIBLE_TYPES);
@@ -575,6 +612,13 @@ Value evalGoto(ParseTreeNode *node)
     pc = lineNum_to_pc(node->children[0]->token->literal.intValue);
     if (pc == -1)
         expectedLineNum = node->children[0]->token->literal.intValue;
+    else {
+        if (__likely(prog.shadow_st[pc].size > 0 && if_st.size > 0)) {
+            copy_stack(&prog.shadow_st[pc], &if_st);
+            copy_stack(&if_st, &shadow_st);
+            if_state = if_st.st[if_st.size-1].value.ifFrame.state;
+        }
+    }
 }
 
 Value evalExpr(ParseTreeNode *node)

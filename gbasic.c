@@ -4,6 +4,7 @@
 Program prog;
 int pc;
 int expectedLineNum;
+Stack shadow_st;
 
 bool find_lineNum(Program p, int n)
 {
@@ -20,7 +21,8 @@ int main(int argc, char **argv)
 	ParseTreeNode *p = NULL;
 	ParserContext ctx;
 	prog.lineCount = 0;
-	prog.lines = (ParseTreeNode **)calloc(16384, sizeof(ParseTreeNode *));
+	prog.lines = (ParseTreeNode **)calloc(16384, sizeof (ParseTreeNode *));
+	prog.shadow_st = (Stack *)calloc(16384, sizeof (Stack));
 	if (prog.lines == NULL) {
 		perror("Memory allocation failed");
 		exit(EXIT_FAILURE);
@@ -54,17 +56,30 @@ repl:
 		ctx.err = false;
 		p = parseLine(&ctx);
 		if (p && !ctx.err) {
-				if (p->childCount > 1 && find_lineNum(prog, p->children[0]->token->literal.intValue)) {
+			if (p->childCount > 1 && find_lineNum(prog, p->children[0]->token->literal.intValue)) {
 				fprintf(stderr, "duplicate lineNum\n");
 				free_tree(p);
 				free(tokens);
 				ret.type = INT_VAL;
 				goto repl;
 			}
-			prog.lines[prog.lineCount++] = p;
-			if (pc < 0) {
+			prog.lines[prog.lineCount] = p;
+			if (p->children[0]->type == LINENUM && shadow_st.size > 0) {
+				copy_stack(&shadow_st, &prog.shadow_st[prog.lineCount]);
+			}
+			prog.lineCount++;
+			if (pc == -1) {
+				if (is_if_else_or_fi(p)) {
+					ret = evalLine(p);
+					pc = -1;
+				}
 				if (p->children[0]->token->literal.intValue == expectedLineNum) {
 					pc = lineNum_to_pc(expectedLineNum);
+					if (prog.shadow_st[pc].size > 0) {
+            			copy_stack(&prog.shadow_st[pc], &if_st);
+						copy_stack(&if_st, &shadow_st);
+						if_state = if_st.st[if_st.size-1].value.ifFrame.state;
+					}
 				}
 			}
 			while (pc >= 0 && pc < prog.lineCount) {

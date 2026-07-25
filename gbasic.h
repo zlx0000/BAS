@@ -131,11 +131,6 @@ typedef struct ParseTreeNode {
 	struct ParseTreeNode *children[128];
 } ParseTreeNode;
 
-typedef struct Program {
-	int lineCount;
-	ParseTreeNode **lines;
-} Program;
-
 typedef struct ParserContext {
 	Token *tokens;
 	int tokenLen;
@@ -244,6 +239,7 @@ typedef struct Value {
 		struct IfFrame {
 			int entry;
 			enum If_State {
+				IF_STATE_NULL,
 				IF_BEFORE,
 				IF_SKIP_ELSE,
 				IF_EXPECTING_ELSE_OR_FI,
@@ -284,13 +280,22 @@ typedef struct VarListNode {
 	struct VarListNode *next;
 } VarListNode;
 
+typedef struct Program {
+	int lineCount;
+	ParseTreeNode **lines;
+	Stack *shadow_st;
+} Program;
+
 extern int pc;
 extern int expectedLineNum;
 extern Program prog;
 extern enum If_State if_state;
+extern Stack if_st;
+extern Stack shadow_st;
 
 int lineNum_to_pc(int lineNum);
 bool is_if_else_or_fi(ParseTreeNode *node);
+void copy_stack(Stack *src, Stack* dst);
 
 void init_eval();
 Value evalLine(ParseTreeNode *node);
