@@ -26,12 +26,14 @@ int lineNum_to_pc(int lineNum)
 bool is_if_else_or_fi(ParseTreeNode *node)
 {
     if (node->childCount == 1) {
-        return (node->children[0]->type == IF
+        return ((node->children[0]->type == IF
+                 && node->children[0]->childCount == 1)
             ||node->children[0]->type == ELSE
             || node->children[0]->type == FI);
     }
     else if (node->childCount == 2) {
-        return (node->children[0]->type == IF
+        return ((node->children[1]->type == IF
+                 && node->children[1]->childCount == 1)
             ||node->children[1]->type == ELSE
             || node->children[1]->type == FI);
     }
@@ -428,7 +430,7 @@ Value evalIf(ParseTreeNode *node)
             if (pc == -1)
                 expectedLineNum = line->token->literal.intValue;
             else {
-                if (prog.shadow_st[pc].size > 0) {
+                if (prog.shadow_st[pc].size >= 0) {
                     copy_stack(&prog.shadow_st[pc], &if_st);
                     copy_stack(&if_st, &shadow_st);
                     if_state = if_st.st[if_st.size-1].value.ifFrame.state;
@@ -613,7 +615,7 @@ Value evalGoto(ParseTreeNode *node)
     if (pc == -1)
         expectedLineNum = node->children[0]->token->literal.intValue;
     else {
-        if (prog.shadow_st[pc].size > 0 && if_st.size > 0) {
+        if (prog.shadow_st[pc].size >= 0) {
             copy_stack(&prog.shadow_st[pc], &if_st);
             copy_stack(&if_st, &shadow_st);
             if_state = if_st.st[if_st.size-1].value.ifFrame.state;

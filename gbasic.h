@@ -267,7 +267,7 @@ typedef struct Value {
 } Value;
 
 typedef struct Stack {
-    size_t size;
+    int size;
     Value st[STASK_SIZE];
 } Stack;
 

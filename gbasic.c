@@ -26,6 +26,9 @@ int main(int argc, char **argv)
 	prog.lineCount = 0;
 	prog.lines = (ParseTreeNode **)calloc(16384, sizeof (ParseTreeNode *));
 	prog.shadow_st = (Stack *)calloc(16384, sizeof (Stack));
+	for (int i = 0; i < 16384; i++) {
+		prog.shadow_st->size = -1;
+	}
 	if (prog.lines == NULL) {
 		perror("Memory allocation failed");
 		exit(EXIT_FAILURE);
@@ -67,7 +70,7 @@ repl:
 				goto repl;
 			}
 			prog.lines[prog.lineCount] = p;
-			if (p->children[0]->type == LINENUM && shadow_st.size > 0) {
+			if (p->children[0]->type == LINENUM) {
 				copy_stack(&shadow_st, &prog.shadow_st[prog.lineCount]);
 			}
 			prog.lineCount++;
@@ -78,7 +81,7 @@ repl:
 				}
 				if (p->children[0]->token->literal.intValue == expectedLineNum) {
 					pc = lineNum_to_pc(expectedLineNum);
-					if (prog.shadow_st[pc].size > 0) {
+					if (prog.shadow_st[pc].size >= 0) {
             			copy_stack(&prog.shadow_st[pc], &if_st);
 						copy_stack(&if_st, &shadow_st);
 						if_state = if_st.st[if_st.size-1].value.ifFrame.state;
