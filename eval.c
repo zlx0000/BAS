@@ -428,7 +428,7 @@ Value evalIf(ParseTreeNode *node)
             if (pc == -1)
                 expectedLineNum = line->token->literal.intValue;
             else {
-                if (__likely(prog.shadow_st[pc].size > 0)) {
+                if (prog.shadow_st[pc].size > 0) {
                     copy_stack(&prog.shadow_st[pc], &if_st);
                     copy_stack(&if_st, &shadow_st);
                     if_state = if_st.st[if_st.size-1].value.ifFrame.state;
@@ -613,7 +613,7 @@ Value evalGoto(ParseTreeNode *node)
     if (pc == -1)
         expectedLineNum = node->children[0]->token->literal.intValue;
     else {
-        if (__likely(prog.shadow_st[pc].size > 0 && if_st.size > 0)) {
+        if (prog.shadow_st[pc].size > 0 && if_st.size > 0) {
             copy_stack(&prog.shadow_st[pc], &if_st);
             copy_stack(&if_st, &shadow_st);
             if_state = if_st.st[if_st.size-1].value.ifFrame.state;
