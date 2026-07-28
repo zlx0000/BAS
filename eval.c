@@ -5,7 +5,7 @@
 #include <math.h>
 #include <unistd.h>
 
-#define ERR(str, err) {fprintf(stderr, "%s: %s\n", str); return ERRVAL(err);}
+#define ERR(str, err) {fprintf(stderr, "%s\n", str); return ERRVAL(err);}
 #define ERRVAL(err) ((Value) {.type = ERR_VAL, .value.errVal = err})
 #define IS_ERR(x) (x.type == ERR_VAL)
 #define ERR_RETURN_EVAL(err) {if (__unlikely(IS_ERR(err))) return ERRVAL(err.value.errVal);}
@@ -748,8 +748,9 @@ Value evalOrExpr(ParseTreeNode *node)
             if (node->children[i]->type == OR_OP) {
                 Value tmp = evalAndExpr(node->children[i+1]);
                 ERR_RETURN_EVAL(tmp);
+                enum ValueType t = v.type;
                 v.type = BOOL_VAL;
-                if (v.type == BOOL_VAL) {
+                if (t == BOOL_VAL) {
                     if (tmp.type == BOOL_VAL)
                         v.value.boolVal = (v.value.boolVal || tmp.value.boolVal);
                     else if (tmp.type == INT_VAL)
@@ -759,7 +760,7 @@ Value evalOrExpr(ParseTreeNode *node)
                     else
                         ERR("incompatible types", INCOMPATIBLE_TYPES);
                 }
-                else if (v.type == INT_VAL) {
+                else if (t == INT_VAL) {
                     if (tmp.type == BOOL_VAL)
                         v.value.boolVal = (v.value.intVal || tmp.value.boolVal);
                     else if (tmp.type == INT_VAL)
@@ -769,7 +770,7 @@ Value evalOrExpr(ParseTreeNode *node)
                     else
                         ERR("incompatible types", INCOMPATIBLE_TYPES);
                 }
-                else if (v.type == FLOAT_VAL) {
+                else if (t == FLOAT_VAL) {
                     if (tmp.type == BOOL_VAL)
                         v.value.boolVal = (v.value.floatVal || tmp.value.boolVal);
                     else if (tmp.type == INT_VAL)
@@ -778,6 +779,8 @@ Value evalOrExpr(ParseTreeNode *node)
                             v.value.boolVal = (v.value.floatVal || tmp.value.floatVal);
                     else
                         ERR("incompatible types", INCOMPATIBLE_TYPES);
+                } else {
+                    ERR("incompatible types", INCOMPATIBLE_TYPES);
                 }
             } else {
                 ERR("not an or operation", INCOMPATIBLE_TYPES);
@@ -799,8 +802,9 @@ Value evalAndExpr(ParseTreeNode *node)
             if (node->children[i]->type == AND_OP) {
                 Value tmp = evalRelExpr(node->children[i+1]);
                 ERR_RETURN_EVAL(tmp);
+                enum ValueType t = v.type;
                 v.type = BOOL_VAL;
-                if (v.type == BOOL_VAL) {
+                if (t == BOOL_VAL) {
                     if (tmp.type == BOOL_VAL)
                         v.value.boolVal = (v.value.boolVal && tmp.value.boolVal);
                     else if (tmp.type == INT_VAL)
@@ -810,7 +814,7 @@ Value evalAndExpr(ParseTreeNode *node)
                     else
                         ERR("incompatible types", INCOMPATIBLE_TYPES);
                 }
-                else if (v.type == INT_VAL) {
+                else if (t == INT_VAL) {
                     if (tmp.type == BOOL_VAL)
                         v.value.boolVal = (v.value.intVal && tmp.value.boolVal);
                     else if (tmp.type == INT_VAL)
@@ -820,7 +824,7 @@ Value evalAndExpr(ParseTreeNode *node)
                     else
                         ERR("incompatible types", INCOMPATIBLE_TYPES);
                 }
-                else if (v.type == FLOAT_VAL) {
+                else if (t == FLOAT_VAL) {
                     if (tmp.type == BOOL_VAL)
                         v.value.boolVal = (v.value.floatVal && tmp.value.boolVal);
                     else if (tmp.type == INT_VAL)
@@ -829,6 +833,8 @@ Value evalAndExpr(ParseTreeNode *node)
                             v.value.boolVal = (v.value.floatVal && tmp.value.floatVal);
                     else
                         ERR("incompatible types", INCOMPATIBLE_TYPES);
+                } else {
+                    ERR("incompatible types", INCOMPATIBLE_TYPES);
                 }
             } else {
                 ERR("not an add operation", INCOMPATIBLE_TYPES);
@@ -887,6 +893,8 @@ Value evalRelExpr(ParseTreeNode *node)
                                 v.value.boolVal = (v.value.floatVal == tmp.value.floatVal);
                             else
                                 ERR("incompatible types", INCOMPATIBLE_TYPES);
+                        } else {
+                            ERR("incompatible types", INCOMPATIBLE_TYPES);
                         }
                         break;
                     case LT:
@@ -922,6 +930,8 @@ Value evalRelExpr(ParseTreeNode *node)
                                 v.value.boolVal = (v.value.floatVal < tmp.value.floatVal);
                             else
                                 ERR("incompatible types", INCOMPATIBLE_TYPES);
+                        } else {
+                            ERR("incompatible types", INCOMPATIBLE_TYPES);
                         }
                         break;
                     case GT:
@@ -957,6 +967,8 @@ Value evalRelExpr(ParseTreeNode *node)
                                 v.value.boolVal = (v.value.floatVal > tmp.value.floatVal);
                             else
                                 ERR("incompatible types", INCOMPATIBLE_TYPES);
+                        } else {
+                            ERR("incompatible types", INCOMPATIBLE_TYPES);
                         }
                         break;
                     case LE:
@@ -992,6 +1004,8 @@ Value evalRelExpr(ParseTreeNode *node)
                                 v.value.boolVal = (v.value.floatVal <= tmp.value.floatVal);
                             else
                                 ERR("incompatible types", INCOMPATIBLE_TYPES);
+                        } else {
+                            ERR("incompatible types", INCOMPATIBLE_TYPES);
                         }
                         break;
                     case GE:
@@ -1027,6 +1041,8 @@ Value evalRelExpr(ParseTreeNode *node)
                                 v.value.boolVal = (v.value.floatVal >= tmp.value.floatVal);
                             else
                                 ERR("incompatible types", INCOMPATIBLE_TYPES);
+                        } else {
+                            ERR("incompatible types", INCOMPATIBLE_TYPES);
                         }
                         break;
                     default:
@@ -1120,6 +1136,8 @@ Value evalAddExpr(ParseTreeNode *node)
                     }
                     else
                         ERR("incompatible types", INCOMPATIBLE_TYPES);
+                } else {
+                    ERR("incompatible types", INCOMPATIBLE_TYPES);
                 }
             } else {
                 ERR("not an add operation", INCOMPATIBLE_TYPES);
@@ -1181,8 +1199,9 @@ Value evalMulExpr(ParseTreeNode *node)
                                 ERR("cannot divide by zero", DIVIDE_BY_ZERO);
                             v.value.floatVal = (v.value.boolVal / tmp.value.floatVal);
                         }
-                        else if (strcmp(node->children[i]->token->lexeme, "%") == 0)
+                        else if (strcmp(node->children[i]->token->lexeme, "%") == 0) {
                             ERR("incompatible types", INCOMPATIBLE_TYPES);
+                        }
                     }
                     else
                         ERR("incompatible types", INCOMPATIBLE_TYPES);
@@ -1264,6 +1283,8 @@ Value evalMulExpr(ParseTreeNode *node)
                     }
                     else
                         ERR("incompatible types", INCOMPATIBLE_TYPES);
+                } else {
+                    ERR("incompatible types", INCOMPATIBLE_TYPES);
                 }
             }
         }
