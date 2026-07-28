@@ -443,6 +443,9 @@ Value evalIf(ParseTreeNode *node)
             pc++;
             return DEF_VAL;
         }
+        if (pc < 0) {
+            return DEF_VAL;
+        }
         Value v = evalExpr(expr);
         bool flag = false;
         enum ValueType t = v.type;
@@ -536,6 +539,9 @@ Value evalElse(ParseTreeNode *node)
         pop(&shadow_st);
         push(&shadow_st, frame);
     }
+    if (pc < 0) {
+        return DEF_VAL;
+    }
     Value top = peek(&if_st);
     if (top.type != IF_FRAME)
         ERR("not in a if statement", INCOMPATIBLE_TYPES);
@@ -572,7 +578,7 @@ Value evalElse(ParseTreeNode *node)
         case IF_EXPECTING_FI:
     }
     pc++;
-    return top;
+    return DEF_VAL;
 }
 
 Value evalFi(ParseTreeNode *node)
@@ -582,6 +588,9 @@ Value evalFi(ParseTreeNode *node)
         if (top.type != IF_FRAME)
             ERR("not in a if statement", INCOMPATIBLE_TYPES);
         pop(&shadow_st);
+    }
+    if (pc < 0) {
+        return DEF_VAL;
     }
     Value top = peek(&if_st);
     if (top.type != IF_FRAME)
