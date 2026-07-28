@@ -74,8 +74,12 @@ typedef enum NodeType {
 	FI,
 	PRINT,
 	PRINT_LIST,
+	PUTCHAR,
+	CLEAR,
+	HOME,
 	INPUT,
 	INPUT_LIST,
+	SLEEP,
 	FOR,
 	TO,
 	STEP,
@@ -165,6 +169,10 @@ ParseTreeNode *parseGoSubStatement(ParserContext *context);
 ParseTreeNode *parseReturnStatement(ParserContext *context);
 ParseTreeNode *parseGotoStatement(ParserContext *context);
 ParseTreeNode *parsePrintStatement(ParserContext *context);
+ParseTreeNode *parsePutCharStatement(ParserContext *context);
+ParseTreeNode *parseClearStatement(ParserContext *context);
+ParseTreeNode *parseHomeStatement(ParserContext *context);
+ParseTreeNode *parseSleepStatement(ParserContext *context);
 ParseTreeNode *parseDimStatement(ParserContext *context);
 ParseTreeNode *parsePrintList(ParserContext *context);
 ParseTreeNode *parsePrintItem(ParserContext *context);
@@ -302,6 +310,7 @@ void init_eval();
 Value evalLine(ParseTreeNode *node);
 Value evalExpr(ParseTreeNode *node);
 Value evalPrint(ParseTreeNode *node);
+Value evalPutChar(ParseTreeNode *node);
 Value evalDim(ParseTreeNode *node);
 Value evalLet(ParseTreeNode *node);
 Value evalIf(ParseTreeNode *node);
@@ -310,6 +319,9 @@ Value evalFi(ParseTreeNode *node);
 Value evalFor(ParseTreeNode *node);
 Value evalNext(ParseTreeNode *node);
 Value evalGoto(ParseTreeNode *node);
+Value evalSleep(ParseTreeNode *node);
+Value evalClear(ParseTreeNode *node);
+Value evalHome(ParseTreeNode *node);
 Value evalOrExpr(ParseTreeNode *node);
 Value evalAndExpr(ParseTreeNode *node);
 Value evalRelExpr(ParseTreeNode *node);

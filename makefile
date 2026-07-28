@@ -18,20 +18,20 @@ testlexer: testlexer-g.o lexer-g.o keywords.h
 testparser.o: testparser.c gbasic.h keywords.h
 	gcc -c ./testparser.c -o testparser.o -g
 
-testparser: testparser-g.o lexer-g.o parser-g.o keywords.h
-	gcc ./testparser-g.o ./lexer-g.o ./parser-g.o -o testparser -g
+testparser: testparser.o lexer-g.o parser-g.o keywords.h
+	gcc ./testparser.o ./lexer-g.o ./parser-g.o -o testparser -g
 
 testeval-g.o: testeval.c gbasic.h keywords.h
 	gcc -c ./testeval.c -o ./testeval.o -g
 
 testeval: testeval-g.o lexer-g.o parser-g.o eval-g.o keywords.h
-	gcc ./testeval-g.o ./lexer-g.o ./parser-g.o ./eval-g.o -o testeval -g
+	gcc ./testeval-g.o ./lexer-g.o ./parser-g.o ./eval-g.o -o testeval -g -lm
 
 gbasic-g.o: gbasic.c gbasic.h keywords.h
 	gcc -c ./gbasic.c -o ./gbasic-g.o -g
 
 gbasic-debug: gbasic-g.o lexer-g.o parser-g.o eval-g.o keywords.h
-	gcc ./gbasic-g.o ./lexer-g.o ./parser-g.o ./eval-g.o -o gbasic-debug -g
+	gcc ./gbasic-g.o ./lexer-g.o ./parser-g.o ./eval-g.o -o gbasic-debug -g -lm
 
 
 lexer.o: lexer.c gbasic.h keywords.h
@@ -47,7 +47,7 @@ gbasic.o: gbasic.c gbasic.h keywords.h
 	gcc -c ./gbasic.c -o ./gbasic.o -O3
 
 gbasic: gbasic.o lexer.o parser.o eval.o keywords.h
-	gcc ./gbasic.o ./lexer.o ./parser.o ./eval.o -o gbasic -O3
+	gcc ./gbasic.o ./lexer.o ./parser.o ./eval.o -o gbasic -O3 -lm
 
 clean:
 	rm ./*.o

@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "gbasic.h"
+#include <math.h>
+#include <unistd.h>
 
-#define ERR(str, err) {fprintf(stderr, "%s\n", str); return ERRVAL(err);}
+#define ERR(str, err) {fprintf(stderr, "%s: %s\n", str); return ERRVAL(err);}
 #define ERRVAL(err) ((Value) {.type = ERR_VAL, .value.errVal = err})
 #define IS_ERR(x) (x.type == ERR_VAL)
 #define ERR_RETURN_EVAL(err) {if (__unlikely(IS_ERR(err))) return ERRVAL(err.value.errVal);}
@@ -17,7 +19,7 @@ enum If_State if_state = IF_BEFORE;
 int lineNum_to_pc(int lineNum)
 {
     for (int i = 0; i < prog.lineCount; i++) {
-        if (prog.lines[i]->children[0]->token->literal.intValue == lineNum)
+        if (prog.lines[i]->childCount > 1 && prog.lines[i]->children[0]->token->literal.intValue == lineNum)
             return i;
     }
     return -1;
@@ -209,6 +211,43 @@ static void printVal(Value val)
     }
 }
 
+static void putChar(Value val)
+{
+    switch (val.type) {
+        case BOOL_VAL:
+            putchar(val.value.boolVal);
+            break;
+        case INT_VAL:
+            putchar(val.value.intVal);
+            break;
+        case FLOAT_VAL:
+            putchar(val.value.floatVal);
+            break;
+        case STRING_VAL:
+            putchar(val.value.string.str[0]);
+            break;
+        case ARR_VAL:
+            for (int i = 0; i < val.value.arr.size; i++)
+            {
+                Value *ptr = val.value.arr.ptr + i;
+                switch (ptr->type) {
+                    case BOOL_VAL:
+                        putchar(val.value.boolVal);
+                        break;
+                   case INT_VAL:
+                        putchar(val.value.intVal);
+                        break;
+                    case FLOAT_VAL:
+                        putchar(val.value.floatVal);
+                        break;
+                    case STRING_VAL:
+                        putchar(val.value.string.str[0]);
+                        break;
+                }
+            }
+    }
+}
+
 Value evalLine(ParseTreeNode *node)
 {
     ParseTreeNode *statement = node->children[node->childCount-1];
@@ -231,6 +270,14 @@ Value evalLine(ParseTreeNode *node)
             return evalNext(statement);
         case GOTO:
             return evalGoto(statement);
+        case PUTCHAR:
+            return evalPutChar(statement);
+        case SLEEP:
+            return evalSleep(statement);
+        case CLEAR:
+            return evalClear(statement);
+        case HOME:
+            return evalHome(statement);
         default:
             ERR("unknown statement", UNKNOWN_STATEMENT);
     }
@@ -239,6 +286,17 @@ Value evalLine(ParseTreeNode *node)
 Value evalLet(ParseTreeNode *node)
 {
     char *name = node->children[0]->token->lexeme;
+    if (strcasecmp(name, "COS") == 0
+        || strcasecmp(name, "SIN") == 0
+        || strcasecmp(name, "COSF") == 0
+        || strcasecmp(name, "SINF") == 0
+        || strcasecmp(name, "TAN") == 0
+        || strcasecmp(name, "TANF") == 0
+        || strcasecmp(name, "EXP") == 0
+        || strcasecmp(name, "INT") == 0
+        || strcasecmp(name, "FLOAT") == 0) {
+        ERR("cannot use built in names", ERR_VAL_NULL);
+    }
     Value v = evalExpr(node->children[2]);
     ERR_RETURN_EVAL(v);
     if (node->children[0]->childCount == 0
@@ -277,6 +335,17 @@ Value evalDim(ParseTreeNode *node)
     Value v;
     Value oldV;
     char *name = node->children[0]->token->lexeme;
+    if (strcasecmp(name, "COS") == 0
+        || strcasecmp(name, "SIN") == 0
+        || strcasecmp(name, "COSF") == 0
+        || strcasecmp(name, "SINF") == 0
+        || strcasecmp(name, "TAN") == 0
+        || strcasecmp(name, "TANF") == 0
+        || strcasecmp(name, "EXP") == 0
+        || strcasecmp(name, "INT") == 0
+        || strcasecmp(name, "FLOAT") == 0) {
+        ERR("cannot use built in names", ERR_VAL_NULL);
+    }
     v.type = ARR_VAL;
     if (node->children[0]->childCount == 0
         || node->children[0]->children[0] == NULL) {
@@ -326,6 +395,21 @@ Value evalPrint(ParseTreeNode *node)
         if (IS_ERR(ret))
             ERR("eval err", ret.value.errVal);
         printVal(ret);
+    }
+    pc++;
+    return ret;
+}
+
+Value evalPutChar(ParseTreeNode *node)
+{
+    Value ret;
+    ParseTreeNode *list = node->children[0];
+    int cnt = list->childCount;
+    for (int i = 0; i < cnt; i++) {
+        ret = evalExpr(list->children[i]);
+        if (IS_ERR(ret))
+            ERR("eval err", ret.value.errVal);
+        putChar(ret);
     }
     pc++;
     return ret;
@@ -614,6 +698,37 @@ Value evalGoto(ParseTreeNode *node)
             if_state = if_st.st[if_st.size-1].value.ifFrame.state;
         }
     }
+    return DEF_VAL;
+}
+
+Value evalSleep(ParseTreeNode *node)
+{
+    Value t = evalExpr(node->children[0]);
+    if (t.type == INT_VAL) {
+        usleep(t.value.intVal);
+    }
+    else if (t.type == FLOAT_VAL) {
+        usleep((int)t.value.floatVal);
+    }
+    else {
+        ERR("incompatible types", INCOMPATIBLE_TYPES);
+    }
+    pc++;
+    return DEF_VAL;
+}
+
+Value evalClear(ParseTreeNode *node)
+{
+    printf("\33[H\33[2J");
+    pc++;
+    return DEF_VAL;
+}
+
+Value evalHome(ParseTreeNode *node)
+{
+    printf("\033[H");
+    pc++;
+    return DEF_VAL;
 }
 
 Value evalExpr(ParseTreeNode *node)
@@ -1249,7 +1364,140 @@ Value evalPrimary(ParseTreeNode *node)
             v.type = id.type;
             v.value = id.value;
         } else {
-            Value id = retriveVar(node->children[0]->token->lexeme);
+            char *name = node->children[0]->token->lexeme;
+            if (strcasecmp(name, "COS") == 0) {
+                Value index_val = evalExpr(node->children[0]->children[0]);
+                v.type = FLOAT_VAL;
+                if (index_val.type == FLOAT_VAL) {
+                    v.value.floatVal = cos(index_val.value.floatVal);
+                }
+                else if (index_val.type == INT_VAL) {
+                    v.value.floatVal = cos(index_val.value.intVal);
+                }
+                else {
+                    ERR("incompatible types", INCOMPATIBLE_TYPES);
+                }
+                return v;
+            }
+            else if (strcasecmp(name, "SIN") == 0) {
+                Value index_val = evalExpr(node->children[0]->children[0]);
+                v.type = FLOAT_VAL;
+                if (index_val.type == FLOAT_VAL) {
+                    v.value.floatVal = sin(index_val.value.floatVal);
+                }
+                else if (index_val.type == INT_VAL) {
+                    v.value.floatVal = sin(index_val.value.intVal);
+                }
+                else {
+                    ERR("incompatible types", INCOMPATIBLE_TYPES);
+                }
+                return v;
+            }
+            else if (strcasecmp(name, "TAN") == 0) {
+                Value index_val = evalExpr(node->children[0]->children[0]);
+                v.type = FLOAT_VAL;
+                if (index_val.type == FLOAT_VAL) {
+                    v.value.floatVal = tan(index_val.value.floatVal);
+                }
+                else if (index_val.type == INT_VAL) {
+                    v.value.floatVal = tan(index_val.value.intVal);
+                }
+                else {
+                    ERR("incompatible types", INCOMPATIBLE_TYPES);
+                }
+                return v;
+            }
+            else if (strcasecmp(name, "COSF") == 0) {
+                Value index_val = evalExpr(node->children[0]->children[0]);
+                v.type = FLOAT_VAL;
+                if (index_val.type == FLOAT_VAL) {
+                    v.value.floatVal = cosf(index_val.value.floatVal);
+                }
+                else if (index_val.type == INT_VAL) {
+                    v.value.floatVal = cosf(index_val.value.intVal);
+                }
+                else {
+                    ERR("incompatible types", INCOMPATIBLE_TYPES);
+                }
+                return v;
+            }
+            else if (strcasecmp(name, "SINF") == 0) {
+                Value index_val = evalExpr(node->children[0]->children[0]);
+                v.type = FLOAT_VAL;
+                if (index_val.type == FLOAT_VAL) {
+                    v.value.floatVal = sinf(index_val.value.floatVal);
+                }
+                else if (index_val.type == INT_VAL) {
+                    v.value.floatVal = sinf(index_val.value.intVal);
+                }
+                else {
+                    ERR("incompatible types", INCOMPATIBLE_TYPES);
+                }
+                return v;
+            }
+            else if (strcasecmp(name, "TANF") == 0) {
+                Value index_val = evalExpr(node->children[0]->children[0]);
+                v.type = FLOAT_VAL;
+                if (index_val.type == FLOAT_VAL) {
+                    v.value.floatVal = tanf(index_val.value.floatVal);
+                }
+                else if (index_val.type == INT_VAL) {
+                    v.value.floatVal = tanf(index_val.value.intVal);
+                }
+                else {
+                    ERR("incompatible types", INCOMPATIBLE_TYPES);
+                }
+                return v;
+            }
+            else if (strcasecmp(name, "EXP") == 0) {
+                Value index_val = evalExpr(node->children[0]->children[0]);
+                v.type = FLOAT_VAL;
+                if (index_val.type == FLOAT_VAL) {
+                    v.value.floatVal = exp(index_val.value.floatVal);
+                }
+                else if (index_val.type == INT_VAL) {
+                    v.value.floatVal = exp(index_val.value.intVal);
+                }
+                else {
+                    ERR("incompatible types", INCOMPATIBLE_TYPES);
+                }
+                return v;
+            }
+            else if (strcasecmp(name, "INT") == 0) {
+                Value index_val = evalExpr(node->children[0]->children[0]);
+                v.type = INT_VAL;
+                if (index_val.type == FLOAT_VAL) {
+                    v.value.intVal = (int)index_val.value.floatVal;
+                }
+                else if (index_val.type == INT_VAL) {
+                    v.value.intVal = index_val.value.intVal;
+                }
+                else if (index_val.type == BOOL_VAL) {
+                    v.value.intVal = (int)index_val.value.boolVal;
+                }
+                else {
+                    ERR("incompatible types", INCOMPATIBLE_TYPES);
+                }
+                return v;
+            }
+            else if (strcasecmp(name, "FLOAT") == 0) {
+                Value index_val = evalExpr(node->children[0]->children[0]);
+                v.type = FLOAT_VAL;
+                if (index_val.type == FLOAT_VAL) {
+                    v.value.floatVal = index_val.value.floatVal;
+                }
+                else if (index_val.type == INT_VAL) {
+                    v.value.floatVal = (float)index_val.value.intVal;
+                }
+                else if (index_val.type == BOOL_VAL) {
+                    v.value.floatVal = (float)index_val.value.boolVal;
+                }
+                else {
+                    ERR("incompatible types", INCOMPATIBLE_TYPES);
+                }
+                return v;
+            }
+            Value id = retriveVar(name);
             ERR_RETURN_EVAL(id);
             if (id.type != ARR_VAL)
                 ERR("not an array", INCOMPATIBLE_TYPES);

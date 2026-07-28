@@ -12,7 +12,7 @@ Stack shadow_st;
 bool find_lineNum(Program p, int n)
 {
 	for (int i = 0; i < p.lineCount; i++) {
-		if (p.lines[i]->children[0]->token->literal.intValue == n)
+		if (p.lines[i]->childCount > 1 && p.lines[i]->children[0]->token->literal.intValue == n)
 			return true;
 	}
 	return false;

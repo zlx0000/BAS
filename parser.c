@@ -304,6 +304,22 @@ ParseTreeNode *parseStatement(ParserContext *context)
 			node = parseDimStatement(context);
 			ERR_RET_NOFREE(node);
 		}
+		else if (strcasecmp(context->tokenPtr->lexeme, "PUTCHAR") == 0) {
+			node = parsePutCharStatement(context);
+			ERR_RET_NOFREE(node);
+		}
+		else if (strcasecmp(context->tokenPtr->lexeme, "CLEAR") == 0) {
+			node = parseClearStatement(context);
+			ERR_RET_NOFREE(node);
+		}
+		else if (strcasecmp(context->tokenPtr->lexeme, "HOME") == 0) {
+			node = parseHomeStatement(context);
+			ERR_RET_NOFREE(node);
+		}
+		else if (strcasecmp(context->tokenPtr->lexeme, "SLEEP") == 0) {
+			node = parseSleepStatement(context);
+			ERR_RET_NOFREE(node);
+		}
 		else {
 			ERR_NOFREE("Unknown statement type");
 		}
@@ -427,6 +443,65 @@ ParseTreeNode *parsePrintStatement(ParserContext *context)
 			ERR("Expected PRINT token.\n");
 	CONSUME_TOKEN;
 	node->children[0] = parsePrintList(context);
+	ERR_RET(node->children[0]);
+	node->childCount++;
+	return node;
+}
+
+ParseTreeNode *parsePutCharStatement(ParserContext *context)
+{
+	ParseTreeNode *node =
+		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
+	node->childCount = 0;
+	node->type = PUTCHAR;
+	node->token = context->tokenPtr;
+	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
+		strcasecmp(context->tokenPtr->lexeme, "PUTCHAR") != 0)
+			ERR("Expected PRINT token.\n");
+	CONSUME_TOKEN;
+	node->children[0] = parsePrintList(context);
+	ERR_RET(node->children[0]);
+	node->childCount++;
+	return node;
+}
+
+ParseTreeNode *parseClearStatement(ParserContext *context) {
+	ParseTreeNode *node =
+		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
+	node->childCount = 0;
+	node->type = CLEAR;
+	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
+		strcasecmp(context->tokenPtr->lexeme, "CLEAR") != 0)
+			ERR("Expected ELSE token.\n");
+	node->token = context->tokenPtr;
+	CONSUME_TOKEN;
+	return node;
+}
+
+ParseTreeNode *parseHomeStatement(ParserContext *context) {
+	ParseTreeNode *node =
+		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
+	node->childCount = 0;
+	node->type = HOME;
+	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
+		strcasecmp(context->tokenPtr->lexeme, "HOME") != 0)
+			ERR("Expected ELSE token.\n");
+	node->token = context->tokenPtr;
+	CONSUME_TOKEN;
+	return node;
+}
+
+ParseTreeNode *parseSleepStatement(ParserContext *context)
+{
+	ParseTreeNode *node =
+		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
+	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
+		strcasecmp(context->tokenPtr->lexeme, "SLEEP") != 0)
+			ERR("Expected GOTO token.\n");
+	node->token = context->tokenPtr;
+	CONSUME_TOKEN;
+	node->type = SLEEP;
+	node->children[0] = parseExpr(context);
 	ERR_RET(node->children[0]);
 	node->childCount++;
 	return node;
