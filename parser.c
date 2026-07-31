@@ -88,9 +88,16 @@ ParseTreeNode *parseIdentifier(ParserContext *context)
 		if (IN_RANGE && context->tokenPtr->type == PAREN_TOKEN
 			&& strcmp(context->tokenPtr->lexeme, "(") == 0) {
 			CONSUME_TOKEN;
-			node->childCount = 1;
-			node->children[0] = parseExpr(context);
-			ERR_RET(node->children[0]);
+			node->childCount = 0;
+			do {
+				if (IN_RANGE && context->tokenPtr->type == COMMA_TOKEN) {
+					if (node->childCount > 0)
+						CONSUME_TOKEN;
+				}
+				node->children[node->childCount] = parseExpr(context);
+				node->childCount++;
+				ERR_RET(node->children[0]);
+			} while (IN_RANGE && context->tokenPtr->type == COMMA_TOKEN);
 			if (IN_RANGE && context->tokenPtr->type == PAREN_TOKEN
 				&& strcmp(context->tokenPtr->lexeme, ")") == 0) {
 				CONSUME_TOKEN;
