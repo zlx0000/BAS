@@ -158,9 +158,9 @@ static const char *node_type_to_string(NodeType type)
 	}
 }
 
-static bool depth_arr[256];
 void print_tree(ParseTreeNode *t, unsigned int depth)
 {
+	static bool depth_arr[256];
 	if (depth >= sizeof(depth_arr))
 		return;
 	if (t->token)
