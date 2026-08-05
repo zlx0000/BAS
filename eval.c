@@ -343,8 +343,9 @@ Value evalDim(ParseTreeNode *node)
         || strcasecmp(name, "TANF") == 0
         || strcasecmp(name, "EXP") == 0
         || strcasecmp(name, "INT") == 0
-        || strcasecmp(name, "FLOAT") == 0) {
-        ERR("cannot use built in names", ERR_VAL_NULL);
+        || strcasecmp(name, "FLOAT") == 0
+        || strcasecmp(name, "NEW") == 0) {
+        ERR("cannot use built-in names", ERR_VAL_NULL);
     }
     v.type = ARR_VAL;
     if (node->children[0]->childCount == 0
@@ -354,6 +355,9 @@ Value evalDim(ParseTreeNode *node)
     Value size = evalExpr(node->children[0]->children[0]);
     if (size.type != INT_VAL)
         ERR("size has to be INT type", INCOMPATIBLE_TYPES);
+    if (size.value.intVal <= 0) {
+        ERR("array size can't be zero", ERR_VAL_NULL);
+    }
     if (findVar(name)
         && !IS_ERR((oldV = retriveVar(name))) && oldV.type == ARR_VAL) {
         Value *tmp = (Value *)realloc(oldV.value.arr.ptr,
@@ -864,7 +868,7 @@ Value evalRelExpr(ParseTreeNode *node)
         for (int i = 1; i < cnt; i += 2) {
             if (node->children[i]->type == EQ || node->children[i]->type == LT
                 || node->children[i]->type == GT || node->children[i]->type == LE
-                || node->children[i]->type == GE) {
+                || node->children[i]->type == GE || node->children[i]->type == NE) {
                 TokenType t = node->children[i]->type;
                 Value tmp = evalAddExpr(node->children[i+1]);
                 ERR_RETURN_EVAL(tmp);
@@ -1048,6 +1052,43 @@ Value evalRelExpr(ParseTreeNode *node)
                                 v.value.boolVal = (v.value.floatVal >= tmp.value.intVal);
                             else if (tmp.type == FLOAT_VAL)
                                 v.value.boolVal = (v.value.floatVal >= tmp.value.floatVal);
+                            else
+                                ERR("incompatible types", INCOMPATIBLE_TYPES);
+                        } else {
+                            ERR("incompatible types", INCOMPATIBLE_TYPES);
+                        }
+                        break;
+                    case NE:
+                        if (v.type == BOOL_VAL) {
+                            v.type = BOOL_VAL;
+                            if (tmp.type == BOOL_VAL)
+                                v.value.boolVal = (v.value.boolVal != tmp.value.boolVal);
+                            else if (tmp.type == INT_VAL)
+                                v.value.boolVal = (v.value.boolVal != tmp.value.intVal);
+                            else if (tmp.type == FLOAT_VAL)
+                                v.value.boolVal = (v.value.boolVal != tmp.value.floatVal);
+                            else
+                                ERR("incompatible types", INCOMPATIBLE_TYPES);
+                        }
+                        else if (v.type == INT_VAL) {
+                            v.type = BOOL_VAL;
+                            if (tmp.type == BOOL_VAL)
+                                v.value.boolVal = (v.value.intVal != tmp.value.boolVal);
+                            else if (tmp.type == INT_VAL)
+                                v.value.boolVal = (v.value.intVal != tmp.value.intVal);
+                            else if (tmp.type == FLOAT_VAL)
+                                v.value.boolVal = (v.value.intVal != tmp.value.floatVal);
+                            else
+                                ERR("incompatible types", INCOMPATIBLE_TYPES);
+                        }
+                        else if (v.type == FLOAT_VAL) {
+                            v.type = BOOL_VAL;
+                            if (tmp.type == BOOL_VAL)
+                                v.value.boolVal = (v.value.floatVal != tmp.value.boolVal);
+                            else if (tmp.type == INT_VAL)
+                                v.value.boolVal = (v.value.floatVal != tmp.value.intVal);
+                            else if (tmp.type == FLOAT_VAL)
+                                v.value.boolVal = (v.value.floatVal != tmp.value.floatVal);
                             else
                                 ERR("incompatible types", INCOMPATIBLE_TYPES);
                         } else {
@@ -1527,11 +1568,32 @@ Value evalPrimary(ParseTreeNode *node)
                 }
                 return v;
             }
+            else if (strcasecmp(name, "NEW") == 0) {
+                Value size = evalExpr(node->children[0]->children[0]);
+                v.type = ARR_VAL;
+                if (size.type != INT_VAL)
+                    ERR("size has to be INT type", INCOMPATIBLE_TYPES);
+                if (size.value.intVal <= 0) {
+                    ERR("array size can't be zero", ERR_VAL_NULL);
+                }
+                v.value.arr.refcnt = 1;
+                v.value.arr.ptr = (Value *)calloc(size.value.intVal, sizeof(Value));
+                if (v.value.arr.ptr == NULL)
+                    ERR("out of memory", OUT_OF_MEMORY);
+                v.value.arr.size = size.value.intVal;
+                for (int i = 0; i < size.value.intVal; i++) {
+                    v.value.arr.ptr[i].type = INT_VAL;
+                }
+                return v;
+            }
             Value id = retriveVar(name);
             ERR_RETURN_EVAL(id);
             if (id.type != ARR_VAL)
                 ERR("not an array", INCOMPATIBLE_TYPES);
-            Value index_val = evalExpr(node->children[0]->children[0]);
+            int i = 0;
+            int cnt = node->children[0]->childCount;
+next_index:
+            Value index_val = evalExpr(node->children[0]->children[i]);
             ERR_RETURN_EVAL(index_val);
             if (index_val.type != INT_VAL)
                 ERR("index has to be INT type", INCOMPATIBLE_TYPES);
@@ -1544,6 +1606,13 @@ Value evalPrimary(ParseTreeNode *node)
             v.value = ptr->value;
             if (IS_ERR(v))
                 ERR("uninitialized value", UNINIT_VAL);
+            if (i < cnt - 1) {
+                if (v.type != ARR_VAL)
+                    ERR("not an array", INCOMPATIBLE_TYPES);
+                id = v;
+                i++;
+                goto next_index;
+            }
         }
     }
     return v;

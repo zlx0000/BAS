@@ -142,6 +142,12 @@ ParseTreeNode *parseRelOperator(ParserContext *context)
 			node->type = LE;
 		else if (strcmp(context->tokenPtr->lexeme, "=") == 0)
 			node->type = EQ;
+		else if (strcmp(context->tokenPtr->lexeme, "==") == 0)
+			node->type = EQ;
+		else if (strcmp(context->tokenPtr->lexeme, "<>") == 0)
+			node->type = NE;
+		else if (strcmp(context->tokenPtr->lexeme, "!=") == 0)
+			node->type = NE;
 		else
 			ERR("Expected relops");
 		node->childCount = 0;
@@ -773,7 +779,10 @@ ParseTreeNode *parseAndOperand(ParserContext *context)
 				  || strcmp(context->tokenPtr->lexeme, "<") == 0  \
 				  || strcmp(context->tokenPtr->lexeme, ">=") == 0 \
 				  || strcmp(context->tokenPtr->lexeme, "<=") == 0 \
-				  || strcmp(context->tokenPtr->lexeme, "=") == 0)
+				  || strcmp(context->tokenPtr->lexeme, "=") == 0  \
+				  || strcmp(context->tokenPtr->lexeme, "==") == 0 \
+				  || strcmp(context->tokenPtr->lexeme, "!=") == 0 \
+				  || strcmp(context->tokenPtr->lexeme, "<>") == 0)
 ParseTreeNode *parseRelExpr(ParserContext *context)
 {
 	ParseTreeNode *node =
