@@ -333,6 +333,14 @@ ParseTreeNode *parseStatement(ParserContext *context)
 			node = parseSleepStatement(context);
 			ERR_RET_NOFREE(node);
 		}
+		else if (strcasecmp(context->tokenPtr->lexeme, "DELETE") == 0) {
+			node = parseDelStatement(context);
+			ERR_RET_NOFREE(node);
+		}
+		else if (strcasecmp(context->tokenPtr->lexeme, "FREE") == 0) {
+			node = parseFreeStatement(context);
+			ERR_RET_NOFREE(node);
+		}
 		else {
 			ERR_NOFREE("Unknown statement type");
 		}
@@ -696,6 +704,38 @@ ParseTreeNode *parseForTail(ParserContext *context)
 	node->children[0] = parseIdentifier(context);
 	ERR_RET(node->children[0]);
 	node->childCount = 1;
+	return node;
+}
+
+ParseTreeNode *parseDelStatement(ParserContext *context)
+{
+	ParseTreeNode *node =
+		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
+	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
+		strcasecmp(context->tokenPtr->lexeme, "DELETE") != 0)
+			ERR("Expected DELETE token.\n");
+	node->token = context->tokenPtr;
+	CONSUME_TOKEN;
+	node->type = DEL;
+	node->children[0] = parseIdentifier(context);
+	ERR_RET(node->children[0]);
+	node->childCount++;
+	return node;
+}
+
+ParseTreeNode *parseFreeStatement(ParserContext *context)
+{
+	ParseTreeNode *node =
+		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
+	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
+		strcasecmp(context->tokenPtr->lexeme, "FREE") != 0)
+			ERR("Expected FREE token.\n");
+	node->token = context->tokenPtr;
+	CONSUME_TOKEN;
+	node->type = FREE;
+	node->children[0] = parseIdentifier(context);
+	ERR_RET(node->children[0]);
+	node->childCount++;
 	return node;
 }
 

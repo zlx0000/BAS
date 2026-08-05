@@ -3,8 +3,8 @@
 
 char *keywords[] = {"LET", "PRINT", "INPUT", "IF", "ELSE", "FI", "THEN", "FOR", "TO",
                   	 "STEP", "NEXT", "GOTO", "GOSUB", "RETURN", "RETURN", "END",
-                  	 "REM", "AND", "OR", "NOT", "DIM", "PUTCHAR", "CLEAR", "HOME", "SLEEP"
-					 "DEL", "DELETE"};
+                  	 "REM", "AND", "OR", "NOT", "DIM", "PUTCHAR", "CLEAR", "HOME", "SLEEP",
+					 "DELETE", "FREE"};
 
 #define KEYWORDS_SIZE sizeof(keywords) / sizeof(keywords[0])
 

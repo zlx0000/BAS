@@ -80,6 +80,8 @@ typedef enum NodeType {
 	INPUT,
 	INPUT_LIST,
 	SLEEP,
+	DEL,
+	FREE,
 	FOR,
 	TO,
 	STEP,
@@ -174,6 +176,8 @@ ParseTreeNode *parseClearStatement(ParserContext *context);
 ParseTreeNode *parseHomeStatement(ParserContext *context);
 ParseTreeNode *parseSleepStatement(ParserContext *context);
 ParseTreeNode *parseDimStatement(ParserContext *context);
+ParseTreeNode *parseDelStatement(ParserContext *context);
+ParseTreeNode *parseFreeStatement(ParserContext *context);
 ParseTreeNode *parsePrintList(ParserContext *context);
 ParseTreeNode *parsePrintItem(ParserContext *context);
 ParseTreeNode *parseInputStatement(ParserContext *context);
@@ -322,6 +326,8 @@ Value evalGoto(ParseTreeNode *node);
 Value evalSleep(ParseTreeNode *node);
 Value evalClear(ParseTreeNode *node);
 Value evalHome(ParseTreeNode *node);
+Value evalFree(ParseTreeNode *node);
+Value evalDel(ParseTreeNode *node);
 Value evalOrExpr(ParseTreeNode *node);
 Value evalAndExpr(ParseTreeNode *node);
 Value evalRelExpr(ParseTreeNode *node);

@@ -43,7 +43,7 @@ void init_eval()
     shadow_st.size = 0;
 }
 
-static Value retriveVar(char *name) {
+Value retriveVar(char *name) {
     VarListNode *cur = &varList;
     Value v;
     while (cur->next != NULL) {
@@ -57,7 +57,7 @@ static Value retriveVar(char *name) {
     ERR("variable not found", VAR_NOT_FOUND);
 }
 
-static bool findVar(char *name) {
+bool findVar(char *name) {
     VarListNode *cur = &varList;
     while (cur->next != NULL) {
         cur = cur->next;
@@ -67,7 +67,7 @@ static bool findVar(char *name) {
     return false;
 }
 
-static Value modVar(char *name, Value val) {
+Value modVar(char *name, Value val) {
     VarListNode *cur = &varList;
     while (cur->next != NULL) {
         cur = cur->next;
@@ -80,7 +80,7 @@ static Value modVar(char *name, Value val) {
     ERR("variable not found", VAR_NOT_FOUND);
 }
 
-static Value insertVar(char *name, Value val)
+Value insertVar(char *name, Value val)
 {
     VarListNode *cur = &varList;
     while (cur->next != NULL) {
@@ -97,7 +97,7 @@ static Value insertVar(char *name, Value val)
     return val;
 }
 
-static Value insertVar_strict(char *name, Value val)
+Value insertVar_strict(char *name, Value val)
 {
     VarListNode *cur = &varList;
     VarListNode *v = malloc(sizeof(VarListNode));
@@ -114,7 +114,7 @@ static Value insertVar_strict(char *name, Value val)
     return val;
 }
 
-static Value delVar(char *name)
+Value delVar(char *name)
 {
     VarListNode *cur = &varList;
     VarListNode *prev;
@@ -127,12 +127,13 @@ static Value delVar(char *name)
             v.value = cur->var.val.value;
             prev->next = cur->next;
             free(cur);
+            return DEF_VAL;
         }
     }
     ERR("no variables of this name", VAR_NOT_FOUND);
 }
 
-static Value push(Stack *st, Value val)
+Value push(Stack *st, Value val)
 {
     if (__unlikely(st->size == STASK_SIZE)) {
         ERR("stack overflow", STACK_OVERFLOW);
@@ -141,7 +142,7 @@ static Value push(Stack *st, Value val)
     return val;
 }
 
-static Value pop(Stack *st)
+Value pop(Stack *st)
 {
     if (__unlikely(st->size == 0)) {
         ERR("stack underflow", STACK_UNDERFLOW);
@@ -149,7 +150,7 @@ static Value pop(Stack *st)
     return st->st[(st->size--) - 1];
 }
 
-static Value peek(Stack *st)
+Value peek(Stack *st)
 {
     if (__unlikely(st->size == 0)) {
         return ERRVAL(STACK_UNDERFLOW);
@@ -164,7 +165,40 @@ void copy_stack(Stack *src, Stack* dst) {
     }
 }
 
-static void printVal(Value val)
+void printArr(Value *val)
+{
+    printf("[");
+    for (int i = 0; i < val->value.arr.size; i++)
+    {
+        Value *ptr = val->value.arr.ptr + i;
+        switch (ptr->type) {
+            case BOOL_VAL:
+                if (ptr->value.boolVal == true)
+                    printf("TRUE");
+                else if (ptr->value.boolVal == false)
+                    printf("FALSE");
+                break;
+            case INT_VAL:
+                printf("%d", ptr->value.intVal);
+                break;
+            case FLOAT_VAL:
+                printf("%f", ptr->value.floatVal);
+                break;
+            case STRING_VAL:
+                printf("%s", ptr->value.string.str);
+                break;
+            case ARR_VAL:
+                printArr(ptr);
+                break;
+        }
+        if (i != val->value.arr.size - 1)
+            printf(", ");
+        else
+            printf("]");
+    }
+}
+
+void printVal(Value val)
 {
     switch (val.type) {
         case BOOL_VAL:
@@ -183,35 +217,12 @@ static void printVal(Value val)
             printf("%s", val.value.string.str);
             break;
         case ARR_VAL:
-            for (int i = 0; i < val.value.arr.size; i++)
-            {
-                Value *ptr = val.value.arr.ptr + i;
-                switch (ptr->type) {
-                    case BOOL_VAL:
-                        if (ptr->value.boolVal == true)
-                            printf("TRUE");
-                        else if (ptr->value.boolVal == false)
-                            printf("FALSE");
-                        break;
-                    case INT_VAL:
-                        printf("%d", ptr->value.intVal);
-                        break;
-                    case FLOAT_VAL:
-                        printf("%f", ptr->value.floatVal);
-                        break;
-                    case STRING_VAL:
-                        printf("%s", ptr->value.string.str);
-                        break;
-                }
-                if (i == val.value.arr.size - 1)
-                    printf("\n");
-                else
-                    printf(", ");
-            }
+            printArr(&val);
+            printf("\n");
     }
 }
 
-static void putChar(Value val)
+void putChar(Value val)
 {
     switch (val.type) {
         case BOOL_VAL:
@@ -278,6 +289,10 @@ Value evalLine(ParseTreeNode *node)
             return evalClear(statement);
         case HOME:
             return evalHome(statement);
+        case FREE:
+            return evalFree(statement);
+        case DEL:
+            return evalDel(statement);
         default:
             ERR("unknown statement", UNKNOWN_STATEMENT);
     }
@@ -294,14 +309,15 @@ Value evalLet(ParseTreeNode *node)
         || strcasecmp(name, "TANF") == 0
         || strcasecmp(name, "EXP") == 0
         || strcasecmp(name, "INT") == 0
-        || strcasecmp(name, "FLOAT") == 0) {
-        ERR("cannot use built in names", ERR_VAL_NULL);
+        || strcasecmp(name, "FLOAT") == 0
+        || strcasecmp(name, "NEW") == 0) {
+        ERR("cannot use built-in names", ERR_VAL_NULL);
     }
-    Value v = evalExpr(node->children[2]);
-    ERR_RETURN_EVAL(v);
     if (node->children[0]->childCount == 0
         || node->children[0]->children[0] == NULL) {
         char *name = node->children[0]->token->lexeme;
+        Value v = evalExpr(node->children[2]);
+        ERR_RETURN_EVAL(v);
         if (node->token == NULL) {
             pc++;
             return modVar(name, v);
@@ -309,25 +325,46 @@ Value evalLet(ParseTreeNode *node)
             pc++;
             return insertVar(name, v);
         }
+        pc++;
+        return v;
     } else {
         Value id = retriveVar(name);
         ERR_RETURN_EVAL(id);
         if (id.type != ARR_VAL)
             ERR("not an array", INCOMPATIBLE_TYPES);
-        Value index_val = evalExpr(node->children[0]->children[0]);
+        int i = 0;
+        int cnt = node->children[0]->childCount;
+        Value index_val = evalExpr(node->children[0]->children[i]);
         ERR_RETURN_EVAL(index_val);
         if (index_val.type != INT_VAL)
             ERR("index has to be INT type", INCOMPATIBLE_TYPES);
         int index = index_val.value.intVal;
         if (index >= id.value.arr.size)
             ERR("index out of range", INDEX_OUT_OF_RANGE);
+        Value v = evalExpr(node->children[2]);
+        ERR_RETURN_EVAL(v);
         Value *base = id.value.arr.ptr;
         Value *ptr = base + index;
+        i++;
+        while (i < cnt) {
+            if (ptr->type != ARR_VAL)
+                ERR("not an array", INCOMPATIBLE_TYPES);
+            Value index_val = evalExpr(node->children[0]->children[i]);
+            ERR_RETURN_EVAL(index_val);
+            if (index_val.type != INT_VAL)
+                ERR("index has to be INT type", INCOMPATIBLE_TYPES);
+            int index = index_val.value.intVal;
+            if (index >= id.value.arr.size)
+                ERR("index out of range", INDEX_OUT_OF_RANGE);
+            base = ptr->value.arr.ptr;
+            ptr = base + index;
+            i++;
+        }
         ptr->type = v.type;
         ptr->value = v.value;
+        pc++;
+        return v;
     }
-    pc++;
-    return v;
 }
 
 Value evalDim(ParseTreeNode *node)
@@ -727,7 +764,7 @@ Value evalSleep(ParseTreeNode *node)
         ERR("incompatible types", INCOMPATIBLE_TYPES);
     }
     pc++;
-    return DEF_VAL;
+    return t;
 }
 
 Value evalClear(ParseTreeNode *node)
@@ -740,6 +777,146 @@ Value evalClear(ParseTreeNode *node)
 Value evalHome(ParseTreeNode *node)
 {
     printf("\033[H");
+    pc++;
+    return DEF_VAL;
+}
+
+static void free_arr(Value *arr)
+{
+    Value *base = arr->value.arr.ptr;
+    for (int i = 0; i < arr->value.arr.size; i++) {
+        if ((base + i)->type == ARR_VAL)
+            free_arr((base + i)->value.arr.ptr);
+    }
+    free(base);
+}
+
+Value evalFree(ParseTreeNode *node)
+{
+    char *name = node->children[0]->token->lexeme;
+    if (strcasecmp(name, "COS") == 0
+        || strcasecmp(name, "SIN") == 0
+        || strcasecmp(name, "COSF") == 0
+        || strcasecmp(name, "SINF") == 0
+        || strcasecmp(name, "TAN") == 0
+        || strcasecmp(name, "TANF") == 0
+        || strcasecmp(name, "EXP") == 0
+        || strcasecmp(name, "INT") == 0
+        || strcasecmp(name, "FLOAT") == 0
+        || strcasecmp(name, "NEW") == 0) {
+        ERR("cannot use built-in names", ERR_VAL_NULL);
+    }
+    if (node->children[0]->childCount == 0
+        || node->children[0]->children[0] == NULL) {
+        char *name = node->children[0]->token->lexeme;
+        Value v = retriveVar(name);
+        if (v.type == ARR_VAL) {
+            free_arr(&v);
+        } else {
+            ERR("not an array", INCOMPATIBLE_TYPES);
+        }
+        modVar(name, DEF_VAL);
+    } else {
+        Value id = retriveVar(name);
+        ERR_RETURN_EVAL(id);
+        if (id.type != ARR_VAL)
+            ERR("not an array", INCOMPATIBLE_TYPES);
+        int i = 0;
+        int cnt = node->children[0]->childCount;
+        Value index_val = evalExpr(node->children[0]->children[i]);
+        ERR_RETURN_EVAL(index_val);
+        if (index_val.type != INT_VAL)
+            ERR("index has to be INT type", INCOMPATIBLE_TYPES);
+        int index = index_val.value.intVal;
+        if (index >= id.value.arr.size)
+            ERR("index out of range", INDEX_OUT_OF_RANGE);
+        Value *base = id.value.arr.ptr;
+        Value *ptr = base + index;
+        i++;
+        while (i < cnt) {
+            if (ptr->type != ARR_VAL)
+                ERR("not an array", INCOMPATIBLE_TYPES);
+            Value index_val = evalExpr(node->children[0]->children[i]);
+            ERR_RETURN_EVAL(index_val);
+            if (index_val.type != INT_VAL)
+                ERR("index has to be INT type", INCOMPATIBLE_TYPES);
+            int index = index_val.value.intVal;
+            if (index >= id.value.arr.size)
+                ERR("index out of range", INDEX_OUT_OF_RANGE);
+            base = ptr->value.arr.ptr;
+            ptr = base + index;
+            i++;
+        }
+        if (ptr->type != ARR_VAL)
+            ERR("not an array", INCOMPATIBLE_TYPES);    
+        free_arr(ptr);
+        ptr->type = INT_VAL;
+        ptr->value.intVal = 0;
+    }
+    pc++;
+    return DEF_VAL;
+}
+
+Value evalDel(ParseTreeNode *node)
+{
+    char *name = node->children[0]->token->lexeme;
+    if (strcasecmp(name, "COS") == 0
+        || strcasecmp(name, "SIN") == 0
+        || strcasecmp(name, "COSF") == 0
+        || strcasecmp(name, "SINF") == 0
+        || strcasecmp(name, "TAN") == 0
+        || strcasecmp(name, "TANF") == 0
+        || strcasecmp(name, "EXP") == 0
+        || strcasecmp(name, "INT") == 0
+        || strcasecmp(name, "FLOAT") == 0
+        || strcasecmp(name, "NEW") == 0) {
+        ERR("cannot use built-in names", ERR_VAL_NULL);
+    }
+    if (node->children[0]->childCount == 0
+        || node->children[0]->children[0] == NULL) {
+        char *name = node->children[0]->token->lexeme;
+        Value v = retriveVar(name);
+        if (v.type == ARR_VAL) {
+            free_arr(&v);
+        }
+        delVar(name);
+    } else {
+        Value id = retriveVar(name);
+        ERR_RETURN_EVAL(id);
+        if (id.type != ARR_VAL)
+            ERR("not an array", INCOMPATIBLE_TYPES);
+        int i = 0;
+        int cnt = node->children[0]->childCount;
+        Value index_val = evalExpr(node->children[0]->children[i]);
+        ERR_RETURN_EVAL(index_val);
+        if (index_val.type != INT_VAL)
+            ERR("index has to be INT type", INCOMPATIBLE_TYPES);
+        int index = index_val.value.intVal;
+        if (index >= id.value.arr.size)
+            ERR("index out of range", INDEX_OUT_OF_RANGE);
+        Value *base = id.value.arr.ptr;
+        Value *ptr = base + index;
+        i++;
+        while (i < cnt) {
+            if (ptr->type != ARR_VAL)
+                ERR("not an array", INCOMPATIBLE_TYPES);
+            Value index_val = evalExpr(node->children[0]->children[i]);
+            ERR_RETURN_EVAL(index_val);
+            if (index_val.type != INT_VAL)
+                ERR("index has to be INT type", INCOMPATIBLE_TYPES);
+            int index = index_val.value.intVal;
+            if (index >= id.value.arr.size)
+                ERR("index out of range", INDEX_OUT_OF_RANGE);
+            base = ptr->value.arr.ptr;
+            ptr = base + index;
+            i++;
+        }
+        if (ptr->type != ARR_VAL)
+            ERR("not an array", INCOMPATIBLE_TYPES);    
+        free_arr(ptr);
+        ptr->type = INT_VAL;
+        ptr->value.intVal = 0;
+    }
     pc++;
     return DEF_VAL;
 }
