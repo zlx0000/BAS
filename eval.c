@@ -406,7 +406,7 @@ Value evalDim(ParseTreeNode *node)
             memset(v.value.arr.ptr + oldV.value.arr.size, 0,
                     (size.value.intVal - oldV.value.arr.size) * sizeof(Value));
             for (int i = 0; i < (size.value.intVal - oldV.value.arr.size); i++) {
-                printf("f\n");
+                //printf("f\n");
                 (v.value.arr.ptr + oldV.value.arr.size + i)->type = INT_VAL;
             }
         }
