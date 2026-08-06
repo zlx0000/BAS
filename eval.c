@@ -841,7 +841,7 @@ Value evalFree(ParseTreeNode *node)
             if (index_val.type != INT_VAL)
                 ERR("index has to be INT type", INCOMPATIBLE_TYPES);
             int index = index_val.value.intVal;
-            if (index >= id.value.arr.size)
+            if (index >= ptr->value.arr.size)
                 ERR("index out of range", INDEX_OUT_OF_RANGE);
             base = ptr->value.arr.ptr;
             ptr = base + index;
@@ -905,7 +905,7 @@ Value evalDel(ParseTreeNode *node)
             if (index_val.type != INT_VAL)
                 ERR("index has to be INT type", INCOMPATIBLE_TYPES);
             int index = index_val.value.intVal;
-            if (index >= id.value.arr.size)
+            if (index >= ptr->value.arr.size)
                 ERR("index out of range", INDEX_OUT_OF_RANGE);
             base = ptr->value.arr.ptr;
             ptr = base + index;
