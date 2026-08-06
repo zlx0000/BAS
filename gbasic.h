@@ -230,6 +230,8 @@ typedef struct Value {
         String string;
 		struct Array {
 			struct Value *ptr;
+			bool hasAlias;
+			char* alias;
 			int size;
 			size_t refcnt;
 		} arr;
