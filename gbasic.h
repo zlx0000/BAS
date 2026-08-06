@@ -231,7 +231,7 @@ typedef struct Value {
 		struct Array {
 			struct Value *ptr;
 			bool hasAlias;
-			char* alias;
+			char** alias;
 			int size;
 			size_t refcnt;
 		} arr;
