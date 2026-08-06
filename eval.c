@@ -786,7 +786,7 @@ static void free_arr(Value *arr)
     Value *base = arr->value.arr.ptr;
     for (int i = 0; i < arr->value.arr.size; i++) {
         if ((base + i)->type == ARR_VAL)
-            free_arr((base + i)->value.arr.ptr);
+            free_arr((base + i));
     }
     free(base);
 }
