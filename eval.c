@@ -13,6 +13,7 @@
 
 static VarListNode varList;
 static ArrList arrList;
+static ArrList accessdArr;
 static Stack for_st;
 Stack if_st;
 enum If_State if_state = IF_BEFORE;
@@ -41,13 +42,15 @@ void init_eval()
     varList.var.name = NULL;
     arrList.ptr = NULL;
     arrList.next = NULL;
+    accessdArr.ptr = NULL;
+    accessdArr.next = NULL;
     for_st.size = 0;
     if_st.size = 0;
     shadow_st.size = 0;
 }
 
-bool findArr(Value *ptr) {
-    ArrList *cur = &arrList;
+bool findArr(Value *ptr, ArrList *list) {
+    ArrList *cur = list;
     while (cur->next != NULL) {
         cur = cur->next;
         if (cur->ptr == ptr)
@@ -56,9 +59,9 @@ bool findArr(Value *ptr) {
     return false;
 }
 
-Value insertArr(Value *ptr)
+Value insertArr(Value *ptr, ArrList *list)
 {
-    ArrList *cur = &arrList;
+    ArrList *cur = list;
     ArrList *v = malloc(sizeof(ArrList));
     v->ptr = ptr;
     while (cur->next != NULL) {
@@ -67,14 +70,14 @@ Value insertArr(Value *ptr)
             return ERRVAL(VAR_ALREADY_EXIST);
         }
     }
-    v->next = arrList.next;
-    arrList.next = v;
+    v->next = list->next;
+    list->next = v;
     return DEF_VAL;
 }
 
-Value delArr(Value *ptr)
+Value delArr(Value *ptr, ArrList *list)
 {
-    ArrList *cur = &arrList;
+    ArrList *cur = list;
     ArrList *prev;
     Value v;
     while (cur->next != NULL) {
@@ -87,6 +90,15 @@ Value delArr(Value *ptr)
         }
     }
     ERR("no such pointer", VAR_NOT_FOUND);
+}
+
+void free_arr_list(ArrList *ptr)
+{
+    ArrList *cur = ptr;
+    while (cur->next != NULL) {
+        cur = cur->next;
+        free(cur);
+    }
 }
 
 Value retriveVar(char *name) {
@@ -213,6 +225,7 @@ void copy_stack(Stack *src, Stack* dst) {
 
 void printArr(Value *val)
 {
+    insertArr(val, &accessdArr);
     printf("[");
     for (int i = 0; i < val->value.arr.size; i++)
     {
@@ -231,10 +244,13 @@ void printArr(Value *val)
                 printf("%f", ptr->value.floatVal);
                 break;
             case STRING_VAL:
-                printf("%s", ptr->value.string.str);
+                printf("\"%s\"", ptr->value.string.str);
                 break;
             case ARR_VAL:
-                printArr(ptr);
+                if (findArr(ptr, &accessdArr))
+                    printf("...");
+                else
+                    printArr(ptr);
                 break;
         }
         if (i != val->value.arr.size - 1)
@@ -264,6 +280,7 @@ void printVal(Value val)
             break;
         case ARR_VAL:
             printArr(&val);
+            free_arr_list(&accessdArr);
             printf("\n");
     }
 }
@@ -465,7 +482,7 @@ Value evalDim(ParseTreeNode *node)
     if (v.value.arr.ptr == NULL)
         ERR("out of memory", OUT_OF_MEMORY);
     v.value.arr.size = size.value.intVal;
-    insertArr(v.value.arr.ptr);
+    insertArr(v.value.arr.ptr, &arrList);
     for (int i = 0; i < size.value.intVal; i++) {
         v.value.arr.ptr[i].type = INT_VAL;
     }
@@ -833,9 +850,9 @@ static void free_arr(Value *arr)
     Value *base = arr->value.arr.ptr;
     for (int i = 0; i < arr->value.arr.size; i++) {
         if ((base + i)->type == ARR_VAL)
-            if (findArr(base + i)) {
+            if (findArr(base + i, &arrList)) {
                 free_arr(base + i);
-                delArr(base + i);
+                delArr(base + i, &arrList);
             }
     }
     free(base);
@@ -1808,7 +1825,7 @@ Value evalPrimary(ParseTreeNode *node)
                 if (v.value.arr.ptr == NULL)
                     ERR("out of memory", OUT_OF_MEMORY);
                 v.value.arr.size = size.value.intVal;
-                insertArr(v.value.arr.ptr);
+                insertArr(v.value.arr.ptr, &arrList);
                 for (int i = 0; i < size.value.intVal; i++) {
                     v.value.arr.ptr[i].type = INT_VAL;
                 }
