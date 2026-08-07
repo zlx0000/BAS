@@ -12,6 +12,7 @@
 #define DEF_VAL ((Value){.type = INT_VAL, .value.intVal = 0})
 
 static VarListNode varList;
+static ArrList arrList;
 static Stack for_st;
 Stack if_st;
 enum If_State if_state = IF_BEFORE;
@@ -38,9 +39,54 @@ void init_eval()
 {
     varList.next = NULL;
     varList.var.name = NULL;
+    arrList.ptr = NULL;
+    arrList.next = NULL;
     for_st.size = 0;
     if_st.size = 0;
     shadow_st.size = 0;
+}
+
+bool findArr(Value *ptr) {
+    ArrList *cur = &arrList;
+    while (cur->next != NULL) {
+        cur = cur->next;
+        if (cur->ptr == ptr)
+            return true;
+    }
+    return false;
+}
+
+Value insertArr(Value *ptr)
+{
+    ArrList *cur = &arrList;
+    ArrList *v = malloc(sizeof(ArrList));
+    v->ptr = ptr;
+    while (cur->next != NULL) {
+        cur = cur->next;
+        if (cur->ptr == ptr) {
+            return ERRVAL(VAR_ALREADY_EXIST);
+        }
+    }
+    v->next = arrList.next;
+    arrList.next = v;
+    return DEF_VAL;
+}
+
+Value delArr(Value *ptr)
+{
+    ArrList *cur = &arrList;
+    ArrList *prev;
+    Value v;
+    while (cur->next != NULL) {
+        prev = cur;
+        cur = cur->next;
+        if (cur->ptr == ptr) {
+            prev->next = cur->next;
+            free(cur);
+            return DEF_VAL;
+        }
+    }
+    ERR("no such pointer", VAR_NOT_FOUND);
 }
 
 Value retriveVar(char *name) {
@@ -419,6 +465,7 @@ Value evalDim(ParseTreeNode *node)
     if (v.value.arr.ptr == NULL)
         ERR("out of memory", OUT_OF_MEMORY);
     v.value.arr.size = size.value.intVal;
+    insertArr(v.value.arr.ptr);
     for (int i = 0; i < size.value.intVal; i++) {
         v.value.arr.ptr[i].type = INT_VAL;
     }
@@ -786,7 +833,10 @@ static void free_arr(Value *arr)
     Value *base = arr->value.arr.ptr;
     for (int i = 0; i < arr->value.arr.size; i++) {
         if ((base + i)->type == ARR_VAL)
-            free_arr((base + i));
+            if (findArr(base + i)) {
+                free_arr(base + i);
+                delArr(base + i);
+            }
     }
     free(base);
 }
@@ -1758,6 +1808,7 @@ Value evalPrimary(ParseTreeNode *node)
                 if (v.value.arr.ptr == NULL)
                     ERR("out of memory", OUT_OF_MEMORY);
                 v.value.arr.size = size.value.intVal;
+                insertArr(v.value.arr.ptr);
                 for (int i = 0; i < size.value.intVal; i++) {
                     v.value.arr.ptr[i].type = INT_VAL;
                 }

@@ -301,6 +301,12 @@ typedef struct Program {
 	Stack *shadow_st;
 } Program;
 
+typedef struct ArrList {
+	Value *ptr;
+	size_t size;
+	struct ArrList *next;
+} ArrList;
+
 extern int pc;
 extern int expectedLineNum;
 extern Program prog;
