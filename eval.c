@@ -550,6 +550,9 @@ Value evalDim(ParseTreeNode *node)
     }
     if (findVar(name)
         && !IS_ERR((oldV = retriveVar(name))) && oldV.type == ARR_VAL) {
+        //todo: free referenced array when shrinking
+        if (oldV.value.arr.size > size.value.intVal)
+            ERR("can not shrink", ERR_VAL_NULL);
         Value *tmp = (Value *)realloc(oldV.value.arr.ptr,
                     size.value.intVal * sizeof(Value));
         if (tmp == NULL)
