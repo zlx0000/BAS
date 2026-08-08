@@ -1,5 +1,11 @@
 .DEFAULT_GOAL := gbasic
 
+ifeq ($(OS),Windows_NT)
+    LDLIBS = -lm
+else
+    LDLIBS = -lm -lreadline
+endif
+
 testlexer-g.o: testlexer.c gbasic.h
 	gcc -c ./testlexer.c -o ./testlexer-g.o -g
 
@@ -25,13 +31,13 @@ testeval-g.o: testeval.c gbasic.h
 	gcc -c ./testeval.c -o ./testeval.o -g
 
 testeval: testeval-g.o lexer-g.o parser-g.o eval-g.o
-	gcc ./testeval-g.o ./lexer-g.o ./parser-g.o ./eval-g.o -o testeval -g -lm
+	gcc ./testeval-g.o ./lexer-g.o ./parser-g.o ./eval-g.o -o testeval -g $(LDLIBS)
 
 gbasic-g.o: gbasic.c gbasic.h
 	gcc -c ./gbasic.c -o ./gbasic-g.o -g
 
 gbasic-debug: gbasic-g.o lexer-g.o parser-g.o eval-g.o
-	gcc ./gbasic-g.o ./lexer-g.o ./parser-g.o ./eval-g.o -o gbasic-debug -g -lm -lreadline
+	gcc ./gbasic-g.o ./lexer-g.o ./parser-g.o ./eval-g.o -o gbasic-debug -g $(LDLIBS)
 
 
 lexer.o: lexer.c gbasic.h
@@ -47,7 +53,7 @@ gbasic.o: gbasic.c gbasic.h
 	gcc -c ./gbasic.c -o ./gbasic.o -O3
 
 gbasic: gbasic.o lexer.o parser.o eval.o
-	gcc ./gbasic.o ./lexer.o ./parser.o ./eval.o -o gbasic -O3 -lm -lreadline
+	gcc ./gbasic.o ./lexer.o ./parser.o ./eval.o -o gbasic -O3 $(LDLIBS)
 	strip gbasic
 
 clean:
