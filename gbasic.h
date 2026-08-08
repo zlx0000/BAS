@@ -316,6 +316,7 @@ typedef struct Program {
 typedef struct ArrPtrList {
 	Value *ptr;
 	size_t size;
+	bool isReachable;
 	struct ArrPtrList *next;
 } ArrPtrList;
 

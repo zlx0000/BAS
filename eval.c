@@ -128,6 +128,42 @@ bool findVar(char *name) {
     return false;
 }
 
+void del_freed_arr_pointer_in_var_deep(Value *ptr, int size)
+{
+    if (!findArrPtr(ptr, &accessdArr)) {
+        insertArrPtr(ptr, &accessdArr);
+        for (int i = 0; i < size; i++) {
+            if ((ptr + i)->type == ARR_VAL) {
+                if (!findArrPtr((ptr + i)->value.arr.ptr, &arrPtrList)) {
+                    (ptr + i)->type = INT_VAL;
+                    (ptr + i)->value.intVal = 0;
+                } else {
+                    del_freed_arr_pointer_in_var_deep((ptr + i)->value.arr.ptr,
+                         (ptr + i)->value.arr.size);
+                }
+            }
+        }
+    }
+}
+
+void del_freed_arr_pointer_in_var()
+{
+    VarListNode *cur = &varList;
+    while (cur->next != NULL) {
+        cur = cur->next;
+        if (cur->var.val.type == ARR_VAL) {
+            if (!findArrPtr(cur->var.val.value.arr.ptr, &arrPtrList)) {
+                cur->var.val = DEF_VAL;
+                continue;
+            }
+            free_arr_list(&accessdArr);
+            del_freed_arr_pointer_in_var_deep(cur->var.val.value.arr.ptr,
+                    cur->var.val.value.arr.size);
+            free_arr_list(&accessdArr);
+        }
+    }
+}
+
 Value modVar(char *name, Value val) {
     VarListNode *cur = &varList;
     while (cur->next != NULL) {
@@ -850,17 +886,18 @@ Value evalHome(ParseTreeNode *node)
     return DEF_VAL;
 }
 
-static void free_arr(Value *arr)
+static void free_arr(Value *arr, int size)
 {
-    Value *base = arr->value.arr.ptr;
-    for (int i = 0; i < arr->value.arr.size; i++) {
-        if ((base + i)->type == ARR_VAL)
-            if (findArrPtr(base + i, &arrPtrList)) {
-                free_arr(base + i);
-                delArrPtr(base + i, &arrPtrList);
+    if (findArrPtr(arr, &arrPtrList)) {
+        delArrPtr(arr, &arrPtrList);
+        for (int i = 0; i < size; i++) {
+            if ((arr + i)->type == ARR_VAL) {
+                free_arr((arr + i)->value.arr.ptr,
+                         (arr + i)->value.arr.size);
             }
+        }
+        free(arr);
     }
-    free(base);
 }
 
 Value evalFree(ParseTreeNode *node)
@@ -883,7 +920,8 @@ Value evalFree(ParseTreeNode *node)
         char *name = node->children[0]->token->lexeme;
         Value v = retriveVar(name);
         if (v.type == ARR_VAL) {
-            free_arr(&v);
+            free_arr(v.value.arr.ptr, v.value.arr.size);
+            del_freed_arr_pointer_in_var();
         } else {
             ERR("not an array", INCOMPATIBLE_TYPES);
         }
@@ -921,7 +959,8 @@ Value evalFree(ParseTreeNode *node)
         }
         if (ptr->type != ARR_VAL)
             ERR("not an array", INCOMPATIBLE_TYPES);    
-        free_arr(ptr);
+        free_arr(ptr->value.arr.ptr, ptr->value.arr.size);
+        del_freed_arr_pointer_in_var();
         ptr->type = INT_VAL;
         ptr->value.intVal = 0;
     }
@@ -949,7 +988,8 @@ Value evalDel(ParseTreeNode *node)
         char *name = node->children[0]->token->lexeme;
         Value v = retriveVar(name);
         if (v.type == ARR_VAL) {
-            free_arr(&v);
+            free_arr(v.value.arr.ptr, v.value.arr.size);
+            del_freed_arr_pointer_in_var();
         }
         delVar(name);
     } else {
@@ -985,7 +1025,8 @@ Value evalDel(ParseTreeNode *node)
         }
         if (ptr->type != ARR_VAL)
             ERR("not an array", INCOMPATIBLE_TYPES);    
-        free_arr(ptr);
+        free_arr(ptr->value.arr.ptr, ptr->value.arr.size);
+        del_freed_arr_pointer_in_var();
         ptr->type = INT_VAL;
         ptr->value.intVal = 0;
     }
