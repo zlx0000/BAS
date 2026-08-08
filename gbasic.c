@@ -15,7 +15,7 @@ int pc;
 int expectedLineNum;
 Stack shadow_st;
 
-#ifndef _WIN32
+#ifndef __WINDOWS__
 static char *keyword_generator(const char *text, int state)
 {
     static int index;
@@ -70,7 +70,7 @@ int main(int argc, char **argv)
 	prog.lineCount = 0;
 	prog.lines = (ParseTreeNode **)calloc(16384, sizeof (ParseTreeNode *));
 	prog.shadow_st = (Stack *)calloc(16384, sizeof (Stack));
-#ifndef _WIN32
+#ifndef __WINDOWS__
 	rl_variable_bind("enable-bracketed-paste", "off");
 	rl_attempted_completion_function = gbasic_completion;
 	using_history();
@@ -91,7 +91,7 @@ repl:
 		.type = INT_VAL,
 	};
 	if (isatty(STDIN_FILENO)) {
-#ifdef _WIN32
+#ifdef __WINDOWS__
 		printf(">");
 		str = calloc(STR_SIZE, sizeof(char));
 		if (!fgets(str, STR_SIZE, stdin)) {
