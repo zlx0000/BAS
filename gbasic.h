@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <stdint.h>
 #include <ctype.h>
 
@@ -30,6 +31,17 @@
 
 # define __unlikely(cond)	__builtin_expect ((cond), 0)
 # define __likely(cond)	__builtin_expect ((cond), 1)
+
+static char *keywords[] = {"LET", "PRINT", "INPUT", "IF", "ELSE", "FI", "THEN", "FOR", "TO",
+                  	 "STEP", "NEXT", "GOTO", "GOSUB", "RETURN", "RETURN", "END",
+                  	 "REM", "AND", "OR", "NOT", "DIM", "PUTCHAR", "CLEAR", "HOME", "SLEEP",
+					 "DELETE", "FREE"};
+
+#define KEYWORDS_SIZE sizeof(keywords) / sizeof(keywords[0])
+
+static char *relops[] = {"=", "==", "<>", "!=", "<=", ">=", "<", ">"};
+
+#define RELOPS_SIZE sizeof(relops) / sizeof(relops[0])
 
 typedef enum TokenType { //the order of which reflects the precedence.
 	TOKEN_TYPE_NULL = 0,

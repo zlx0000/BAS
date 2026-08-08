@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "gbasic.h"
-#include "keywords.h"
 
 typedef enum {
 	MISMATCH,
