@@ -118,7 +118,7 @@ void free_arr_list(ArrPtrList *ptr)
 void mark_reachable_deep(Value *ptr, int size, Value *until)
 {
     ArrPtrList *arr = retriveArrPtr(ptr, &arrPtrList);
-    if ((!until || ptr != until) && !arr->isReachable) {
+    if (findArrPtr(ptr, &arrPtrList) && (!until || ptr != until) && !arr->isReachable) {
         arr->isReachable = true;
         for (int i = 0; i < size; i++) {
             if ((ptr + i)->type == ARR_VAL) {
@@ -142,10 +142,10 @@ void mark_reachable(Value *until)
     while (cur->next != NULL) {
         cur = cur->next;
         if (cur->var.val.type == ARR_VAL) {
-            ArrPtrList *arr = retriveArrPtr(cur->var.val.value.arr.ptr
-                                                ,&arrPtrList);
-            if ((!until || cur->var.val.value.arr.ptr != until) && arr != NULL) {
-                arr->isReachable = true;
+            //ArrPtrList *arr = retriveArrPtr(cur->var.val.value.arr.ptr
+            //                                    ,&arrPtrList);
+            if ((!until || cur->var.val.value.arr.ptr != until) /*&& arr != NULL*/) {
+                //arr->isReachable = true;
                 mark_reachable_deep(cur->var.val.value.arr.ptr,
                     cur->var.val.value.arr.size, until);
             }
