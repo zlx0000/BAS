@@ -1,8 +1,10 @@
 .DEFAULT_GOAL := gbasic
 
 ifeq ($(OS),Windows_NT)
+	TARGET = gbasic.exe
     LDLIBS = -lm
 else
+	TARGET = gbasic
     LDLIBS = -lm -lreadline
 endif
 
@@ -54,7 +56,7 @@ gbasic.o: gbasic.c gbasic.h
 
 gbasic: gbasic.o lexer.o parser.o eval.o
 	gcc ./gbasic.o ./lexer.o ./parser.o ./eval.o -o gbasic -O3 $(LDLIBS)
-	strip gbasic
+	strip $(TARGET)
 
 clean:
 	rm ./*.o
