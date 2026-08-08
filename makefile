@@ -9,53 +9,53 @@ else
 endif
 
 testlexer-g.o: testlexer.c gbasic.h
-	gcc -c ./testlexer.c -o ./testlexer-g.o -g
+	cc -c ./testlexer.c -o ./testlexer-g.o -g
 
 lexer-g.o: lexer.c gbasic.h
-	gcc -c ./lexer.c -o ./lexer-g.o -g
+	cc -c ./lexer.c -o ./lexer-g.o -g
 
 parser-g.o : parser.c gbasic.h
-	gcc -c ./parser.c -o ./parser-g.o -g
+	cc -c ./parser.c -o ./parser-g.o -g
 
 eval-g.o : eval.c gbasic.h
-	gcc -c ./eval.c -o ./eval-g.o -g
+	cc -c ./eval.c -o ./eval-g.o -g
 
 testlexer: testlexer-g.o lexer-g.o
-	gcc ./testlexer-g.o ./lexer-g.o -o testlexer -g
+	cc ./testlexer-g.o ./lexer-g.o -o testlexer -g
 
 testparser.o: testparser.c gbasic.h
-	gcc -c ./testparser.c -o testparser.o -g
+	cc -c ./testparser.c -o testparser.o -g
 
 testparser: testparser.o lexer-g.o parser-g.o
-	gcc ./testparser.o ./lexer-g.o ./parser-g.o -o testparser -g
+	cc ./testparser.o ./lexer-g.o ./parser-g.o -o testparser -g
 
 testeval-g.o: testeval.c gbasic.h
-	gcc -c ./testeval.c -o ./testeval.o -g
+	cc -c ./testeval.c -o ./testeval.o -g
 
 testeval: testeval-g.o lexer-g.o parser-g.o eval-g.o
-	gcc ./testeval-g.o ./lexer-g.o ./parser-g.o ./eval-g.o -o testeval -g $(LDLIBS)
+	cc ./testeval-g.o ./lexer-g.o ./parser-g.o ./eval-g.o -o testeval -g $(LDLIBS)
 
 gbasic-g.o: gbasic.c gbasic.h
-	gcc -c ./gbasic.c -o ./gbasic-g.o -g
+	cc -c ./gbasic.c -o ./gbasic-g.o -g
 
 gbasic-debug: gbasic-g.o lexer-g.o parser-g.o eval-g.o
-	gcc ./gbasic-g.o ./lexer-g.o ./parser-g.o ./eval-g.o -o gbasic-debug -g $(LDLIBS)
+	cc ./gbasic-g.o ./lexer-g.o ./parser-g.o ./eval-g.o -o gbasic-debug -g $(LDLIBS)
 
 
 lexer.o: lexer.c gbasic.h
-	gcc -c ./lexer.c -o ./lexer.o -O3
+	cc -c ./lexer.c -o ./lexer.o -O3
 
 parser.o : parser.c gbasic.h
-	gcc -c ./parser.c -o ./parser.o -O3
+	cc -c ./parser.c -o ./parser.o -O3
 
 eval.o : eval.c gbasic.h
-	gcc -c ./eval.c -o ./eval.o -O3
+	cc -c ./eval.c -o ./eval.o -O3
 
 gbasic.o: gbasic.c gbasic.h
-	gcc -c ./gbasic.c -o ./gbasic.o -O3
+	cc -c ./gbasic.c -o ./gbasic.o -O3
 
 gbasic: gbasic.o lexer.o parser.o eval.o
-	gcc ./gbasic.o ./lexer.o ./parser.o ./eval.o -o gbasic -O3 $(LDLIBS)
+	cc ./gbasic.o ./lexer.o ./parser.o ./eval.o -o gbasic -O3 $(LDLIBS)
 	strip $(TARGET)
 
 clean:
