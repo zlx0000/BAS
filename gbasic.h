@@ -301,11 +301,11 @@ typedef struct Program {
 	Stack *shadow_st;
 } Program;
 
-typedef struct ArrList {
+typedef struct ArrPtrList {
 	Value *ptr;
 	size_t size;
-	struct ArrList *next;
-} ArrList;
+	struct ArrPtrList *next;
+} ArrPtrList;
 
 extern int pc;
 extern int expectedLineNum;
