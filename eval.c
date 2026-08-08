@@ -42,6 +42,7 @@ void init_eval()
     varList.var.name = NULL;
     arrPtrList.ptr = NULL;
     arrPtrList.next = NULL;
+    arrPtrList.isReachable = true;
     accessdArr.ptr = NULL;
     accessdArr.next = NULL;
     for_st.size = 0;
@@ -57,6 +58,16 @@ bool findArrPtr(Value *ptr, ArrPtrList *list) {
             return true;
     }
     return false;
+}
+
+ArrPtrList *retriveArrPtr(Value *ptr, ArrPtrList *list) {
+    ArrPtrList *cur = list;
+    while (cur->next != NULL) {
+        cur = cur->next;
+        if (cur->ptr == ptr)
+            return cur;
+    }
+    return NULL;
 }
 
 Value insertArrPtr(Value *ptr, ArrPtrList *list)
@@ -102,6 +113,44 @@ void free_arr_list(ArrPtrList *ptr)
         free(cur);
     }
     ptr->next = NULL;
+}
+
+void mark_reachable_deep(Value *ptr, int size, Value *until)
+{
+    ArrPtrList *arr = retriveArrPtr(ptr, &arrPtrList);
+    if ((!until || ptr != until) && !arr->isReachable) {
+        arr->isReachable = true;
+        for (int i = 0; i < size; i++) {
+            if ((ptr + i)->type == ARR_VAL) {
+                mark_reachable_deep((ptr + i)->value.arr.ptr,
+                        (ptr + i)->value.arr.size, until);
+            }
+        }
+    }
+}
+
+void mark_reachable(Value *until)
+{
+    {
+        ArrPtrList *cur = &arrPtrList;
+        while (cur->next != NULL) {
+            cur = cur->next;
+            cur->isReachable = false;
+        }
+    }
+    VarListNode *cur = &varList;
+    while (cur->next != NULL) {
+        cur = cur->next;
+        if (cur->var.val.type == ARR_VAL) {
+            ArrPtrList *arr = retriveArrPtr(cur->var.val.value.arr.ptr
+                                                ,&arrPtrList);
+            if ((!until || cur->var.val.value.arr.ptr != until) && arr != NULL) {
+                arr->isReachable = true;
+                mark_reachable_deep(cur->var.val.value.arr.ptr,
+                    cur->var.val.value.arr.size, until);
+            }
+        }
+    }
 }
 
 Value retriveVar(char *name) {
@@ -888,7 +937,8 @@ Value evalHome(ParseTreeNode *node)
 
 static void free_arr(Value *arr, int size)
 {
-    if (findArrPtr(arr, &arrPtrList)) {
+    if (findArrPtr(arr, &arrPtrList)
+        && !retriveArrPtr(arr, &arrPtrList)->isReachable) {
         delArrPtr(arr, &arrPtrList);
         for (int i = 0; i < size; i++) {
             if ((arr + i)->type == ARR_VAL) {
@@ -920,6 +970,7 @@ Value evalFree(ParseTreeNode *node)
         char *name = node->children[0]->token->lexeme;
         Value v = retriveVar(name);
         if (v.type == ARR_VAL) {
+            mark_reachable(v.value.arr.ptr);
             free_arr(v.value.arr.ptr, v.value.arr.size);
             del_freed_arr_pointer_in_var();
         } else {
@@ -958,7 +1009,8 @@ Value evalFree(ParseTreeNode *node)
             i++;
         }
         if (ptr->type != ARR_VAL)
-            ERR("not an array", INCOMPATIBLE_TYPES);    
+            ERR("not an array", INCOMPATIBLE_TYPES);
+        mark_reachable(ptr->value.arr.ptr);
         free_arr(ptr->value.arr.ptr, ptr->value.arr.size);
         del_freed_arr_pointer_in_var();
         ptr->type = INT_VAL;
@@ -988,6 +1040,7 @@ Value evalDel(ParseTreeNode *node)
         char *name = node->children[0]->token->lexeme;
         Value v = retriveVar(name);
         if (v.type == ARR_VAL) {
+            mark_reachable(v.value.arr.ptr);
             free_arr(v.value.arr.ptr, v.value.arr.size);
             del_freed_arr_pointer_in_var();
         }
@@ -1024,7 +1077,8 @@ Value evalDel(ParseTreeNode *node)
             i++;
         }
         if (ptr->type != ARR_VAL)
-            ERR("not an array", INCOMPATIBLE_TYPES);    
+            ERR("not an array", INCOMPATIBLE_TYPES);
+        mark_reachable(ptr->value.arr.ptr);
         free_arr(ptr->value.arr.ptr, ptr->value.arr.size);
         del_freed_arr_pointer_in_var();
         ptr->type = INT_VAL;
