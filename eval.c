@@ -773,6 +773,7 @@ Value evalElse(ParseTreeNode *node)
             break;
         }
         case IF_EXPECTING_FI:
+            break;
     }
     pc++;
     return DEF_VAL;
@@ -1940,6 +1941,7 @@ Value evalPrimary(ParseTreeNode *node)
             int i = 0;
             int cnt = node->children[0]->childCount;
 next_index:
+            ;
             Value index_val = evalExpr(node->children[0]->children[i]);
             ERR_RETURN_EVAL(index_val);
             if (index_val.type != INT_VAL)

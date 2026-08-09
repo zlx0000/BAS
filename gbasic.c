@@ -87,7 +87,8 @@ int main(int argc, char **argv)
 	expectedLineNum = -1;
     init_eval();
 repl:
-	;Value ret = {
+	;
+	Value ret = {
 		.type = INT_VAL,
 	};
 	if (isatty(STDIN_FILENO)) {
