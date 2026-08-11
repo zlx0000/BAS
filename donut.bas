@@ -66,8 +66,6 @@ FOR I = 0 TO 89
             FI
             SCREEN_BUFFER(BUFFER_INDEX) = LUMINANCE_CHARS(LUMINANCE)
         FI
-
-
     NEXT J
 NEXT I
 

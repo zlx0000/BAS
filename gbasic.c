@@ -146,7 +146,8 @@ repl:
 					ret = evalLine(p);
 					pc = -1;
 				}
-				if (p->children[0]->token->literal.intValue == expectedLineNum) {
+				if (p->childCount > 1 && p->children[0]->type == LINENUM
+					&& p->children[0]->token->literal.intValue == expectedLineNum) {
 					pc = lineNum_to_pc(expectedLineNum);
 					if (prog.shadow_st[pc].size >= 0) {
             			copy_stack(&prog.shadow_st[pc], &if_st);
