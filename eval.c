@@ -11,12 +11,25 @@
 #define ERR_RETURN_EVAL(err) {if (__unlikely(IS_ERR(err))) return ERRVAL(err.value.errVal);}
 #define DEF_VAL ((Value){.type = INT_VAL, .value.intVal = 0})
 
-static VarListNode varList;
+static VarListNode global;
+static VarListNode local;
 static ArrPtrList arrPtrList;
 static ArrPtrList accessdArr;
 static Stack for_st;
 Stack if_st;
 enum If_State if_state = IF_BEFORE;
+
+struct CallStack {
+    int pc;
+    VarListNode local;
+    Stack for_st;
+    Stack if_st;
+    Stack shadow_st;
+    enum If_State if_state;
+};
+
+struct CallStack *call_st;
+int call_st_size = 0;
 
 int lineNum_to_pc(int lineNum)
 {
@@ -38,8 +51,8 @@ bool is_if_else_or_fi(ParseTreeNode *node)
 
 void init_eval()
 {
-    varList.next = NULL;
-    varList.var.name = NULL;
+    global.next = NULL;
+    global.var.name = NULL;
     arrPtrList.ptr = NULL;
     arrPtrList.next = NULL;
     arrPtrList.isReachable = true;
@@ -118,7 +131,7 @@ void free_arr_list(ArrPtrList *ptr)
 void mark_reachable_deep(Value *ptr, int size, Value *until)
 {
     ArrPtrList *arr = retriveArrPtr(ptr, &arrPtrList);
-    if (findArrPtr(ptr, &arrPtrList) && (!until || ptr != until) && !arr->isReachable) {
+    if (arr != NULL && (!until || ptr != until) && !arr->isReachable) {
         arr->isReachable = true;
         for (int i = 0; i < size; i++) {
             if ((ptr + i)->type == ARR_VAL) {
@@ -138,7 +151,7 @@ void mark_reachable(Value *until)
             cur->isReachable = false;
         }
     }
-    VarListNode *cur = &varList;
+    VarListNode *cur = &global;
     while (cur->next != NULL) {
         cur = cur->next;
         if (cur->var.val.type == ARR_VAL) {
@@ -154,7 +167,7 @@ void mark_reachable(Value *until)
 }
 
 Value retriveVar(char *name) {
-    VarListNode *cur = &varList;
+    VarListNode *cur = &global;
     Value v;
     while (cur->next != NULL) {
         cur = cur->next;
@@ -168,7 +181,7 @@ Value retriveVar(char *name) {
 }
 
 bool findVar(char *name) {
-    VarListNode *cur = &varList;
+    VarListNode *cur = &global;
     while (cur->next != NULL) {
         cur = cur->next;
         if (strcasecmp(cur->var.name, name) == 0)
@@ -197,7 +210,7 @@ void del_freed_arr_pointer_in_var_deep(Value *ptr, int size)
 
 void del_freed_arr_pointer_in_var()
 {
-    VarListNode *cur = &varList;
+    VarListNode *cur = &global;
     while (cur->next != NULL) {
         cur = cur->next;
         if (cur->var.val.type == ARR_VAL) {
@@ -214,7 +227,7 @@ void del_freed_arr_pointer_in_var()
 }
 
 Value modVar(char *name, Value val) {
-    VarListNode *cur = &varList;
+    VarListNode *cur = &global;
     while (cur->next != NULL) {
         cur = cur->next;
         if (strcasecmp(cur->var.name, name) == 0) {
@@ -228,7 +241,7 @@ Value modVar(char *name, Value val) {
 
 Value insertVar(char *name, Value val)
 {
-    VarListNode *cur = &varList;
+    VarListNode *cur = &global;
     while (cur->next != NULL) {
         cur = cur->next;
         if (strcasecmp(cur->var.name, name) == 0) {
@@ -238,14 +251,14 @@ Value insertVar(char *name, Value val)
     VarListNode *v = calloc(1, sizeof(VarListNode));
     v->var.name = name;
     v->var.val = val;
-    v->next = varList.next;
-    varList.next = v;
+    v->next = global.next;
+    global.next = v;
     return val;
 }
 
 Value insertVar_strict(char *name, Value val)
 {
-    VarListNode *cur = &varList;
+    VarListNode *cur = &global;
     VarListNode *v = malloc(sizeof(VarListNode));
     v->var.name = name;
     v->var.val = val;
@@ -255,14 +268,14 @@ Value insertVar_strict(char *name, Value val)
             return ERRVAL(VAR_ALREADY_EXIST);
         }
     }
-    v->next = varList.next;
-    varList.next = v;
+    v->next = global.next;
+    global.next = v;
     return val;
 }
 
 Value delVar(char *name)
 {
-    VarListNode *cur = &varList;
+    VarListNode *cur = &global;
     VarListNode *prev;
     Value v;
     while (cur->next != NULL) {
@@ -308,6 +321,29 @@ void copy_stack(Stack *src, Stack* dst) {
     dst->size = src->size;
     for (int i = 0; i < src->size; i++) {
         dst->st[i] = src->st[i];
+    }
+}
+
+Value call(int i)
+{
+    call_st_size++;
+    struct CallStack *ptr = realloc(call_st, call_st_size);
+    if (ptr == NULL)
+        ERR("out of memory", OUT_OF_MEMORY);
+    call_st = ptr;
+    call_st[call_st_size - 1].for_st = for_st;
+    call_st[call_st_size - 1].if_st = if_st;
+    call_st[call_st_size - 1].shadow_st = shadow_st;
+    call_st[call_st_size - 1].if_state = if_state;
+    call_st[call_st_size - 1].local = local;
+    call_st[call_st_size - 1].pc = pc;
+    pc = 0;
+    for_st.size = 0;
+    if_st.size = 0;
+    shadow_st.size = 0;
+    if_state = IF_BEFORE;
+    for (int j = 0; j < prog.functions[i].local_size; j++) {
+        
     }
 }
 
@@ -815,7 +851,7 @@ Value evalFor(ParseTreeNode *node)
     if (from.type != INT_VAL || to.type != INT_VAL)
         ERR("not a integer", INCOMPATIBLE_TYPES);
     Value step;
-    if (node->children[4] != NULL) {
+    if (node->childCount == 5) {
         step = evalExpr(node->children[4]);
         ERR_RETURN_EVAL(step);
         if (step.type != INT_VAL)
@@ -1041,51 +1077,9 @@ Value evalDel(ParseTreeNode *node)
     if (node->children[0]->childCount == 0
         || node->children[0]->children[0] == NULL) {
         char *name = node->children[0]->token->lexeme;
-        Value v = retriveVar(name);
-        if (v.type == ARR_VAL) {
-            mark_reachable(v.value.arr.ptr);
-            free_arr(v.value.arr.ptr, v.value.arr.size);
-            del_freed_arr_pointer_in_var();
-        }
         delVar(name);
     } else {
-        Value id = retriveVar(name);
-        ERR_RETURN_EVAL(id);
-        if (id.type != ARR_VAL)
-            ERR("not an array", INCOMPATIBLE_TYPES);
-        int i = 0;
-        int cnt = node->children[0]->childCount;
-        Value index_val = evalExpr(node->children[0]->children[i]);
-        ERR_RETURN_EVAL(index_val);
-        if (index_val.type != INT_VAL)
-            ERR("index has to be INT type", INCOMPATIBLE_TYPES);
-        int index = index_val.value.intVal;
-        if (index >= id.value.arr.size)
-            ERR("index out of range", INDEX_OUT_OF_RANGE);
-        Value *base = id.value.arr.ptr;
-        Value *ptr = base + index;
-        i++;
-        while (i < cnt) {
-            if (ptr->type != ARR_VAL)
-                ERR("not an array", INCOMPATIBLE_TYPES);
-            Value index_val = evalExpr(node->children[0]->children[i]);
-            ERR_RETURN_EVAL(index_val);
-            if (index_val.type != INT_VAL)
-                ERR("index has to be INT type", INCOMPATIBLE_TYPES);
-            int index = index_val.value.intVal;
-            if (index >= ptr->value.arr.size)
-                ERR("index out of range", INDEX_OUT_OF_RANGE);
-            base = ptr->value.arr.ptr;
-            ptr = base + index;
-            i++;
-        }
-        if (ptr->type != ARR_VAL)
-            ERR("not an array", INCOMPATIBLE_TYPES);
-        mark_reachable(ptr->value.arr.ptr);
-        free_arr(ptr->value.arr.ptr, ptr->value.arr.size);
-        del_freed_arr_pointer_in_var();
-        ptr->type = INT_VAL;
-        ptr->value.intVal = 0;
+        ERR("can not delete array values. use free instead", ERR_VAL_NULL);
     }
     pc++;
     return DEF_VAL;
@@ -1104,10 +1098,14 @@ Value evalOrExpr(ParseTreeNode *node)
     } else {
         Value v = evalAndExpr(node->children[0]);
         ERR_RETURN_EVAL(v);
+        if ((bool)v.value.boolVal == true)
+            return v;
         for (int i = 1; i < cnt; i += 2) {
             if (node->children[i]->type == OR_OP) {
                 Value tmp = evalAndExpr(node->children[i+1]);
                 ERR_RETURN_EVAL(tmp);
+                if ((bool)tmp.value.boolVal == true)
+                    return tmp;
                 enum ValueType t = v.type;
                 v.type = BOOL_VAL;
                 if (t == BOOL_VAL) {
@@ -1158,10 +1156,14 @@ Value evalAndExpr(ParseTreeNode *node)
     } else {
         Value v = evalRelExpr(node->children[0]);
         ERR_RETURN_EVAL(v);
+        if ((bool)v.value.boolVal == false)
+            return v;
         for (int i = 1; i < cnt; i += 2) {
             if (node->children[i]->type == AND_OP) {
                 Value tmp = evalRelExpr(node->children[i+1]);
                 ERR_RETURN_EVAL(tmp);
+                if ((bool)tmp.value.boolVal == false)
+                    return tmp;
                 enum ValueType t = v.type;
                 v.type = BOOL_VAL;
                 if (t == BOOL_VAL) {
@@ -1694,7 +1696,8 @@ Value evalUnary(ParseTreeNode *node)
     unsigned int cnt = node->childCount;
     if (cnt == 1) {
         return evalPrimary(node->children[0]);
-    } else {
+    }
+    else if (cnt == 2) {
         Value v = evalPrimary(node->children[1]);
         ERR_RETURN_EVAL(v);
         enum ValueType t = v.type;

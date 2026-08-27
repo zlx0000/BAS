@@ -35,7 +35,7 @@
 static char *keywords[] = {"LET", "PRINT", "INPUT", "IF", "ELSE", "FI", "THEN", "FOR", "TO",
                   	 "STEP", "NEXT", "GOTO", "GOSUB", "RETURN", "RETURN", "END",
                   	 "REM", "AND", "OR", "NOT", "DIM", "PUTCHAR", "CLEAR", "HOME", "SLEEP",
-					 "DELETE", "FREE"};
+					 "DELETE", "FREE", "FUN", "ENDFUN"};
 
 #define KEYWORDS_SIZE sizeof(keywords) / sizeof(keywords[0])
 
@@ -146,7 +146,7 @@ typedef struct ParseTreeNode {
 	Token *token;
 	NodeType type;
 	unsigned int childCount;
-	struct ParseTreeNode *children[128];
+	struct ParseTreeNode **children;
 } ParseTreeNode;
 
 typedef struct ParserContext {
@@ -311,6 +311,13 @@ typedef struct Program {
 	int lineCount;
 	ParseTreeNode **lines;
 	Stack *shadow_st;
+	struct Function {
+		VarListNode *local;
+		int local_size;
+		int lineCount;
+		ParseTreeNode **lines;
+		Stack *shadow_st;
+	} *functions;
 } Program;
 
 typedef struct ArrPtrList {
