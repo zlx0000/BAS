@@ -1052,7 +1052,7 @@ Value evalFree(ParseTreeNode *node)
         mark_reachable(ptr->value.arr.ptr);
         free_arr(ptr->value.arr.ptr, ptr->value.arr.size);
         del_freed_arr_pointer_in_var();
-        if (findArrPtr(ptr, &arrPtrList)) {
+        if (findArrPtr(base, &arrPtrList)) {
             ptr->type = INT_VAL;
             ptr->value.intVal = 0;
         }
