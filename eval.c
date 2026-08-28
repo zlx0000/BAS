@@ -913,6 +913,8 @@ Value evalNext(ParseTreeNode *node)
     if (top.type != FOR_CTX)
         ERR("not in a for loop", ERR_VAL_NULL);
     char *id = node->children[0]->token->lexeme;
+    if (__unlikely(strcasecmp(top.value.forCtx.identi, id) != 0))
+        ERR("iterator does not match", ERR_VAL_NULL);
     Value v = retriveVar(id);
     ERR_RETURN_EVAL(v);
     Value newVar = {
