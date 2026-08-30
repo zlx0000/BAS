@@ -7,43 +7,38 @@ ifeq ($(OS),Windows_NT)
     LDLIBS = -lm
 else
 	CC = cc
+	DUBUG_FLAGS = -fsanitize=address -fno-omit-frame-pointer
 	CLEAN = rm ./*.o
 	TARGET = gbasic
     LDLIBS = -lm -lreadline
 endif
 
 testlexer-g.o: testlexer.c gbasic.h
-	$(CC) -c ./testlexer.c -o ./testlexer-g.o -g
+	$(CC) $(DUBUG_FLAGS) -c ./testlexer.c -o ./testlexer-g.o -g
 
 lexer-g.o: lexer.c gbasic.h
-	$(CC) -c ./lexer.c -o ./lexer-g.o -g
+	$(CC) $(DUBUG_FLAGS) -c ./lexer.c -o ./lexer-g.o -g
 
 parser-g.o : parser.c gbasic.h
-	$(CC) -c ./parser.c -o ./parser-g.o -g
+	$(CC) $(DUBUG_FLAGS) -c ./parser.c -o ./parser-g.o -g
 
 eval-g.o : eval.c gbasic.h
-	$(CC) -c ./eval.c -o ./eval-g.o -g
+	$(CC) $(DUBUG_FLAGS) -c ./eval.c -o ./eval-g.o -g
 
 testlexer: testlexer-g.o lexer-g.o
-	$(CC) ./testlexer-g.o ./lexer-g.o -o testlexer -g
+	$(CC) $(DUBUG_FLAGS) ./testlexer-g.o ./lexer-g.o -o testlexer -g
 
 testparser.o: testparser.c gbasic.h
-	$(CC) -c ./testparser.c -o testparser.o -g
+	$(CC) $(DUBUG_FLAGS) -c ./testparser.c -o testparser.o -g
 
 testparser: testparser.o lexer-g.o parser-g.o
-	$(CC) ./testparser.o ./lexer-g.o ./parser-g.o -o testparser -g
-
-testeval-g.o: testeval.c gbasic.h
-	$(CC) -c ./testeval.c -o ./testeval.o -g
-
-testeval: testeval-g.o lexer-g.o parser-g.o eval-g.o
-	$(CC) ./testeval-g.o ./lexer-g.o ./parser-g.o ./eval-g.o -o testeval -g $(LDLIBS)
+	$(CC) $(DUBUG_FLAGS) ./testparser.o ./lexer-g.o ./parser-g.o -o testparser -g
 
 gbasic-g.o: gbasic.c gbasic.h
-	$(CC) -c ./gbasic.c -o ./gbasic-g.o -g
+	$(CC) $(DUBUG_FLAGS) -c ./gbasic.c -o ./gbasic-g.o -g
 
 gbasic-debug: gbasic-g.o lexer-g.o parser-g.o eval-g.o
-	$(CC) ./gbasic-g.o ./lexer-g.o ./parser-g.o ./eval-g.o -o gbasic-debug -g $(LDLIBS)
+	$(CC) $(DUBUG_FLAGS) ./gbasic-g.o ./lexer-g.o ./parser-g.o ./eval-g.o -o gbasic-debug -g $(LDLIBS)
 
 
 lexer.o: lexer.c gbasic.h

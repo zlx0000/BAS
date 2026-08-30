@@ -101,6 +101,7 @@ repl:
     	}
 #else
 		if (!(str = readline(">"))) {
+			free(str);
     	   	return 0;
     	}
 		add_history(str);
@@ -110,6 +111,7 @@ repl:
 		str = calloc(STR_SIZE, sizeof(char));
 		if (!fgets(str, STR_SIZE, stdin)) {
     	  	printf("\n");
+			free(str);
     	   	return 0;
     	}
 	}
@@ -152,7 +154,10 @@ repl:
 					if (prog.shadow_st[pc].size >= 0) {
             			copy_stack(&prog.shadow_st[pc], &if_st);
 						copy_stack(&if_st, &shadow_st);
-						if_state = if_st.st[if_st.size-1].value.ifFrame.state;
+						if (if_st.size > 0)
+                        	if_state = if_st.st[if_st.size-1].value.ifFrame.state;
+                    	else
+                        	if_state = IF_BEFORE;
 					}
 				}
 			}

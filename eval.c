@@ -746,7 +746,10 @@ Value evalIf(ParseTreeNode *node)
                 if (prog.shadow_st[pc].size >= 0) {
                     copy_stack(&prog.shadow_st[pc], &if_st);
                     copy_stack(&if_st, &shadow_st);
-                    if_state = if_st.st[if_st.size-1].value.ifFrame.state;
+                    if (if_st.size > 0)
+                        if_state = if_st.st[if_st.size-1].value.ifFrame.state;
+                    else
+                        if_state = IF_BEFORE;
                 }
             }
         }
@@ -940,7 +943,10 @@ Value evalGoto(ParseTreeNode *node)
         if (prog.shadow_st[pc].size >= 0) {
             copy_stack(&prog.shadow_st[pc], &if_st);
             copy_stack(&if_st, &shadow_st);
-            if_state = if_st.st[if_st.size-1].value.ifFrame.state;
+            if (if_st.size > 0)
+                if_state = if_st.st[if_st.size-1].value.ifFrame.state;
+            else
+                if_state = IF_BEFORE;
         }
     }
     return DEF_VAL;
@@ -1236,7 +1242,7 @@ Value evalRelExpr(ParseTreeNode *node)
                             else if (tmp.type == FLOAT_VAL)
                                 v.value.boolVal = (v.value.boolVal == tmp.value.floatVal);
                             else
-                                ERR("incompatible types", INCOMPATIBLE_TYPES);
+                                v.value.boolVal = false;
                         }
                         else if (v.type == INT_VAL) {
                             v.type = BOOL_VAL;
@@ -1247,7 +1253,7 @@ Value evalRelExpr(ParseTreeNode *node)
                             else if (tmp.type == FLOAT_VAL)
                                 v.value.boolVal = (v.value.intVal == tmp.value.floatVal);
                             else
-                                ERR("incompatible types", INCOMPATIBLE_TYPES);
+                                v.value.boolVal = false;
                         }
                          else if (v.type == FLOAT_VAL) {
                             v.type = BOOL_VAL;
@@ -1258,9 +1264,10 @@ Value evalRelExpr(ParseTreeNode *node)
                             else if (tmp.type == FLOAT_VAL)
                                 v.value.boolVal = (v.value.floatVal == tmp.value.floatVal);
                             else
-                                ERR("incompatible types", INCOMPATIBLE_TYPES);
+                                v.value.boolVal = false;
                         } else {
-                            ERR("incompatible types", INCOMPATIBLE_TYPES);
+                            v.type = BOOL_VAL;
+                            v.value.boolVal = false;
                         }
                         break;
                     case LT:
@@ -1421,7 +1428,7 @@ Value evalRelExpr(ParseTreeNode *node)
                             else if (tmp.type == FLOAT_VAL)
                                 v.value.boolVal = (v.value.boolVal != tmp.value.floatVal);
                             else
-                                ERR("incompatible types", INCOMPATIBLE_TYPES);
+                                v.value.boolVal = true;
                         }
                         else if (v.type == INT_VAL) {
                             v.type = BOOL_VAL;
@@ -1432,7 +1439,7 @@ Value evalRelExpr(ParseTreeNode *node)
                             else if (tmp.type == FLOAT_VAL)
                                 v.value.boolVal = (v.value.intVal != tmp.value.floatVal);
                             else
-                                ERR("incompatible types", INCOMPATIBLE_TYPES);
+                                v.value.boolVal = true;
                         }
                         else if (v.type == FLOAT_VAL) {
                             v.type = BOOL_VAL;
@@ -1443,9 +1450,10 @@ Value evalRelExpr(ParseTreeNode *node)
                             else if (tmp.type == FLOAT_VAL)
                                 v.value.boolVal = (v.value.floatVal != tmp.value.floatVal);
                             else
-                                ERR("incompatible types", INCOMPATIBLE_TYPES);
+                                v.value.boolVal = true;
                         } else {
-                            ERR("incompatible types", INCOMPATIBLE_TYPES);
+                            v.type = BOOL_VAL;
+                            v.value.boolVal = true;
                         }
                         break;
                     default:
