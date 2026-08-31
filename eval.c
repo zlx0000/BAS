@@ -1108,14 +1108,24 @@ Value evalOrExpr(ParseTreeNode *node)
     } else {
         Value v = evalAndExpr(node->children[0]);
         ERR_RETURN_EVAL(v);
-        if ((bool)v.value.boolVal == true)
+        if ((v.type == BOOL_VAL && v.value.boolVal == true)
+            || (v.type == INT_VAL && v.value.intVal != 0)
+            || (v.type == FLOAT_VAL && v.value.floatVal != 0.0)) {
+            v.type = BOOL_VAL;
+            v.value.boolVal = true;
             return v;
+        }
         for (int i = 1; i < cnt; i += 2) {
             if (node->children[i]->type == OR_OP) {
                 Value tmp = evalAndExpr(node->children[i+1]);
                 ERR_RETURN_EVAL(tmp);
-                if ((bool)tmp.value.boolVal == true)
+                if ((tmp.type == BOOL_VAL && tmp.value.boolVal == true)
+                    || (tmp.type == INT_VAL && tmp.value.intVal != 0)
+                    || (tmp.type == FLOAT_VAL && tmp.value.floatVal != 0.0)) {
+                    tmp.type = BOOL_VAL;
+                    tmp.value.boolVal = true;
                     return tmp;
+                }
                 enum ValueType t = v.type;
                 v.type = BOOL_VAL;
                 if (t == BOOL_VAL) {
@@ -1166,14 +1176,24 @@ Value evalAndExpr(ParseTreeNode *node)
     } else {
         Value v = evalRelExpr(node->children[0]);
         ERR_RETURN_EVAL(v);
-        if ((bool)v.value.boolVal == false)
+        if ((v.type == BOOL_VAL && v.value.boolVal == false)
+            || (v.type == INT_VAL && v.value.intVal == 0)
+            || (v.type == FLOAT_VAL && v.value.floatVal == 0.0)) {
+            v.type = BOOL_VAL;
+            v.value.boolVal = false;
             return v;
+        }
         for (int i = 1; i < cnt; i += 2) {
             if (node->children[i]->type == AND_OP) {
                 Value tmp = evalRelExpr(node->children[i+1]);
                 ERR_RETURN_EVAL(tmp);
-                if ((bool)tmp.value.boolVal == false)
+                if ((tmp.type == BOOL_VAL && tmp.value.boolVal == false)
+                    || (tmp.type == INT_VAL && tmp.value.intVal == 0)
+                    || (tmp.type == FLOAT_VAL && tmp.value.floatVal == 0.0)) {
+                    tmp.type = BOOL_VAL;
+                    tmp.value.boolVal = false;
                     return tmp;
+                }
                 enum ValueType t = v.type;
                 v.type = BOOL_VAL;
                 if (t == BOOL_VAL) {
