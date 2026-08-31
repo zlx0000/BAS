@@ -110,12 +110,14 @@ repl:
 	else {
 		str = calloc(STR_SIZE, sizeof(char));
 		if (!fgets(str, STR_SIZE, stdin)) {
-    	  	printf("\n");
+			if (isatty(STDIN_FILENO))
+    	  		printf("\n");
 			free(str);
     	   	return 0;
     	}
 	}
-	if (strcasecmp(str, "exit\n") == 0)
+	if (strcasecmp(str, "exit\n") == 0
+		|| strcasecmp(str, "exit") == 0)
 		return 0;
 	Token *tokens =
 	(Token *)calloc(1, sizeof(Token) * MAX_TOKEN);
@@ -130,6 +132,11 @@ repl:
 	    ctx.tokenPtr = ctx.tokens;
 		ctx.err = false;
 		p = parseLine(&ctx);
+		if (ctx.err) {
+			free(t);
+			if (p)
+				free_tree(p);
+		}
 		if (p && !ctx.err) {
 			if (p->childCount > 1 && find_lineNum(prog, p->children[0]->token->literal.intValue)) {
 				fprintf(stderr, "duplicate lineNum\n");
