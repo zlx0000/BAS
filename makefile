@@ -1,60 +1,60 @@
-.DEFAULT_GOAL := gbasic
+.DEFAULT_GOAL := bas
 
 ifeq ($(OS),Windows_NT)
 	CC = gcc
 	CLEAN = del /q *.o
-	TARGET = gbasic.exe
+	TARGET = bas.exe
     LDLIBS = -lm
 else
 	CC = cc
 	DUBUG_FLAGS = -fsanitize=address -fno-omit-frame-pointer
 	CLEAN = rm ./*.o
-	TARGET = gbasic
+	TARGET = bas
     LDLIBS = -lm -lreadline
 endif
 
-testlexer-g.o: testlexer.c gbasic.h
+testlexer-g.o: testlexer.c bas.h
 	$(CC) $(DUBUG_FLAGS) -c ./testlexer.c -o ./testlexer-g.o -g
 
-lexer-g.o: lexer.c gbasic.h
+lexer-g.o: lexer.c bas.h
 	$(CC) $(DUBUG_FLAGS) -c ./lexer.c -o ./lexer-g.o -g
 
-parser-g.o : parser.c gbasic.h
+parser-g.o : parser.c bas.h
 	$(CC) $(DUBUG_FLAGS) -c ./parser.c -o ./parser-g.o -g
 
-eval-g.o : eval.c gbasic.h
+eval-g.o : eval.c bas.h
 	$(CC) $(DUBUG_FLAGS) -c ./eval.c -o ./eval-g.o -g
 
 testlexer: testlexer-g.o lexer-g.o
 	$(CC) $(DUBUG_FLAGS) ./testlexer-g.o ./lexer-g.o -o testlexer -g
 
-testparser.o: testparser.c gbasic.h
+testparser.o: testparser.c bas.h
 	$(CC) $(DUBUG_FLAGS) -c ./testparser.c -o testparser.o -g
 
 testparser: testparser.o lexer-g.o parser-g.o
 	$(CC) $(DUBUG_FLAGS) ./testparser.o ./lexer-g.o ./parser-g.o -o testparser -g
 
-gbasic-g.o: gbasic.c gbasic.h
-	$(CC) $(DUBUG_FLAGS) -c ./gbasic.c -o ./gbasic-g.o -g
+bas-g.o: bas.c bas.h
+	$(CC) $(DUBUG_FLAGS) -c ./bas.c -o ./bas-g.o -g
 
-gbasic-debug: gbasic-g.o lexer-g.o parser-g.o eval-g.o
-	$(CC) $(DUBUG_FLAGS) ./gbasic-g.o ./lexer-g.o ./parser-g.o ./eval-g.o -o gbasic-debug -g $(LDLIBS)
+debug: bas-g.o lexer-g.o parser-g.o eval-g.o
+	$(CC) $(DUBUG_FLAGS) ./bas-g.o ./lexer-g.o ./parser-g.o ./eval-g.o -o bas-debug -g $(LDLIBS)
 
 
-lexer.o: lexer.c gbasic.h
+lexer.o: lexer.c bas.h
 	$(CC) -c ./lexer.c -o ./lexer.o -O3
 
-parser.o : parser.c gbasic.h
+parser.o : parser.c bas.h
 	$(CC) -c ./parser.c -o ./parser.o -O3
 
-eval.o : eval.c gbasic.h
+eval.o : eval.c bas.h
 	$(CC) -c ./eval.c -o ./eval.o -O3
 
-gbasic.o: gbasic.c gbasic.h
-	$(CC) -c ./gbasic.c -o ./gbasic.o -O3
+bas.o: bas.c bas.h
+	$(CC) -c ./bas.c -o ./bas.o -O3
 
-gbasic: gbasic.o lexer.o parser.o eval.o
-	$(CC) ./gbasic.o ./lexer.o ./parser.o ./eval.o -o gbasic -O3 $(LDLIBS)
+bas: bas.o lexer.o parser.o eval.o
+	$(CC) ./bas.o ./lexer.o ./parser.o ./eval.o -o bas -O3 $(LDLIBS)
 	strip $(TARGET)
 
 clean:

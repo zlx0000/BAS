@@ -17,7 +17,7 @@
  * BAS. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "gbasic.h"
+#include "bas.h"
 
 #define ERR(str) {if (!IN_RANGE) {fprintf(stderr,\
 		 "token stream ended prematurely\n");\

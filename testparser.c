@@ -17,7 +17,7 @@
  * BAS. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "gbasic.h"
+#include "bas.h"
 
 static const char *token_type_to_string(TokenType type)
 {

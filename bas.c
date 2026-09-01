@@ -17,7 +17,7 @@
  * BAS. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "gbasic.h"
+#include "bas.h"
 #include <unistd.h>
 #ifndef WIN32
 #include <readline/readline.h>
