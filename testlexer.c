@@ -56,6 +56,7 @@ static const char *token_type_to_string(TokenType type)
 int main(int argc, char **argv)
 {
 	FILE *fp = NULL;
+	Token *tokens;
 	char str[1024];
 	int line = 1;
 	if (argc <= 1) {
@@ -63,13 +64,16 @@ repl:
 		printf(">");
 		if (!fgets(str, sizeof(str), stdin)) {
         	printf("\n");
+			if (tokens) free(tokens);
         	return 0;
     	}
-		if (strcasecmp(str, "exit\n") == 0)
+		if (strcasecmp(str, "exit\n") == 0) {
+			if (tokens) free(tokens);
 			return 0;
+		}
 		str[strlen(str)-1] = '\0';
-		Token *tokens =
-		(Token *)calloc(1, sizeof(Token) * MAX_TOKEN);
+		tokens =
+			(Token *)calloc(1, sizeof(Token) * MAX_TOKEN);
 
 		int len = lexer(str, tokens, line);
 		if (len > 0) {
@@ -123,7 +127,7 @@ repl:
 		exit(EXIT_FAILURE);
 	}
 
-	Token *tokens =
+	tokens =
 		(Token *)calloc(1, sizeof(Token) * MAX_TOKEN);
 
 	char *start = bf;
@@ -149,7 +153,9 @@ next:
 	for (size_t i = 0; i < len; i++)
 		printf("%d,%d: %s (%s)\n", tokens[i].lineNum, tokens[i].colNum,
 			tokens[i].lexeme, token_type_to_string(tokens[i].type));
-	if (end == bf + size)
+	if (end == bf + size) {
+		if (tokens) free(tokens);
 		return 0;
+	}
 	goto next;
 }

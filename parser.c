@@ -20,22 +20,30 @@
 #include "bas.h"
 
 #define ERR(str) {if (!IN_RANGE) {fprintf(stderr,\
-		 "token stream ended prematurely\n");\
-		free(node);\
-		return NULL;}fprintf(stderr, "%s at %d,%d: `%s`,\n",\
-		str,context->tokenPtr->lineNum, context->tokenPtr->colNum,                  \
-		context->tokenPtr->lexeme); context->err = true ;return NULL;}
+		"token stream ended prematurely\n");\
+		for(int i=0;i<node->childCount;i++)\
+		{if(node->children[i]!=NULL)free_tree(node->children[i]);}\
+		if(node->children!=NULL)free(node->children);free(node);\
+		return NULL;}\
+		fprintf(stderr, "%s at %d,%d: `%s`,\n",\
+		str,context->tokenPtr->lineNum, context->tokenPtr->colNum,\
+		context->tokenPtr->lexeme);\
+		for(int i=0;i<node->childCount;i++)\
+		{if(node->children[i]!=NULL)free_tree(node->children[i]);}\
+		if(node->children!=NULL)free(node->children);free(node);\
+		context->err = true ;return NULL;}
 #define ERR_NOFREE(str) {if (!IN_RANGE) {fprintf(stderr,\
 		 "token stream ended prematurely\n");\
 		return NULL;}fprintf(stderr, "%s at %d,%d: `%s`,\n",\
-		str,context->tokenPtr->lineNum, context->tokenPtr->colNum,                  \
+		str,context->tokenPtr->lineNum, context->tokenPtr->colNum,\
 		context->tokenPtr->lexeme); context->err = true ;return NULL;}
 #define IN_RANGE (context->len < context->tokenLen)
 #define LAST_TOKEN (context->len == context->tokenLen-1)
 #define ERR_RET(n) {if (!n) {context->err=true;\
-					for( int i = 0; i < node->childCount; i++)\
-					{free(node->children[i]);}\
-					free(node->children);free(node);return NULL;}}
+		for(int i=0;i<node->childCount;i++)\
+		{if(node->children[i]!=0)free_tree(node->children[i]);}\
+		if(node->children!=NULL)free(node->children);\
+		free(node);return NULL;}}
 #define ERR_RET_NOFREE(n) {if (!n) {context->err=true;return NULL;}}
 #define CONSUME_TOKEN {if (!IN_RANGE) \
 		{ERR("Token stream ended prematurely")}; context->tokenPtr++; \
@@ -118,7 +126,7 @@ ParseTreeNode *parseIdentifier(ParserContext *context)
 				}
 				node->children = realloc(node->children, (node->childCount+1)*sizeof(uintptr_t));
 				node->children[node->childCount] = parseExpr(context);
-				ERR_RET(node->children[0]);
+				ERR_RET(node->children[node->childCount]);
 				node->childCount++;
 			} while (IN_RANGE && context->tokenPtr->type == COMMA_TOKEN);
 			if (IN_RANGE && context->tokenPtr->type == PAREN_TOKEN
@@ -364,6 +372,18 @@ ParseTreeNode *parseStatement(ParserContext *context)
 			node = parseFreeStatement(context);
 			ERR_RET_NOFREE(node);
 		}
+		else if (strcasecmp(context->tokenPtr->lexeme, "FUN") == 0) {
+			node = parseFunStatement(context);
+			ERR_RET_NOFREE(node);
+		}
+		else if (strcasecmp(context->tokenPtr->lexeme, "ENDFUN") == 0) {
+			node = parseEndFunStatement(context);
+			ERR_RET_NOFREE(node);
+		}
+		else if (strcasecmp(context->tokenPtr->lexeme, "RETURN") == 0) {
+			node = parseReturnStatement(context);
+			ERR_RET_NOFREE(node);
+		}
 		else {
 			ERR_NOFREE("Unknown statement type");
 		}
@@ -564,25 +584,24 @@ ParseTreeNode *parsePrintList(ParserContext *context)
 	node->childCount = 0;
 	node->type = PRINT_LIST;
 	node->token = NULL;
-	int i = 0;
+	node->childCount = 0;
 	do {
-		if (i >= 128)
+		if (node->childCount >= 128)
 			ERR("too many print items");
-		if (i > 0) {
+		if (node->childCount > 0) {
 			if (IN_RANGE && (context->tokenPtr->type == SEMICOLON_TOKEN ||
 				context->tokenPtr->type == COMMA_TOKEN)) {
 				CONSUME_TOKEN;
 			} else
 				ERR("Expected commas or semicolons");
 		}
-		node->children = realloc(node->children, (i+1)*sizeof(uintptr_t));
-		node->children[i] = parseExpr(context);
-		ERR_RET(node->children[i]);
-		if (node->children[i] == NULL)
+		node->children = realloc(node->children, (node->childCount+1)*sizeof(uintptr_t));
+		node->children[node->childCount] = parseExpr(context);
+		ERR_RET(node->children[node->childCount]);
+		if (node->children[node->childCount] == NULL)
 			ERR("Expected print items in PRINT statement");
-		i++;
+		node->childCount++;
 	} while (IN_RANGE);
-	node->childCount = i;
 	return node;
 }
 
@@ -669,20 +688,6 @@ ParseTreeNode *parseGoSubStatement(ParserContext *context)
 	node->children[0] = parseLinenum(context);
 	ERR_RET(node->children[0]);
 	node->childCount++;
-	return node;
-}
-
-ParseTreeNode *parseReturnStatement(ParserContext *context)
-{
-	ParseTreeNode *node =
-		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
-	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
-		strcasecmp(context->tokenPtr->lexeme, "RETURN") != 0)
-			ERR("Expected RETURN token.\n");
-	node->token = context->tokenPtr;
-	CONSUME_TOKEN;
-	node->type = RETURN;
-	node->childCount = 0;
 	return node;
 }
 
@@ -778,6 +783,97 @@ ParseTreeNode *parseFreeStatement(ParserContext *context)
 	return node;
 }
 
+ParseTreeNode *parseFunDef(ParserContext *context)
+{
+	ParseTreeNode *node =
+			(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
+	if (IN_RANGE && context->tokenPtr->type == IDENT_TOKEN) {
+		node->type = FUNDEF;
+		node->childCount = 0;
+		node->token = context->tokenPtr;
+		CONSUME_TOKEN;
+		if (IN_RANGE && context->tokenPtr->type == PAREN_TOKEN
+			&& strcmp(context->tokenPtr->lexeme, "(") == 0) {
+			CONSUME_TOKEN;
+			node->childCount = 0;
+			do {
+				if (IN_RANGE && context->tokenPtr->type == COMMA_TOKEN) {
+					if (node->childCount > 0)
+						CONSUME_TOKEN;
+				}
+				node->children = realloc(node->children, (node->childCount+1)*sizeof(uintptr_t));
+				ParseTreeNode *node2 = calloc(1, sizeof(ParseTreeNode));
+				node->children[node->childCount] = node2;
+				ERR_RET(node->children[node->childCount]);
+				node->childCount++;
+				if (context->tokenPtr->type != IDENT_TOKEN) {
+					ERR("Expected identifiers");
+				}
+				node->children[node->childCount-1]->type = IDENTI;
+				node->children[node->childCount-1]->token = context->tokenPtr;
+				CONSUME_TOKEN;
+			} while (IN_RANGE && context->tokenPtr->type == COMMA_TOKEN);
+			if (IN_RANGE && context->tokenPtr->type == PAREN_TOKEN
+				&& strcmp(context->tokenPtr->lexeme, ")") == 0) {
+				CONSUME_TOKEN;
+			} else {
+				ERR("Expected closing parenthesis");
+			}
+		}
+	}else {
+			ERR("Expected identifiers");
+	}
+	return node;
+}
+
+
+ParseTreeNode *parseFunStatement(ParserContext *context)
+{
+	ParseTreeNode *node =
+		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
+	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
+		strcasecmp(context->tokenPtr->lexeme, "FUN") != 0)
+			ERR("Expected FUN token.\n");
+	node->token = context->tokenPtr;
+	CONSUME_TOKEN;
+	node->type = FUN;
+	node->children = malloc(sizeof(uintptr_t));
+	node->children[0] = parseFunDef(context);
+	ERR_RET(node->children[0]);
+	node->childCount++;
+	return node;
+}
+
+ParseTreeNode *parseEndFunStatement(ParserContext *context) {
+	ParseTreeNode *node =
+		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
+	node->childCount = 0;
+	node->type = ENDFUN;
+	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
+		strcasecmp(context->tokenPtr->lexeme, "ENDFUN") != 0)
+			ERR("Expected ENDFUN token.\n");
+	node->token = context->tokenPtr;
+	CONSUME_TOKEN;
+	return node;
+}
+
+ParseTreeNode *parseReturnStatement(ParserContext *context)
+{
+	ParseTreeNode *node =
+		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
+	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
+		strcasecmp(context->tokenPtr->lexeme, "RETURN") != 0)
+			ERR("Expected RETURN token.\n");
+	node->token = context->tokenPtr;
+	CONSUME_TOKEN;
+	node->type = RETURN;
+	node->children = malloc(sizeof(uintptr_t));
+	node->children[0] = parseExpr(context);
+	ERR_RET(node->children[0]);
+	node->childCount++;
+	return node;
+}
+
 ParseTreeNode *parseExpr(ParserContext *context)
 {
 	ParseTreeNode *node;
@@ -790,23 +886,22 @@ ParseTreeNode *parseOrExpr(ParserContext *context)
 {
 	ParseTreeNode *node =
 		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
-	int cnt = 0;
+	node->childCount = 0;
 	node->type = OR_EXPR;
 	node->children = realloc(node->children, sizeof(uintptr_t));
-	node->children[cnt++] = parseAndExpr(context);
+	node->children[node->childCount++] = parseAndExpr(context);
 	ERR_RET(node->children[0]);
 	while (IN_RANGE && (context->tokenPtr->type == KEYWORD_TOKEN
 				&& strcasecmp(context->tokenPtr->lexeme, "OR") == 0)) {
 		struct ParseTreeNode *node2 = parseOrOperand(context);
 		ERR_RET(node2);
-		node->children = realloc(node->children, (cnt+1)*sizeof(uintptr_t));
-		node->children[cnt++] = node2;
+		node->children = realloc(node->children, (node->childCount+1)*sizeof(uintptr_t));
+		node->children[node->childCount++] = node2;
 		struct ParseTreeNode *node3 = parseAndExpr(context);
 		ERR_RET(node3);
-		node->children = realloc(node->children, (cnt+1)*sizeof(uintptr_t));
-		node->children[cnt++] = node3;
+		node->children = realloc(node->children, (node->childCount+1)*sizeof(uintptr_t));
+		node->children[node->childCount++] = node3;
 	}
-	node->childCount = cnt;
 	return node;
 }
 
@@ -829,22 +924,21 @@ ParseTreeNode *parseAndExpr(ParserContext *context)
 {
 	ParseTreeNode *node =
 		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
-	int cnt = 0;
+	node->childCount = 0;
 	node->type = AND_EXPR;
 	node->children = realloc(node->children, sizeof(uintptr_t));
-	node->children[cnt++] = parseRelExpr(context);
+	node->children[node->childCount++] = parseRelExpr(context);
 	ERR_RET(node->children[0]);
 	while (IN_RANGE && strcasecmp(context->tokenPtr->lexeme, "AND") == 0) {
 		struct ParseTreeNode *node2 = parseAndOperand(context);
 		ERR_RET(node2);
-		node->children = realloc(node->children, (cnt+1)*sizeof(uintptr_t));
-		node->children[cnt++] = node2;
+		node->children = realloc(node->children, (node->childCount+1)*sizeof(uintptr_t));
+		node->children[node->childCount++] = node2;
 		struct ParseTreeNode *node3 = parseRelExpr(context);
 		ERR_RET(node3);
-		node->children = realloc(node->children, (cnt+1)*sizeof(uintptr_t));
-		node->children[cnt++] = node3;
+		node->children = realloc(node->children, (node->childCount+1)*sizeof(uintptr_t));
+		node->children[node->childCount++] = node3;
 	}
-	node->childCount = cnt;
 	return node;
 }
 
@@ -874,23 +968,22 @@ ParseTreeNode *parseRelExpr(ParserContext *context)
 {
 	ParseTreeNode *node =
 		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
-	int cnt = 0;
+	node->childCount = 0;
 	node->type = REL_EXPR;
-	node->children = realloc(node->children, (cnt+1)*sizeof(uintptr_t));
-	node->children[cnt++] = parseAddExpr(context);
+	node->children = realloc(node->children, (node->childCount+1)*sizeof(uintptr_t));
+	node->children[node->childCount++] = parseAddExpr(context);
 	ERR_RET(node->children[0]);
 	if (IN_RANGE && context->tokenPtr->type == RELOP_TOKEN
 			&& IS_RELOP) {
 		struct ParseTreeNode *node2 = parseRelOperator(context);
 		ERR_RET(node2);
-		node->children = realloc(node->children, (cnt+1)*sizeof(uintptr_t));
-		node->children[cnt++] = node2;
+		node->children = realloc(node->children, (node->childCount+1)*sizeof(uintptr_t));
+		node->children[node->childCount++] = node2;
 		struct ParseTreeNode *node3 = parseAddExpr(context);
 		ERR_RET(node3);
-		node->children = realloc(node->children, (cnt+1)*sizeof(uintptr_t));
-		node->children[cnt++] = node3;
+		node->children = realloc(node->children, (node->childCount+1)*sizeof(uintptr_t));
+		node->children[node->childCount++] = node3;
 	}
-	node->childCount = cnt;
 	return node;
 }
 #undef IS_RELOP
@@ -899,24 +992,23 @@ ParseTreeNode *parseAddExpr(ParserContext *context)
 {
 	ParseTreeNode *node =
 		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
-	int cnt = 0;
+	node->childCount = 0;
 	node->type = ADD_EXPR;
-	node->children = realloc(node->children, (cnt+1)*sizeof(uintptr_t));
-	node->children[cnt++] = parseMulExpr(context);
+	node->children = realloc(node->children, (node->childCount+1)*sizeof(uintptr_t));
+	node->children[node->childCount++] = parseMulExpr(context);
 	ERR_RET(node->children[0]);
 	while (IN_RANGE && context->tokenPtr->type == OP_TOKEN
 			&& (strcmp(context->tokenPtr->lexeme, "+") == 0
 			|| strcmp(context->tokenPtr->lexeme, "-") == 0)) {
 		struct ParseTreeNode *node2 = parseAddOperand(context);
 		ERR_RET(node2);
-		node->children = realloc(node->children, (cnt+1)*sizeof(uintptr_t));
-		node->children[cnt++] = node2;
+		node->children = realloc(node->children, (node->childCount+1)*sizeof(uintptr_t));
+		node->children[node->childCount++] = node2;
 		struct ParseTreeNode *node3 = parseMulExpr(context);
 		ERR_RET(node3);
-		node->children = realloc(node->children, (cnt+1)*sizeof(uintptr_t));
-		node->children[cnt++] = node3;
+		node->children = realloc(node->children, (node->childCount+1)*sizeof(uintptr_t));
+		node->children[node->childCount++] = node3;
 	}
-	node->childCount = cnt;
 	return node;
 }
 
@@ -924,10 +1016,10 @@ ParseTreeNode *parseMulExpr(ParserContext *context)
 {
 	ParseTreeNode *node =
 		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
-	int cnt = 0;
+	node->childCount = 0;
 	node->type = MUL_EXPR;
-	node->children = realloc(node->children, (cnt+1)*sizeof(uintptr_t));
-	node->children[cnt++] = parseUnary(context);
+	node->children = realloc(node->children, (node->childCount+1)*sizeof(uintptr_t));
+	node->children[node->childCount++] = parseUnary(context);
 	ERR_RET(node->children[0]);
 	while (IN_RANGE && context->tokenPtr->type == OP_TOKEN
 			&& (strcmp(context->tokenPtr->lexeme, "*") == 0
@@ -935,14 +1027,13 @@ ParseTreeNode *parseMulExpr(ParserContext *context)
 			|| strcmp(context->tokenPtr->lexeme, "%") == 0 )) {
 		struct ParseTreeNode *node2 = parseMulOperand(context);
 		ERR_RET(node2);
-		node->children = realloc(node->children, (cnt+1)*sizeof(uintptr_t));
-		node->children[cnt++] = node2;
+		node->children = realloc(node->children, (node->childCount+1)*sizeof(uintptr_t));
+		node->children[node->childCount++] = node2;
 		struct ParseTreeNode *node3 = parseUnary(context);
 		ERR_RET(node3);
-		node->children = realloc(node->children, (cnt+1)*sizeof(uintptr_t));
-		node->children[cnt++] = node3;
+		node->children = realloc(node->children, (node->childCount+1)*sizeof(uintptr_t));
+		node->children[node->childCount++] = node3;
 	}
-	node->childCount = cnt;
 	return node;
 }
 

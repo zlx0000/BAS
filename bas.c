@@ -29,7 +29,10 @@
 Program prog;
 int pc;
 int expectedLineNum;
-Stack shadow_st;
+extern Stack shadow_st;
+bool in_fun_def = false;
+Function *def_fun = NULL;
+Stack def_shadow_st;
 
 #ifndef WIN32
 static char *keyword_generator(const char *text, int state)
@@ -78,20 +81,30 @@ bool find_lineNum(Program p, int n)
 	return false;
 }
 
+bool find_lineNum_fun(Function *f, int n)
+{
+	for (int i = 0; i < f->lineCount; i++) {
+		if (f->lines[i]->childCount > 1 && f->lines[i]->children[0]->token->literal.intValue == n)
+			return true;
+	}
+	return false;
+}
+
 int main(int argc, char **argv)
 {
 	char *str;
 	ParseTreeNode *p = NULL;
 	ParserContext ctx;
 	prog.lineCount = 0;
-	prog.lines = (ParseTreeNode **)calloc(16384, sizeof (ParseTreeNode *));
-	prog.shadow_st = (Stack *)calloc(16384, sizeof (Stack));
+	//prog.lines = (ParseTreeNode **)calloc(16384, sizeof (ParseTreeNode *));
+	//prog.shadow_st = (Stack *)calloc(16384, sizeof (Stack));
 #ifndef WIN32
 	rl_variable_bind("enable-bracketed-paste", "off");
 	rl_attempted_completion_function = gbasic_completion;
 	using_history();
     read_history(".gbasic_history");
 #endif
+	/*
 	for (int i = 0; i < 16384; i++) {
 		prog.shadow_st->size = -1;
 	}
@@ -99,6 +112,7 @@ int main(int argc, char **argv)
 		perror("Memory allocation failed");
 		exit(EXIT_FAILURE);
 	}
+	*/
 	pc = 0;
 	expectedLineNum = -1;
     init_eval();
@@ -118,6 +132,9 @@ repl:
 #else
 		if (!(str = readline(">"))) {
 			free(str);
+			if (isatty(STDIN_FILENO))
+    	  		printf("\n");
+			free(str);
     	   	return 0;
     	}
 		add_history(str);
@@ -126,15 +143,15 @@ repl:
 	else {
 		str = calloc(STR_SIZE, sizeof(char));
 		if (!fgets(str, STR_SIZE, stdin)) {
-			if (isatty(STDIN_FILENO))
-    	  		printf("\n");
 			free(str);
     	   	return 0;
     	}
 	}
 	if (strcasecmp(str, "exit\n") == 0
-		|| strcasecmp(str, "exit") == 0)
+		|| strcasecmp(str, "exit") == 0) {
+		free(str);
 		return 0;
+	}
 	Token *tokens =
 	(Token *)calloc(1, sizeof(Token) * MAX_TOKEN);
 	int len = lexer(str, tokens, prog.lineCount);
@@ -154,6 +171,73 @@ repl:
 				free_tree(p);
 		}
 		if (p && !ctx.err) {
+			if (in_fun_def) {
+				if (p->childCount > 1 && find_lineNum_fun(def_fun, p->children[0]->token->literal.intValue)) {
+					fprintf(stderr, "duplicate lineNum\n");
+					free_tree(p);
+					free(tokens);
+					ret.type = INT_VAL;
+					goto repl;
+				}
+				if (p->children[p->childCount-1]->type == FUN) {
+					fprintf(stderr, "can not define functions in functions\n");
+					free_tree(p);
+					free(tokens);
+					ret.type = INT_VAL;
+					goto repl;
+				}
+				else if (p->children[p->childCount-1]->type == ENDFUN) {
+					evalLine(p);
+					free_tree(p);
+					free(tokens);
+					goto repl;
+				}
+				def_fun->shadow_st = realloc(def_fun->shadow_st,
+					(def_fun->lineCount + 1) * sizeof (Stack));
+				def_fun->shadow_st[def_fun->lineCount].size = 0;
+				def_fun->lines = realloc(def_fun->lines,
+					(def_fun->lineCount + 1) * sizeof (ParseTreeNode *));
+				def_fun->lines[def_fun->lineCount] = p;
+				if (p->children[0]->type == LINENUM) {
+					copy_stack(&def_shadow_st, &def_fun->shadow_st[def_fun->lineCount]);
+				}
+				if (p->children[p->childCount-1]->type == IF) {
+					Value v;
+					v.type = IF_FRAME;
+					v.value.ifFrame.entry = def_fun->lineCount;
+					v.value.ifFrame.state = IF_SKIP_ELSE;
+				 	push(&def_shadow_st, v);
+				}
+				else if (p->children[p->childCount-1]->type == ELSE) {
+					Value top = peek(&def_shadow_st);
+        			if (top.type != IF_FRAME) {
+            			fprintf(stderr, "not in a if statement\n");
+						free_tree(p);
+						free(tokens);
+						ret.type = INT_VAL;
+						goto repl;
+					}
+					Value v;
+					v.type = IF_FRAME;
+					v.value.ifFrame.entry = def_fun->lineCount;
+					v.value.ifFrame.state = IF_CONT;
+					pop(&def_shadow_st);
+				 	push(&def_shadow_st, v);
+				}
+				else if (p->children[p->childCount-1]->type == FI) {
+					Value top = peek(&def_shadow_st);
+        			if (top.type != IF_FRAME) {
+            			fprintf(stderr, "not in a if statement\n");
+						free_tree(p);
+						free(tokens);
+						ret.type = INT_VAL;
+						goto repl;
+					}
+					pop(&def_shadow_st);
+				}
+				def_fun->lineCount++;
+				goto repl;
+			}
 			if (p->childCount > 1 && find_lineNum(prog, p->children[0]->token->literal.intValue)) {
 				fprintf(stderr, "duplicate lineNum\n");
 				free_tree(p);
@@ -161,6 +245,19 @@ repl:
 				ret.type = INT_VAL;
 				goto repl;
 			}
+			prog.lines = realloc(prog.lines,
+				(prog.lineCount + 1) * sizeof (ParseTreeNode *));
+			if (prog.lines == NULL) {
+				perror("Memory allocation failed");
+				exit(EXIT_FAILURE);
+			}
+			prog.shadow_st = realloc(prog.shadow_st,
+				(prog.lineCount + 1) * sizeof (Stack));
+			if (prog.shadow_st == NULL) {
+				perror("Memory allocation failed");
+				exit(EXIT_FAILURE);
+			}
+			prog.shadow_st[prog.lineCount].size = -1;
 			prog.lines[prog.lineCount] = p;
 			if (p->children[0]->type == LINENUM) {
 				copy_stack(&shadow_st, &prog.shadow_st[prog.lineCount]);

@@ -7,7 +7,7 @@ ifeq ($(OS),Windows_NT)
     LDLIBS = -lm
 else
 	CC = cc
-	DUBUG_FLAGS = -fsanitize=address -fno-omit-frame-pointer
+	
 	CLEAN = rm ./*.o
 	TARGET = bas
     LDLIBS = -lm -lreadline
