@@ -31,7 +31,7 @@ int pc;
 int expectedLineNum;
 extern Stack shadow_st;
 bool in_fun_def = false;
-Function *def_fun = NULL;
+BasFunction *def_fun = NULL;
 Stack def_shadow_st;
 
 #ifndef WIN32
@@ -81,7 +81,7 @@ bool find_lineNum(Program p, int n)
 	return false;
 }
 
-bool find_lineNum_fun(Function *f, int n)
+bool find_lineNum_fun(BasFunction *f, int n)
 {
 	for (int i = 0; i < f->lineCount; i++) {
 		if (f->lines[i]->childCount > 1 && f->lines[i]->children[0]->token->literal.intValue == n)

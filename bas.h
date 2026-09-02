@@ -273,7 +273,7 @@ typedef struct Value {
 		int lineNum;
 		struct Value *pointer;
 		char *identi;
-		struct Function *function;
+		struct BasFunction *function;
 		struct SubCtx {
 			int lineNum;
 		} subctx;
@@ -331,14 +331,14 @@ typedef struct VarListNode {
 	struct VarListNode *next;
 } VarListNode;
 
-typedef struct Function {
+typedef struct BasFunction {
 	//VarListNode local;
 	char **param;
 	int param_size;
 	int lineCount;
 	ParseTreeNode **lines;
 	Stack *shadow_st;
-} Function;
+} BasFunction;
 
 typedef struct Program {
 	int lineCount;

@@ -36,16 +36,16 @@ Stack shadow_st;
 Stack if_st;
 enum If_State if_state = IF_BEFORE;
 extern bool in_fun_def;
-extern Function *def_fun;
+extern BasFunction *def_fun;
 char *def_fun_name;
 extern Stack def_shadow_st;
 bool in_fun;
-Function *cur_fun;
+BasFunction *cur_fun;
 bool is_ret = false;
 
 struct CallStack {
     int pc;
-    Function *cur_fun;
+    BasFunction *cur_fun;
     VarListNode local;
     Stack for_st;
     Stack if_st;
@@ -1327,7 +1327,7 @@ Value evalFun(ParseTreeNode *node)
         || node->children[0]->children == NULL) {
         Value fun;
         fun.type = FUN_VAL;
-        fun.value.function = calloc(1, sizeof (Function));
+        fun.value.function = calloc(1, sizeof (BasFunction));
         fun.value.function->lineCount = 0;
         fun.value.function->lines = NULL;
         //fun.value.function->local.next = NULL;
@@ -1339,7 +1339,7 @@ Value evalFun(ParseTreeNode *node)
     } else {
         Value fun;
         fun.type = FUN_VAL;
-        fun.value.function = calloc(1, sizeof (Function));
+        fun.value.function = calloc(1, sizeof (BasFunction));
         fun.value.function->lineCount = 0;
         fun.value.function->lines = NULL;
         //fun.value.function->local.next = NULL;
