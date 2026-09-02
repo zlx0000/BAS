@@ -468,8 +468,11 @@ Value call(Value *fun, Value *param, int cnt)
     }
     call_st_size++;
     in_fun = true;
-    if (call_st_size >= 255)
+    if (call_st_size >= 255) {
+        call_st_size--;
+        if (call_st_size == 0) in_fun = false;
         ERR("stack overflow", STACK_OVERFLOW);
+    }
 
     copy_stack(&for_st, &call_st[call_st_size - 1].for_st);
     copy_stack(&if_st, &call_st[call_st_size - 1].if_st);
@@ -2326,6 +2329,9 @@ next_arr_index:
                 Value *param = malloc(cnt * sizeof (Value));
                 for (int i = 0; i < cnt; i++) {
                     param[i] = evalExpr(node->children[0]->children[i]);
+                    if (IS_ERR(param[i])) {
+                        return param[i];
+                    }
                 }
                 Value ret = call(&id, param, cnt);
                 free(param);
