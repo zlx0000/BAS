@@ -118,6 +118,9 @@ int main(int argc, char **argv)
     init_eval();
 repl:
 	;
+#ifdef DEBUG
+	fprintf(stderr, "allocation: %d\n", allocate_cnt());
+#endif
 	Value ret = {
 		.type = INT_VAL,
 	};

@@ -395,3 +395,5 @@ Value evalAddExpr(ParseTreeNode *node);
 Value evalMulExpr(ParseTreeNode *node);
 Value evalUnary(ParseTreeNode *node);
 Value evalPrimary(ParseTreeNode *node);
+
+int allocate_cnt();

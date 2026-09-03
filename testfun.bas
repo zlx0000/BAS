@@ -72,9 +72,11 @@ fun f(x)
 
     free stack
 
-
     return d(nxt)
 
 endfun
 
-print f(8)
+let ret = f(8)
+print ret
+
+free ret

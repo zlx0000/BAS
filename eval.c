@@ -126,6 +126,16 @@ ArrPtrList *retriveArrPtr(Value *ptr, ArrPtrList *list) {
     return NULL;
 }
 
+int allocate_cnt() {
+    ArrPtrList *cur = &arrPtrList;
+    int cnt = 0;
+    while (cur->next != NULL) {
+        cur = cur->next;
+        cnt++;
+    }
+    return cnt;
+}
+
 Value insertArrPtr(Value *ptr, ArrPtrList *list)
 {
     ArrPtrList *cur = list;
@@ -246,6 +256,24 @@ void mark_reachable(Value *until)
                 }
             }
         }
+    }
+}
+
+// use after mark_reachable
+void gc()
+{
+    ArrPtrList *cur = arrPtrList.next;
+    ArrPtrList *prev = &arrPtrList;
+    while (cur != NULL) {
+        ArrPtrList *next = cur->next;
+        if (!cur->isReachable) {
+            prev->next = next;
+            free(cur->ptr);
+            free(cur);
+        } else {
+            prev = cur;
+        }
+        cur = next;
     }
 }
 
@@ -496,6 +524,9 @@ Value call(Value *fun, Value *param, int cnt)
         insertVar(fun->value.function->param[j], param[j], &local);
     }
     while (pc >= 0 && pc < fun->value.function->lineCount) {
+#ifdef DEBUG
+        fprintf(stderr, "allocation: %d\n", allocate_cnt());
+#endif
         Value ret;
         if (__unlikely(if_state == IF_EXPECTING_ELSE_OR_FI
 			|| if_state == IF_EXPECTING_FI)) {
@@ -512,6 +543,7 @@ Value call(Value *fun, Value *param, int cnt)
             copy_stack(&call_st[call_st_size - 1].for_st, &for_st);
             copy_stack(&call_st[call_st_size - 1].if_st, &if_st);
 
+            /*
             VarListNode *cur = &local;
             while (cur->next != NULL) {
                 cur = cur->next;
@@ -519,15 +551,20 @@ Value call(Value *fun, Value *param, int cnt)
                     !(ret.type == ARR_VAL
                     && ret.value.arr.ptr == cur->var.val.value.arr.ptr)) {
                     mark_reachable(cur->var.val.value.arr.ptr);
-                    mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size,
-                        cur->var.val.value.arr.ptr);
-                    if(!retriveArrPtr(ret.value.arr.ptr, &arrPtrList)->isReachable)
+                    mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
+                    ArrPtrList *cur_arr_ptr = retriveArrPtr(cur->var.val.value.arr.ptr, &arrPtrList);
+                    if(cur_arr_ptr != NULL && !cur_arr_ptr->isReachable) {
                         free_arr(cur->var.val.value.arr.ptr,
                             cur->var.val.value.arr.size);
-                    del_freed_arr_pointer_in_var();
+                        del_freed_arr_pointer_in_var();
+                    }
                 }
             }
+            */
             free_local_list(&local);
+            mark_reachable(NULL);
+            mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
+            gc();
             local.next = call_st[call_st_size - 1].local.next;
             call_st_size--;
 
