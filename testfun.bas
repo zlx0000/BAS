@@ -35,7 +35,7 @@ ELSE
 FI
 
 
-10 let n = x
+10 let n = g(x)
 let val = 0
 let nxt = 1
 let in = new(2)
