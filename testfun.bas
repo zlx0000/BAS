@@ -40,6 +40,16 @@ fun f(x)
     let in = new(2)
     let cur = in
 
+    let head = new(2)
+    let cur2 = head
+    for i = 1 to 1000
+        cur2(1) = new(2)
+        cur2 = cur2(1)
+    next i
+
+    cur2 = head
+
+
     for i = n to 1 step -1
         cur(val) = i
         if i != 1

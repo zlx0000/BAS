@@ -524,9 +524,6 @@ Value call(Value *fun, Value *param, int cnt)
         insertVar(fun->value.function->param[j], param[j], &local);
     }
     while (pc >= 0 && pc < fun->value.function->lineCount) {
-#ifdef DEBUG
-        fprintf(stderr, "allocation: %d\n", allocate_cnt());
-#endif
         Value ret;
         if (__unlikely(if_state == IF_EXPECTING_ELSE_OR_FI
 			|| if_state == IF_EXPECTING_FI)) {
