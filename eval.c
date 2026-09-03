@@ -519,8 +519,11 @@ Value call(Value *fun, Value *param, int cnt)
                     !(ret.type == ARR_VAL
                     && ret.value.arr.ptr == cur->var.val.value.arr.ptr)) {
                     mark_reachable(cur->var.val.value.arr.ptr);
-                    free_arr(cur->var.val.value.arr.ptr,
-                        cur->next->var.val.value.arr.size);
+                    mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size,
+                        cur->var.val.value.arr.ptr);
+                    if(!retriveArrPtr(ret.value.arr.ptr, &arrPtrList)->isReachable)
+                        free_arr(cur->var.val.value.arr.ptr,
+                            cur->var.val.value.arr.size);
                     del_freed_arr_pointer_in_var();
                 }
             }

@@ -34,9 +34,8 @@ ELSE
 5   IF B=0 THEN 1
 FI
 
-10 for _ = 1 to 2
-print _
-let n = 50
+
+10 let n = x
 let val = 0
 let nxt = 1
 let in = new(2)
@@ -73,14 +72,10 @@ next i
 cur(nxt) = 0
 
 free stack
-print d(nxt)
-free d
-next _
 
 
-
-return g(x)
+return d(nxt)
 
 endfun
 
-print f(100)
+print f(3)
