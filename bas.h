@@ -51,7 +51,7 @@
 static char *keywords[] = {"LET", "PRINT", "INPUT", "IF", "ELSE", "FI", "THEN", "FOR", "TO",
                   	 "STEP", "NEXT", "GOTO", "GOSUB", "RETURN", "RETURN", "END",
                   	 "REM", "AND", "OR", "NOT", "DIM", "PUTCHAR", "CLEAR", "HOME", "SLEEP",
-					 "DELETE", "FREE", "FUN", "ENDFUN"};
+					 "DELETE", "FREE", "FUN", "ENDFUN", "RETURN", "GC"};
 
 #define KEYWORDS_SIZE sizeof(keywords) / sizeof(keywords[0])
 
@@ -93,6 +93,7 @@ typedef enum NodeType {
 	FLOATIDENT,
 	STRING,
 	IDENTI,
+	FUNDEF,
 	REM,
 	LET,
 	DIM,
@@ -105,18 +106,21 @@ typedef enum NodeType {
 	PUTCHAR,
 	CLEAR,
 	HOME,
+	GC,
 	INPUT,
 	INPUT_LIST,
 	SLEEP,
 	DEL,
 	FREE,
+	FUN,
+	ENDFUN,
+	RETURN,
 	FOR,
 	TO,
 	STEP,
 	NEXT,
 	GOTO,
 	GOSUB,
-	RETURN,
 	END,
 	PLUS,
 	MINUS,
@@ -202,10 +206,14 @@ ParseTreeNode *parsePrintStatement(ParserContext *context);
 ParseTreeNode *parsePutCharStatement(ParserContext *context);
 ParseTreeNode *parseClearStatement(ParserContext *context);
 ParseTreeNode *parseHomeStatement(ParserContext *context);
+ParseTreeNode *parseGcStatement(ParserContext *context);
 ParseTreeNode *parseSleepStatement(ParserContext *context);
 ParseTreeNode *parseDimStatement(ParserContext *context);
 ParseTreeNode *parseDelStatement(ParserContext *context);
 ParseTreeNode *parseFreeStatement(ParserContext *context);
+ParseTreeNode *parseFunStatement(ParserContext *context);
+ParseTreeNode *parseEndFunStatement(ParserContext *context);
+ParseTreeNode *parseReturnStatement(ParserContext *context);
 ParseTreeNode *parsePrintList(ParserContext *context);
 ParseTreeNode *parsePrintItem(ParserContext *context);
 ParseTreeNode *parseInputStatement(ParserContext *context);
@@ -249,6 +257,7 @@ typedef struct Value {
         FLOAT_VAL,
         STRING_VAL,
 		ARR_VAL,
+		FUN_VAL,
 		POINTER_VAL
 	} type;
     union ValueVal {
@@ -266,6 +275,7 @@ typedef struct Value {
 		int lineNum;
 		struct Value *pointer;
 		char *identi;
+		struct BasFunction *function;
 		struct SubCtx {
 			int lineNum;
 		} subctx;
@@ -323,17 +333,19 @@ typedef struct VarListNode {
 	struct VarListNode *next;
 } VarListNode;
 
+typedef struct BasFunction {
+	//VarListNode local;
+	char **param;
+	int param_size;
+	int lineCount;
+	ParseTreeNode **lines;
+	Stack *shadow_st;
+} BasFunction;
+
 typedef struct Program {
 	int lineCount;
 	ParseTreeNode **lines;
 	Stack *shadow_st;
-	struct Function {
-		VarListNode *local;
-		int local_size;
-		int lineCount;
-		ParseTreeNode **lines;
-		Stack *shadow_st;
-	} *functions;
 } Program;
 
 typedef struct ArrPtrList {
@@ -353,6 +365,9 @@ extern Stack shadow_st;
 int lineNum_to_pc(int lineNum);
 bool is_if_else_or_fi(ParseTreeNode *node);
 void copy_stack(Stack *src, Stack* dst);
+Value push(Stack *st, Value val);
+Value pop(Stack *st);
+Value peek(Stack *st);
 
 void init_eval();
 Value evalLine(ParseTreeNode *node);
@@ -370,8 +385,12 @@ Value evalGoto(ParseTreeNode *node);
 Value evalSleep(ParseTreeNode *node);
 Value evalClear(ParseTreeNode *node);
 Value evalHome(ParseTreeNode *node);
+Value evalGc(ParseTreeNode *node);
 Value evalFree(ParseTreeNode *node);
 Value evalDel(ParseTreeNode *node);
+Value evalFun(ParseTreeNode *node);
+Value evalEndFun(ParseTreeNode *node);
+Value evalReturn(ParseTreeNode *node);
 Value evalOrExpr(ParseTreeNode *node);
 Value evalAndExpr(ParseTreeNode *node);
 Value evalRelExpr(ParseTreeNode *node);
@@ -379,3 +398,5 @@ Value evalAddExpr(ParseTreeNode *node);
 Value evalMulExpr(ParseTreeNode *node);
 Value evalUnary(ParseTreeNode *node);
 Value evalPrimary(ParseTreeNode *node);
+
+int allocate_cnt();

@@ -32,11 +32,20 @@ static VarListNode local;
 static ArrPtrList arrPtrList;
 static ArrPtrList accessdArr;
 static Stack for_st;
+Stack shadow_st;
 Stack if_st;
 enum If_State if_state = IF_BEFORE;
+extern bool in_fun_def;
+extern BasFunction *def_fun;
+char *def_fun_name;
+extern Stack def_shadow_st;
+bool in_fun;
+BasFunction *cur_fun;
+bool is_ret = false;
 
 struct CallStack {
     int pc;
+    BasFunction *cur_fun;
     VarListNode local;
     Stack for_st;
     Stack if_st;
@@ -44,14 +53,32 @@ struct CallStack {
     enum If_State if_state;
 };
 
-struct CallStack *call_st;
+struct CallStack call_st[256];
+int a = sizeof (call_st);
 int call_st_size = 0;
+
+void *resize(void *ptr, size_t size)
+{
+    if (size == 0) {
+        free(ptr);
+        return NULL;
+    } else {
+        return realloc(ptr, size);
+    }
+}
 
 int lineNum_to_pc(int lineNum)
 {
-    for (int i = 0; i < prog.lineCount; i++) {
-        if (prog.lines[i]->childCount > 1 && prog.lines[i]->children[0]->token->literal.intValue == lineNum)
-            return i;
+    if (in_fun) {
+        for (int i = 0; i < cur_fun->lineCount; i++) {
+            if (cur_fun->lines[i]->childCount > 1 && cur_fun->lines[i]->children[0]->token->literal.intValue == lineNum)
+                return i;
+        }
+    } else {
+        for (int i = 0; i < prog.lineCount; i++) {
+            if (prog.lines[i]->childCount > 1 && prog.lines[i]->children[0]->token->literal.intValue == lineNum)
+                return i;
+        }
     }
     return -1;
 }
@@ -99,6 +126,16 @@ ArrPtrList *retriveArrPtr(Value *ptr, ArrPtrList *list) {
     return NULL;
 }
 
+int allocate_cnt() {
+    ArrPtrList *cur = &arrPtrList;
+    int cnt = 0;
+    while (cur->next != NULL) {
+        cur = cur->next;
+        cnt++;
+    }
+    return cnt;
+}
+
 Value insertArrPtr(Value *ptr, ArrPtrList *list)
 {
     ArrPtrList *cur = list;
@@ -144,6 +181,18 @@ void free_arr_list(ArrPtrList *ptr)
     ptr->next = NULL;
 }
 
+void free_local_list(VarListNode *ptr)
+{
+    VarListNode *cur = ptr;
+    VarListNode *next = cur->next;
+    while (next != NULL) {
+        cur = next;
+        next = cur->next;
+        free(cur);
+    }
+    ptr->next = NULL;
+}
+
 void mark_reachable_deep(Value *ptr, int size, Value *until)
 {
     ArrPtrList *arr = retriveArrPtr(ptr, &arrPtrList);
@@ -180,11 +229,66 @@ void mark_reachable(Value *until)
             }
         }
     }
+    cur = &local;
+    while (cur->next != NULL) {
+        cur = cur->next;
+        if (cur->var.val.type == ARR_VAL) {
+            //ArrPtrList *arr = retriveArrPtr(cur->var.val.value.arr.ptr
+            //                                    ,&arrPtrList);
+            if ((!until || cur->var.val.value.arr.ptr != until) /*&& arr != NULL*/) {
+                //arr->isReachable = true;
+                mark_reachable_deep(cur->var.val.value.arr.ptr,
+                    cur->var.val.value.arr.size, until);
+            }
+        }
+    }
+    for (int i = 0; i < call_st_size; i++) {
+        cur = &call_st[i].local;
+        while (cur->next != NULL) {
+            cur = cur->next;
+            if (cur->var.val.type == ARR_VAL) {
+                //ArrPtrList *arr = retriveArrPtr(cur->var.val.value.arr.ptr
+                //                                    ,&arrPtrList);
+                if ((!until || cur->var.val.value.arr.ptr != until) /*&& arr != NULL*/) {
+                    //arr->isReachable = true;
+                    mark_reachable_deep(cur->var.val.value.arr.ptr,
+                        cur->var.val.value.arr.size, until);
+                }
+            }
+        }
+    }
+}
+
+// use after mark_reachable
+void gc()
+{
+    ArrPtrList *cur = arrPtrList.next;
+    ArrPtrList *prev = &arrPtrList;
+    while (cur != NULL) {
+        ArrPtrList *next = cur->next;
+        if (!cur->isReachable) {
+            prev->next = next;
+            free(cur->ptr);
+            free(cur);
+        } else {
+            prev = cur;
+        }
+        cur = next;
+    }
 }
 
 Value retriveVar(char *name) {
-    VarListNode *cur = &global;
+    VarListNode *cur = &local;
     Value v;
+    while (cur->next != NULL) {
+        cur = cur->next;
+        if (strcasecmp(cur->var.name, name) == 0) {
+            v.type = cur->var.val.type;
+            v.value = cur->var.val.value;
+            return v;
+        }
+    }
+    cur = &global;
     while (cur->next != NULL) {
         cur = cur->next;
         if (strcasecmp(cur->var.name, name) == 0) {
@@ -197,7 +301,13 @@ Value retriveVar(char *name) {
 }
 
 bool findVar(char *name) {
-    VarListNode *cur = &global;
+    VarListNode *cur = &local;
+    while (cur->next != NULL) {
+        cur = cur->next;
+        if (strcasecmp(cur->var.name, name) == 0)
+            return true;
+    }
+    cur = &global;
     while (cur->next != NULL) {
         cur = cur->next;
         if (strcasecmp(cur->var.name, name) == 0)
@@ -243,7 +353,16 @@ void del_freed_arr_pointer_in_var()
 }
 
 Value modVar(char *name, Value val) {
-    VarListNode *cur = &global;
+    VarListNode *cur = &local;
+    while (cur->next != NULL) {
+        cur = cur->next;
+        if (strcasecmp(cur->var.name, name) == 0) {
+            cur->var.val.type = val.type;
+            cur->var.val.value = val.value;
+            return val;
+        }
+    }
+    cur = &global;
     while (cur->next != NULL) {
         cur = cur->next;
         if (strcasecmp(cur->var.name, name) == 0) {
@@ -255,9 +374,9 @@ Value modVar(char *name, Value val) {
     ERR("variable not found", VAR_NOT_FOUND);
 }
 
-Value insertVar(char *name, Value val)
+Value insertVar(char *name, Value val, VarListNode *list)
 {
-    VarListNode *cur = &global;
+    VarListNode *cur = list;
     while (cur->next != NULL) {
         cur = cur->next;
         if (strcasecmp(cur->var.name, name) == 0) {
@@ -267,37 +386,52 @@ Value insertVar(char *name, Value val)
     VarListNode *v = calloc(1, sizeof(VarListNode));
     v->var.name = name;
     v->var.val = val;
-    v->next = global.next;
-    global.next = v;
+    v->next = list->next;
+    list->next = v;
     return val;
 }
 
-Value insertVar_strict(char *name, Value val)
+Value insertVar_strict(char *name, Value val, VarListNode *list)
 {
-    VarListNode *cur = &global;
+    VarListNode *cur = list;
     VarListNode *v = malloc(sizeof(VarListNode));
     v->var.name = name;
     v->var.val = val;
     while (cur->next != NULL) {
         cur = cur->next;
         if (strcasecmp(cur->var.name, name) == 0) {
+            free(v);
             return ERRVAL(VAR_ALREADY_EXIST);
         }
     }
-    v->next = global.next;
-    global.next = v;
+    v->next = list->next;
+    list->next = v;
     return val;
 }
 
 Value delVar(char *name)
 {
-    VarListNode *cur = &global;
+    VarListNode *cur = &local;
     VarListNode *prev;
     Value v;
     while (cur->next != NULL) {
         prev = cur;
         cur = cur->next;
         if (strcasecmp(cur->var.name, name) == 0) {
+            v.type = cur->var.val.type;
+            v.value = cur->var.val.value;
+            prev->next = cur->next;
+            free(cur);
+            return DEF_VAL;
+        }
+    }
+    cur = &global;
+    while (cur->next != NULL) {
+        prev = cur;
+        cur = cur->next;
+        if (strcasecmp(cur->var.name, name) == 0) {
+            if (cur->var.val.type == FUN_VAL)
+                ERR("can not remove this variable", ERR_VAL_NULL);
             v.type = cur->var.val.type;
             v.value = cur->var.val.value;
             prev->next = cur->next;
@@ -340,26 +474,128 @@ void copy_stack(Stack *src, Stack* dst) {
     }
 }
 
-Value call(int i)
+static void free_arr(Value *arr, int size)
 {
+    if (findArrPtr(arr, &arrPtrList)
+        && !retriveArrPtr(arr, &arrPtrList)->isReachable) {
+        delArrPtr(arr, &arrPtrList);
+        for (int i = 0; i < size; i++) {
+            if ((arr + i)->type == ARR_VAL) {
+                free_arr((arr + i)->value.arr.ptr,
+                         (arr + i)->value.arr.size);
+            }
+        }
+        free(arr);
+    }
+}
+
+Value call(Value *fun, Value *param, int cnt)
+{
+    if (fun->type != FUN_VAL) {
+        ERR("not an function", INCOMPATIBLE_TYPES);
+    }
     call_st_size++;
-    struct CallStack *ptr = realloc(call_st, call_st_size);
-    if (ptr == NULL)
-        ERR("out of memory", OUT_OF_MEMORY);
-    call_st = ptr;
-    call_st[call_st_size - 1].for_st = for_st;
-    call_st[call_st_size - 1].if_st = if_st;
-    call_st[call_st_size - 1].shadow_st = shadow_st;
+    in_fun = true;
+    if (call_st_size >= 255) {
+        call_st_size--;
+        if (call_st_size == 0) in_fun = false;
+        ERR("stack overflow", STACK_OVERFLOW);
+    }
+
+    copy_stack(&for_st, &call_st[call_st_size - 1].for_st);
+    copy_stack(&if_st, &call_st[call_st_size - 1].if_st);
+    call_st[call_st_size - 1].cur_fun = cur_fun;
     call_st[call_st_size - 1].if_state = if_state;
-    call_st[call_st_size - 1].local = local;
+    call_st[call_st_size - 1].local.next = local.next;
     call_st[call_st_size - 1].pc = pc;
+
     pc = 0;
+    cur_fun = fun->value.function;
     for_st.size = 0;
     if_st.size = 0;
-    shadow_st.size = 0;
+    local.next = NULL;
     if_state = IF_BEFORE;
-    for (int j = 0; j < prog.functions[i].local_size; j++) {
-        
+
+    if (fun->value.function->param_size != cnt) {
+        ERR("param size doesn't match", ERR_VAL_NULL);
+    }
+
+    for (int j = 0; j < fun->value.function->param_size; j++) {
+        insertVar(fun->value.function->param[j], param[j], &local);
+    }
+    while (pc >= 0 && pc < fun->value.function->lineCount) {
+        Value ret;
+        if (__unlikely(if_state == IF_EXPECTING_ELSE_OR_FI
+			|| if_state == IF_EXPECTING_FI)) {
+			if (is_if_else_or_fi(fun->value.function->lines[pc]))
+				ret = evalLine(fun->value.function->lines[pc]);
+			else
+				pc++;
+		} else
+			ret = evalLine(fun->value.function->lines[pc]);
+        if (is_ret) {
+            pc = call_st[call_st_size - 1].pc;
+            if_state = call_st[call_st_size - 1].if_state;
+            cur_fun = call_st[call_st_size - 1].cur_fun;
+            copy_stack(&call_st[call_st_size - 1].for_st, &for_st);
+            copy_stack(&call_st[call_st_size - 1].if_st, &if_st);
+
+            /*
+            VarListNode *cur = &local;
+            while (cur->next != NULL) {
+                cur = cur->next;
+                if (cur->var.val.type == ARR_VAL &&
+                    !(ret.type == ARR_VAL
+                    && ret.value.arr.ptr == cur->var.val.value.arr.ptr)) {
+                    mark_reachable(cur->var.val.value.arr.ptr);
+                    mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
+                    ArrPtrList *cur_arr_ptr = retriveArrPtr(cur->var.val.value.arr.ptr, &arrPtrList);
+                    if(cur_arr_ptr != NULL && !cur_arr_ptr->isReachable) {
+                        free_arr(cur->var.val.value.arr.ptr,
+                            cur->var.val.value.arr.size);
+                        del_freed_arr_pointer_in_var();
+                    }
+                }
+            }
+            */
+            free_local_list(&local);
+            mark_reachable(NULL);
+            mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
+            gc();
+            local.next = call_st[call_st_size - 1].local.next;
+            call_st_size--;
+
+            is_ret = false;
+            if (call_st_size == 0) in_fun = false;
+            return ret;
+        }
+        if (IS_ERR(ret)) {
+            pc = call_st[call_st_size - 1].pc;
+            if_state = call_st[call_st_size - 1].if_state;
+            cur_fun = call_st[call_st_size - 1].cur_fun;
+            copy_stack(&call_st[call_st_size - 1].for_st, &for_st);
+            copy_stack(&call_st[call_st_size - 1].if_st, &if_st);
+
+            VarListNode *cur = &local;
+            while (cur->next != NULL) {
+                cur = cur->next;
+                if (cur->var.val.type == ARR_VAL &&
+                    !(ret.type == ARR_VAL
+                    && ret.value.arr.ptr == cur->var.val.value.arr.ptr)) {
+                    mark_reachable(cur->var.val.value.arr.ptr);
+                    free_arr(cur->var.val.value.arr.ptr,
+                        cur->var.val.value.arr.size);
+                    del_freed_arr_pointer_in_var();
+                }
+            }
+            free_local_list(&local);
+            local.next = call_st[call_st_size - 1].local.next;
+            call_st_size--;
+
+            is_ret = false;
+            if (call_st_size == 0) in_fun = false;
+            return ret;
+        }
     }
 }
 
@@ -498,6 +734,14 @@ Value evalLine(ParseTreeNode *node)
             return evalFree(statement);
         case DEL:
             return evalDel(statement);
+        case FUN:
+            return evalFun(statement);
+        case RETURN:
+            return evalReturn(statement);
+        case ENDFUN:
+            return evalEndFun(statement);
+        case GC:
+            return evalGc(statement);
         default:
             ERR("unknown statement", UNKNOWN_STATEMENT);
     }
@@ -528,7 +772,7 @@ Value evalLet(ParseTreeNode *node)
             return modVar(name, v);
         } else {
             pc++;
-            return insertVar(name, v);
+            return insertVar(name, v, (in_fun ? &local : &global));
         }
         pc++;
         return v;
@@ -631,7 +875,7 @@ Value evalDim(ParseTreeNode *node)
         v.value.arr.ptr[i].type = INT_VAL;
     }
     pc++;
-    return insertVar(name, v);
+    return insertVar(name, v, (in_fun ? &local : &global));
 }
 
 Value evalPrint(ParseTreeNode *node)
@@ -668,7 +912,7 @@ Value evalIf(ParseTreeNode *node)
 {
     if (node->childCount == 1) {
         ParseTreeNode *expr = node->children[0];
-        {
+        if (!in_fun) {
             Value frame = {
                 .type = IF_FRAME,
                 .value.ifFrame = {
@@ -759,13 +1003,24 @@ Value evalIf(ParseTreeNode *node)
             if (pc == -1)
                 expectedLineNum = line->token->literal.intValue;
             else {
-                if (prog.shadow_st[pc].size >= 0) {
-                    copy_stack(&prog.shadow_st[pc], &if_st);
-                    copy_stack(&if_st, &shadow_st);
-                    if (if_st.size > 0)
-                        if_state = if_st.st[if_st.size-1].value.ifFrame.state;
-                    else
-                        if_state = IF_BEFORE;
+                if (in_fun) {
+                    if (cur_fun->shadow_st[pc].size >= 0) {
+                        copy_stack(&cur_fun->shadow_st[pc], &if_st);
+                        //copy_stack(&if_st, &shadow_st);
+                        if (if_st.size > 0)
+                            if_state = if_st.st[if_st.size-1].value.ifFrame.state;
+                        else
+                            if_state = IF_BEFORE;
+                    }
+                } else {
+                    if (prog.shadow_st[pc].size >= 0) {
+                        copy_stack(&prog.shadow_st[pc], &if_st);
+                        copy_stack(&if_st, &shadow_st);
+                        if (if_st.size > 0)
+                            if_state = if_st.st[if_st.size-1].value.ifFrame.state;
+                        else
+                            if_state = IF_BEFORE;
+                    }
                 }
             }
         }
@@ -777,7 +1032,7 @@ Value evalIf(ParseTreeNode *node)
 
 Value evalElse(ParseTreeNode *node)
 {
-    {
+    if (!in_fun) {
         Value top = peek(&shadow_st);
         if (top.type != IF_FRAME)
             ERR("not in a if statement", INCOMPATIBLE_TYPES);
@@ -836,7 +1091,7 @@ Value evalElse(ParseTreeNode *node)
 
 Value evalFi(ParseTreeNode *node)
 {
-    {
+    if (!in_fun) {
         Value top = peek(&shadow_st);
         if (top.type != IF_FRAME)
             ERR("not in a if statement", INCOMPATIBLE_TYPES);
@@ -894,7 +1149,7 @@ Value evalFor(ParseTreeNode *node)
     if (top.type == ERR_VAL
         && top.value.errVal == STACK_UNDERFLOW) {
         push(&for_st, ctx);
-        insertVar(id, from);
+        insertVar(id, from, (in_fun ? &local : &global));
         pc++;
     }
     else if (__likely(top.type == FOR_CTX)) {
@@ -915,12 +1170,12 @@ Value evalFor(ParseTreeNode *node)
             }
         } else {
             push(&for_st, ctx);
-            insertVar(id, from);
+            insertVar(id, from, (in_fun ? &local : &global));
             pc++;
         }
     } else {
         push(&for_st,ctx);
-        insertVar(id, from);
+        insertVar(id, from, (in_fun ? &local : &global));
         pc++;
     }
     return step;
@@ -956,13 +1211,24 @@ Value evalGoto(ParseTreeNode *node)
     if (pc == -1)
         expectedLineNum = node->children[0]->token->literal.intValue;
     else {
-        if (prog.shadow_st[pc].size >= 0) {
-            copy_stack(&prog.shadow_st[pc], &if_st);
-            copy_stack(&if_st, &shadow_st);
-            if (if_st.size > 0)
-                if_state = if_st.st[if_st.size-1].value.ifFrame.state;
-            else
-                if_state = IF_BEFORE;
+        if (in_fun) {
+            if (cur_fun->shadow_st[pc].size >= 0) {
+                copy_stack(&cur_fun->shadow_st[pc], &if_st);
+                //copy_stack(&if_st, &shadow_st);
+                if (if_st.size > 0)
+                    if_state = if_st.st[if_st.size-1].value.ifFrame.state;
+                else
+                    if_state = IF_BEFORE;
+            }
+        } else {
+            if (prog.shadow_st[pc].size >= 0) {
+                copy_stack(&prog.shadow_st[pc], &if_st);
+                copy_stack(&if_st, &shadow_st);
+                if (if_st.size > 0)
+                    if_state = if_st.st[if_st.size-1].value.ifFrame.state;
+                else
+                    if_state = IF_BEFORE;
+            }
         }
     }
     return DEF_VAL;
@@ -998,20 +1264,14 @@ Value evalHome(ParseTreeNode *node)
     return DEF_VAL;
 }
 
-static void free_arr(Value *arr, int size)
+Value evalGc(ParseTreeNode *node)
 {
-    if (findArrPtr(arr, &arrPtrList)
-        && !retriveArrPtr(arr, &arrPtrList)->isReachable) {
-        delArrPtr(arr, &arrPtrList);
-        for (int i = 0; i < size; i++) {
-            if ((arr + i)->type == ARR_VAL) {
-                free_arr((arr + i)->value.arr.ptr,
-                         (arr + i)->value.arr.size);
-            }
-        }
-        free(arr);
-    }
+    mark_reachable(NULL);
+    gc();
+    pc++;
+    return DEF_VAL;
 }
+
 
 Value evalFree(ParseTreeNode *node)
 {
@@ -1083,6 +1343,99 @@ Value evalFree(ParseTreeNode *node)
     }
     pc++;
     return DEF_VAL;
+}
+
+Value evalFun(ParseTreeNode *node)
+{
+    if (if_state != IF_BEFORE) {
+        ERR("can not define finctions in if blocks",
+            ERR_VAL_NULL);
+    }
+    if (for_st.size > 0) {
+        ERR("can not define finctions in for blocks",
+            ERR_VAL_NULL);
+    }
+    char *name = node->children[0]->token->lexeme;
+    if (findVar(name) && retriveVar(name).type == FUN_VAL) {
+        ERR("already defined", ERR_VAL_NULL);
+    }
+    if (strcasecmp(name, "COS") == 0
+        || strcasecmp(name, "SIN") == 0
+        || strcasecmp(name, "COSF") == 0
+        || strcasecmp(name, "SINF") == 0
+        || strcasecmp(name, "TAN") == 0
+        || strcasecmp(name, "TANF") == 0
+        || strcasecmp(name, "EXP") == 0
+        || strcasecmp(name, "INT") == 0
+        || strcasecmp(name, "FLOAT") == 0
+        || strcasecmp(name, "NEW") == 0) {
+        ERR("cannot use built-in names", ERR_VAL_NULL);
+    }
+    if (node->children[0]->childCount == 0
+        || node->children[0]->children == NULL) {
+        Value fun;
+        fun.type = FUN_VAL;
+        fun.value.function = calloc(1, sizeof (BasFunction));
+        fun.value.function->lineCount = 0;
+        fun.value.function->lines = NULL;
+        //fun.value.function->local.next = NULL;
+        fun.value.function->param_size = 0;
+        fun.value.function->shadow_st = NULL;
+        def_fun = fun.value.function;
+        def_shadow_st.size = 0;
+        def_fun_name = name;
+    } else {
+        Value fun;
+        fun.type = FUN_VAL;
+        fun.value.function = calloc(1, sizeof (BasFunction));
+        fun.value.function->lineCount = 0;
+        fun.value.function->lines = NULL;
+        //fun.value.function->local.next = NULL;
+        fun.value.function->param_size = node->children[0]->childCount;
+        fun.value.function->shadow_st = NULL;
+        def_fun = fun.value.function;
+        def_shadow_st.size = 0;
+        def_fun_name = name;
+        int i = 0, cnt = node->children[0]->childCount;
+        while (i < cnt) {
+            /*
+            if (IS_ERR(insertVar_strict(node->children[0]->children[i]->token->lexeme, DEF_VAL,
+                &fun.value.function->local))) {
+                ERR("duplicate param", ERR_VAL_NULL);
+            }
+            */
+            fun.value.function->param = realloc(fun.value.function->param,
+                    (i + 1) * sizeof(char *));
+            fun.value.function->param[i] = node->children[0]->children[i]->token->lexeme;
+            i++;
+        }
+    }
+    in_fun_def = true;
+    pc++;
+    return DEF_VAL;
+}
+
+Value evalEndFun(ParseTreeNode *node)
+{
+    Value fun;
+    fun.type = FUN_VAL;
+    fun.value.function = def_fun;
+    if (IS_ERR(insertVar(def_fun_name, fun, &global))) {
+        ERR("unknown error", ERR_VAL_NULL);
+    }
+    in_fun_def = false;
+    return DEF_VAL;
+}
+
+Value evalReturn(ParseTreeNode *node)
+{
+    if (!in_fun) {
+        ERR("not in an function", ERR_VAL_NULL);
+    }
+    Value ret = evalExpr(node->children[0]);
+    is_ret = true;
+    pc++;
+    return ret;
 }
 
 Value evalDel(ParseTreeNode *node)
@@ -1830,6 +2183,10 @@ Value evalPrimary(ParseTreeNode *node)
             || node->children[0]->children[0] == NULL) {
             Value id = retriveVar(node->children[0]->token->lexeme);
             ERR_RETURN_EVAL(id);
+            if (id.type == FUN_VAL) {
+                Value ret = call(&id, NULL, 0);
+                return ret;
+            }
             v.type = id.type;
             v.value = id.value;
         } else {
@@ -1987,31 +2344,46 @@ Value evalPrimary(ParseTreeNode *node)
             }
             Value id = retriveVar(name);
             ERR_RETURN_EVAL(id);
-            if (id.type != ARR_VAL)
-                ERR("not an array", INCOMPATIBLE_TYPES);
+            if (id.type != ARR_VAL && id.type != FUN_VAL)
+                ERR("not an array or a function", INCOMPATIBLE_TYPES);
             int i = 0;
             int cnt = node->children[0]->childCount;
-next_index:
-            ;
-            Value index_val = evalExpr(node->children[0]->children[i]);
-            ERR_RETURN_EVAL(index_val);
-            if (index_val.type != INT_VAL)
-                ERR("index has to be INT type", INCOMPATIBLE_TYPES);
-            int index = index_val.value.intVal;
-            if (index >= id.value.arr.size)
-                ERR("index out of range", INDEX_OUT_OF_RANGE);
-            Value *base = id.value.arr.ptr;
-            Value *ptr = base + index;
-            v.type = ptr->type;
-            v.value = ptr->value;
-            if (IS_ERR(v))
-                ERR("uninitialized value", UNINIT_VAL);
-            if (i < cnt - 1) {
-                if (v.type != ARR_VAL)
-                    ERR("not an array", INCOMPATIBLE_TYPES);
-                id = v;
-                i++;
-                goto next_index;
+            if (id.type == ARR_VAL) {
+next_arr_index:
+                ;
+                Value index_val = evalExpr(node->children[0]->children[i]);
+                ERR_RETURN_EVAL(index_val);
+                if (index_val.type != INT_VAL)
+                    ERR("index has to be INT type", INCOMPATIBLE_TYPES);
+                int index = index_val.value.intVal;
+                if (index >= id.value.arr.size)
+                    ERR("index out of range", INDEX_OUT_OF_RANGE);
+                Value *base = id.value.arr.ptr;
+                Value *ptr = base + index;
+                v.type = ptr->type;
+                v.value = ptr->value;
+                if (IS_ERR(v))
+                    ERR("uninitialized value", UNINIT_VAL);
+                if (i < cnt - 1) {
+                    if (v.type != ARR_VAL)
+                        ERR("not an array", INCOMPATIBLE_TYPES);
+                    id = v;
+                    i++;
+                    goto next_arr_index;
+                }
+            }
+            else if (id.type == FUN_VAL) {
+                int cnt = node->children[0]->childCount;
+                Value *param = malloc(cnt * sizeof (Value));
+                for (int i = 0; i < cnt; i++) {
+                    param[i] = evalExpr(node->children[0]->children[i]);
+                    if (IS_ERR(param[i])) {
+                        return param[i];
+                    }
+                }
+                Value ret = call(&id, param, cnt);
+                free(param);
+                return ret;
             }
         }
     }

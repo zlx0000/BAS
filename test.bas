@@ -123,24 +123,22 @@ FI
 PRINT "TEST GOTO IN IF\n"
 GOTO 3
 
-GOTO 3
-
 LET A=1
 
 IF A = 0
-    PRINT "TEST FAILD"
+    PRINT "TEST FAILD\n"
     IF A=1
-        PRINT "TEST FAILD"
+        PRINT "TEST FAILD\n"
 1       PRINT "TEST "
         GOTO 2
     ELSE
-        PRINT "TEST FAILD"
+        PRINT "TEST FAILD\n"
         IF A=0
 2           PRINT "PASSED\n"
         ELSE
 3           LET B=0
             GOTO 5
-            PRINT "TEST FAILD"
+            PRINT "TEST FAILD\n"
         FI
     FI
 ELSE
