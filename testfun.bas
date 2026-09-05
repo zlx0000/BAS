@@ -49,7 +49,6 @@ fun f(x)
 
     cur2 = head
 
-
     for i = n to 1 step -1
         cur(val) = i
         if i != 1
