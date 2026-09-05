@@ -51,7 +51,7 @@
 static char *keywords[] = {"LET", "PRINT", "INPUT", "IF", "ELSE", "FI", "THEN", "FOR", "TO",
                   	 "STEP", "NEXT", "GOTO", "GOSUB", "RETURN", "RETURN", "END",
                   	 "REM", "AND", "OR", "NOT", "DIM", "PUTCHAR", "CLEAR", "HOME", "SLEEP",
-					 "DELETE", "FREE", "FUN", "ENDFUN", "RETURN"};
+					 "DELETE", "FREE", "FUN", "ENDFUN", "RETURN", "GC"};
 
 #define KEYWORDS_SIZE sizeof(keywords) / sizeof(keywords[0])
 
@@ -106,6 +106,7 @@ typedef enum NodeType {
 	PUTCHAR,
 	CLEAR,
 	HOME,
+	GC,
 	INPUT,
 	INPUT_LIST,
 	SLEEP,
@@ -205,6 +206,7 @@ ParseTreeNode *parsePrintStatement(ParserContext *context);
 ParseTreeNode *parsePutCharStatement(ParserContext *context);
 ParseTreeNode *parseClearStatement(ParserContext *context);
 ParseTreeNode *parseHomeStatement(ParserContext *context);
+ParseTreeNode *parseGcStatement(ParserContext *context);
 ParseTreeNode *parseSleepStatement(ParserContext *context);
 ParseTreeNode *parseDimStatement(ParserContext *context);
 ParseTreeNode *parseDelStatement(ParserContext *context);
@@ -383,6 +385,7 @@ Value evalGoto(ParseTreeNode *node);
 Value evalSleep(ParseTreeNode *node);
 Value evalClear(ParseTreeNode *node);
 Value evalHome(ParseTreeNode *node);
+Value evalGc(ParseTreeNode *node);
 Value evalFree(ParseTreeNode *node);
 Value evalDel(ParseTreeNode *node);
 Value evalFun(ParseTreeNode *node);

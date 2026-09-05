@@ -740,6 +740,8 @@ Value evalLine(ParseTreeNode *node)
             return evalReturn(statement);
         case ENDFUN:
             return evalEndFun(statement);
+        case GC:
+            return evalGc(statement);
         default:
             ERR("unknown statement", UNKNOWN_STATEMENT);
     }
@@ -1261,6 +1263,15 @@ Value evalHome(ParseTreeNode *node)
     pc++;
     return DEF_VAL;
 }
+
+Value evalGc(ParseTreeNode *node)
+{
+    mark_reachable(NULL);
+    gc();
+    pc++;
+    return DEF_VAL;
+}
+
 
 Value evalFree(ParseTreeNode *node)
 {
