@@ -89,3 +89,15 @@ let ret = f(8)
 print ret
 
 free ret
+
+fun one
+    return 1
+endfun
+fun take(a,b)
+    a(0) = 1
+    return new(a(0))
+endfun
+let ret = take(new(1),one)
+print ret
+free ret
+gc
