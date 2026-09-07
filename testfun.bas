@@ -100,4 +100,12 @@ endfun
 let ret = take(new(1),one)
 print ret
 free ret
-gc
+
+fun id(a)
+    return a
+endfun
+
+let a = id(new(10))
+a(0) = 123
+print a
+free a
