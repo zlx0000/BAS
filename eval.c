@@ -2433,6 +2433,7 @@ next_arr_index:
                     if (!cur->isReachable) {
                         prev->next = next;
                         mark_reachable(cur->ptr);
+                        mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
                         free_arr(cur->ptr, cur->size);
                         del_freed_arr_pointer_in_var();
                         free(cur);
