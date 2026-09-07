@@ -29,6 +29,7 @@
 
 static VarListNode global;
 static VarListNode local;
+static ArrPtrList tmp_arr;
 static ArrPtrList arrPtrList;
 static ArrPtrList accessdArr;
 static Stack for_st;
@@ -47,6 +48,7 @@ struct CallStack {
     int pc;
     BasFunction *cur_fun;
     VarListNode local;
+    ArrPtrList tmp_arr;
     Stack for_st;
     Stack if_st;
     Stack shadow_st;
@@ -136,11 +138,12 @@ int allocate_cnt() {
     return cnt;
 }
 
-Value insertArrPtr(Value *ptr, ArrPtrList *list)
+Value insertArrPtr(Value *ptr, int size, ArrPtrList *list)
 {
     ArrPtrList *cur = list;
     ArrPtrList *v = calloc(1, sizeof(ArrPtrList));
     v->ptr = ptr;
+    v->size = size;
     while (cur->next != NULL) {
         cur = cur->next;
         if (cur->ptr == ptr) {
@@ -256,6 +259,14 @@ void mark_reachable(Value *until)
                 }
             }
         }
+        ArrPtrList *p = &call_st[i].tmp_arr;
+        while (p->next != NULL) {
+            p = p->next;
+            mark_reachable_deep(
+                p->ptr,
+                p->size, until
+            );
+        }
     }
 }
 
@@ -319,7 +330,7 @@ bool findVar(char *name) {
 void del_freed_arr_pointer_in_var_deep(Value *ptr, int size)
 {
     if (!findArrPtr(ptr, &accessdArr)) {
-        insertArrPtr(ptr, &accessdArr);
+        insertArrPtr(ptr, size, &accessdArr);
         for (int i = 0; i < size; i++) {
             if ((ptr + i)->type == ARR_VAL) {
                 if (!findArrPtr((ptr + i)->value.arr.ptr, &arrPtrList)) {
@@ -336,7 +347,38 @@ void del_freed_arr_pointer_in_var_deep(Value *ptr, int size)
 
 void del_freed_arr_pointer_in_var()
 {
-    VarListNode *cur = &global;
+    VarListNode *cur;
+    cur = &local;
+    while (cur->next != NULL) {
+        cur = cur->next;
+        if (cur->var.val.type == ARR_VAL) {
+            if (!findArrPtr(cur->var.val.value.arr.ptr, &arrPtrList)) {
+                cur->var.val = DEF_VAL;
+                continue;
+            }
+            free_arr_list(&accessdArr);
+            del_freed_arr_pointer_in_var_deep(cur->var.val.value.arr.ptr,
+                    cur->var.val.value.arr.size);
+            free_arr_list(&accessdArr);
+        }
+    }
+    for (int i = 0; i < call_st_size; i++) {
+        cur = &call_st[i].local;
+        while (cur->next != NULL) {
+            cur = cur->next;
+            if (cur->var.val.type == ARR_VAL) {
+                if (!findArrPtr(cur->var.val.value.arr.ptr, &arrPtrList)) {
+                    cur->var.val = DEF_VAL;
+                    continue;
+                }
+                free_arr_list(&accessdArr);
+                del_freed_arr_pointer_in_var_deep(cur->var.val.value.arr.ptr,
+                        cur->var.val.value.arr.size);
+                free_arr_list(&accessdArr);
+            }
+        }
+    }
+    cur = &global;
     while (cur->next != NULL) {
         cur = cur->next;
         if (cur->var.val.type == ARR_VAL) {
@@ -507,6 +549,7 @@ Value call(Value *fun, Value *param, int cnt)
     call_st[call_st_size - 1].cur_fun = cur_fun;
     call_st[call_st_size - 1].if_state = if_state;
     call_st[call_st_size - 1].local.next = local.next;
+    call_st[call_st_size - 1].tmp_arr.next = tmp_arr.next;
     call_st[call_st_size - 1].pc = pc;
 
     pc = 0;
@@ -514,6 +557,7 @@ Value call(Value *fun, Value *param, int cnt)
     for_st.size = 0;
     if_st.size = 0;
     local.next = NULL;
+    tmp_arr.next = NULL;
     if_state = IF_BEFORE;
 
     if (fun->value.function->param_size != cnt) {
@@ -523,8 +567,8 @@ Value call(Value *fun, Value *param, int cnt)
     for (int j = 0; j < fun->value.function->param_size; j++) {
         insertVar(fun->value.function->param[j], param[j], &local);
     }
+    Value ret;
     while (pc >= 0 && pc < fun->value.function->lineCount) {
-        Value ret;
         if (__unlikely(if_state == IF_EXPECTING_ELSE_OR_FI
 			|| if_state == IF_EXPECTING_FI)) {
 			if (is_if_else_or_fi(fun->value.function->lines[pc]))
@@ -539,30 +583,13 @@ Value call(Value *fun, Value *param, int cnt)
             cur_fun = call_st[call_st_size - 1].cur_fun;
             copy_stack(&call_st[call_st_size - 1].for_st, &for_st);
             copy_stack(&call_st[call_st_size - 1].if_st, &if_st);
-
-            /*
-            VarListNode *cur = &local;
-            while (cur->next != NULL) {
-                cur = cur->next;
-                if (cur->var.val.type == ARR_VAL &&
-                    !(ret.type == ARR_VAL
-                    && ret.value.arr.ptr == cur->var.val.value.arr.ptr)) {
-                    mark_reachable(cur->var.val.value.arr.ptr);
-                    mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
-                    ArrPtrList *cur_arr_ptr = retriveArrPtr(cur->var.val.value.arr.ptr, &arrPtrList);
-                    if(cur_arr_ptr != NULL && !cur_arr_ptr->isReachable) {
-                        free_arr(cur->var.val.value.arr.ptr,
-                            cur->var.val.value.arr.size);
-                        del_freed_arr_pointer_in_var();
-                    }
-                }
-            }
-            */
             free_local_list(&local);
             mark_reachable(NULL);
             mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
             gc();
+            del_freed_arr_pointer_in_var();
             local.next = call_st[call_st_size - 1].local.next;
+            tmp_arr.next = call_st[call_st_size - 1].tmp_arr.next;
             call_st_size--;
 
             is_ret = false;
@@ -575,21 +602,13 @@ Value call(Value *fun, Value *param, int cnt)
             cur_fun = call_st[call_st_size - 1].cur_fun;
             copy_stack(&call_st[call_st_size - 1].for_st, &for_st);
             copy_stack(&call_st[call_st_size - 1].if_st, &if_st);
-
-            VarListNode *cur = &local;
-            while (cur->next != NULL) {
-                cur = cur->next;
-                if (cur->var.val.type == ARR_VAL &&
-                    !(ret.type == ARR_VAL
-                    && ret.value.arr.ptr == cur->var.val.value.arr.ptr)) {
-                    mark_reachable(cur->var.val.value.arr.ptr);
-                    free_arr(cur->var.val.value.arr.ptr,
-                        cur->var.val.value.arr.size);
-                    del_freed_arr_pointer_in_var();
-                }
-            }
             free_local_list(&local);
+            mark_reachable(NULL);
+            mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
+            gc();
+            del_freed_arr_pointer_in_var();
             local.next = call_st[call_st_size - 1].local.next;
+            tmp_arr.next = call_st[call_st_size - 1].tmp_arr.next;
             call_st_size--;
 
             is_ret = false;
@@ -597,11 +616,28 @@ Value call(Value *fun, Value *param, int cnt)
             return ret;
         }
     }
+    pc = call_st[call_st_size - 1].pc;
+    if_state = call_st[call_st_size - 1].if_state;
+    cur_fun = call_st[call_st_size - 1].cur_fun;
+    copy_stack(&call_st[call_st_size - 1].for_st, &for_st);
+    copy_stack(&call_st[call_st_size - 1].if_st, &if_st);
+    free_local_list(&local);
+    mark_reachable(NULL);
+    mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
+    gc();
+    del_freed_arr_pointer_in_var();
+    local.next = call_st[call_st_size - 1].local.next;
+    tmp_arr.next = call_st[call_st_size - 1].tmp_arr.next;
+    call_st_size--;
+
+    is_ret = false;
+    if (call_st_size == 0) in_fun = false;
+    return ret;
 }
 
 void printArr(Value *val)
 {
-    Value ret = insertArrPtr(val, &accessdArr);
+    Value ret = insertArrPtr(val, 1, &accessdArr);
     printf("[");
     for (int i = 0; i < val->value.arr.size; i++)
     {
@@ -870,7 +906,7 @@ Value evalDim(ParseTreeNode *node)
     if (v.value.arr.ptr == NULL)
         ERR("out of memory", OUT_OF_MEMORY);
     v.value.arr.size = size.value.intVal;
-    insertArrPtr(v.value.arr.ptr, &arrPtrList);
+    insertArrPtr(v.value.arr.ptr, v.value.arr.size, &arrPtrList);
     for (int i = 0; i < size.value.intVal; i++) {
         v.value.arr.ptr[i].type = INT_VAL;
     }
@@ -1268,6 +1304,7 @@ Value evalGc(ParseTreeNode *node)
 {
     mark_reachable(NULL);
     gc();
+    del_freed_arr_pointer_in_var();
     pc++;
     return DEF_VAL;
 }
@@ -2336,7 +2373,7 @@ Value evalPrimary(ParseTreeNode *node)
                 if (v.value.arr.ptr == NULL)
                     ERR("out of memory", OUT_OF_MEMORY);
                 v.value.arr.size = size.value.intVal;
-                insertArrPtr(v.value.arr.ptr, &arrPtrList);
+                insertArrPtr(v.value.arr.ptr, v.value.arr.size, &arrPtrList);
                 for (int i = 0; i < size.value.intVal; i++) {
                     v.value.arr.ptr[i].type = INT_VAL;
                 }
@@ -2377,11 +2414,35 @@ next_arr_index:
                 Value *param = malloc(cnt * sizeof (Value));
                 for (int i = 0; i < cnt; i++) {
                     param[i] = evalExpr(node->children[0]->children[i]);
+                    if (param[i].type == ARR_VAL) {
+                        insertArrPtr(
+                            param[i].value.arr.ptr,
+                            param[i].value.arr.size,
+                            &tmp_arr
+                        );
+                    }
                     if (IS_ERR(param[i])) {
                         return param[i];
                     }
                 }
                 Value ret = call(&id, param, cnt);
+                ArrPtrList *cur = tmp_arr.next;
+                ArrPtrList *prev = &tmp_arr;
+                while (cur != NULL) {
+                    ArrPtrList *next = cur->next;
+                    if (!cur->isReachable) {
+                        prev->next = next;
+                        mark_reachable(cur->ptr);
+                        if (ret.type == ARR_VAL)
+                            mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
+                        free_arr(cur->ptr, cur->size);
+                        del_freed_arr_pointer_in_var();
+                        free(cur);
+                    } else {
+                        prev = cur;
+                    }
+                    cur = next;
+                }
                 free(param);
                 return ret;
             }
