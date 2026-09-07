@@ -196,6 +196,7 @@ void free_local_list(VarListNode *ptr)
     ptr->next = NULL;
 }
 
+// use only after mark_reachable()
 void mark_reachable_deep(Value *ptr, int size, Value *until)
 {
     ArrPtrList *arr = retriveArrPtr(ptr, &arrPtrList);
@@ -357,8 +358,10 @@ void del_freed_arr_pointer_in_var()
                 continue;
             }
             free_arr_list(&accessdArr);
-            del_freed_arr_pointer_in_var_deep(cur->var.val.value.arr.ptr,
-                    cur->var.val.value.arr.size);
+            del_freed_arr_pointer_in_var_deep(
+                cur->var.val.value.arr.ptr,
+                cur->var.val.value.arr.size
+            );
             free_arr_list(&accessdArr);
         }
     }
@@ -372,10 +375,30 @@ void del_freed_arr_pointer_in_var()
                     continue;
                 }
                 free_arr_list(&accessdArr);
-                del_freed_arr_pointer_in_var_deep(cur->var.val.value.arr.ptr,
-                        cur->var.val.value.arr.size);
+                del_freed_arr_pointer_in_var_deep(
+                    cur->var.val.value.arr.ptr,
+                    cur->var.val.value.arr.size
+                );
                 free_arr_list(&accessdArr);
             }
+        }
+
+        ArrPtrList *c = call_st[i].tmp_arr.next;
+        ArrPtrList *p = &call_st[i].tmp_arr;
+        while (c != NULL) {
+            ArrPtrList *next = c->next;
+            if (!findArrPtr(c->ptr, &arrPtrList)) {
+                p->next = next;
+                c->ptr = NULL;
+                c->size = 0;
+                free(c);
+            } else {
+                del_freed_arr_pointer_in_var_deep(
+                    c->ptr,
+                    c->size
+                );
+            }
+            c = next;
         }
     }
     cur = &global;
@@ -387,8 +410,10 @@ void del_freed_arr_pointer_in_var()
                 continue;
             }
             free_arr_list(&accessdArr);
-            del_freed_arr_pointer_in_var_deep(cur->var.val.value.arr.ptr,
-                    cur->var.val.value.arr.size);
+            del_freed_arr_pointer_in_var_deep(
+                cur->var.val.value.arr.ptr,
+                cur->var.val.value.arr.size
+            );
             free_arr_list(&accessdArr);
         }
     }
