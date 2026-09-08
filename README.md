@@ -1,1 +1,1 @@
-BASIC interpreter
+A BASIC-like interpreter
