@@ -610,7 +610,8 @@ Value call(Value *fun, Value *param, int cnt)
             copy_stack(&call_st[call_st_size - 1].if_st, &if_st);
             free_local_list(&local);
             mark_reachable(NULL);
-            mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
+            if (ret.type == ARR_VAL)
+                mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
             gc();
             del_freed_arr_pointer_in_var();
             local.next = call_st[call_st_size - 1].local.next;
@@ -629,7 +630,8 @@ Value call(Value *fun, Value *param, int cnt)
             copy_stack(&call_st[call_st_size - 1].if_st, &if_st);
             free_local_list(&local);
             mark_reachable(NULL);
-            mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
+            if (ret.type == ARR_VAL)
+                mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
             gc();
             del_freed_arr_pointer_in_var();
             local.next = call_st[call_st_size - 1].local.next;
@@ -648,7 +650,8 @@ Value call(Value *fun, Value *param, int cnt)
     copy_stack(&call_st[call_st_size - 1].if_st, &if_st);
     free_local_list(&local);
     mark_reachable(NULL);
-    mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
+    if (ret.type == ARR_VAL)
+        mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
     gc();
     del_freed_arr_pointer_in_var();
     local.next = call_st[call_st_size - 1].local.next;
