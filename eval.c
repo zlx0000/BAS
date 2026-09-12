@@ -37,7 +37,7 @@
         || strcasecmp(name, "INT") == 0 \
         || strcasecmp(name, "FLOAT") == 0 \
         || strcasecmp(name, "NEW") == 0 \
-        || strcasecmp(name, "PUTINT") == 0) { \
+        || strcasecmp(name, "GETINT") == 0) { \
         ERR("cannot use built-in names", ERR_VAL_NULL); \
     }
 
