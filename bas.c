@@ -96,6 +96,7 @@ int main(int argc, char **argv)
 	ParseTreeNode *p = NULL;
 	ParserContext ctx;
 	prog.lineCount = 0;
+	FILE *f = NULL;
 	//prog.lines = (ParseTreeNode **)calloc(16384, sizeof (ParseTreeNode *));
 	//prog.shadow_st = (Stack *)calloc(16384, sizeof (Stack));
 #ifndef WIN32
@@ -116,6 +117,13 @@ int main(int argc, char **argv)
 	pc = 0;
 	expectedLineNum = -1;
     init_eval();
+	if (argc == 2) {
+		f = fopen(argv[1], "r");
+		if (!f) {
+			perror("can't open file");
+			return 0;
+		}
+	}
 repl:
 	;
 #ifdef DEBUG
@@ -124,12 +132,13 @@ repl:
 	Value ret = {
 		.type = INT_VAL,
 	};
-	if (isatty(STDIN_FILENO)) {
+	if (!f && isatty(STDIN_FILENO)) {
 #ifdef WIN32
 		printf(">");
 		str = calloc(STR_SIZE, sizeof(char));
 		if (!fgets(str, STR_SIZE, stdin)) {
     	  	printf("\n");
+			if (f) fclose(f);
     	   	return 0;
     	}
 #else
@@ -138,6 +147,7 @@ repl:
 			if (isatty(STDIN_FILENO))
     	  		printf("\n");
 			free(str);
+			if (f) fclose(f);
     	   	return 0;
     	}
 		add_history(str);
@@ -145,14 +155,16 @@ repl:
 	}
 	else {
 		str = calloc(STR_SIZE, sizeof(char));
-		if (!fgets(str, STR_SIZE, stdin)) {
+		if (!fgets(str, STR_SIZE, f ? f : stdin)) {
 			free(str);
+			if (f) fclose(f);
     	   	return 0;
     	}
 	}
 	if (strcasecmp(str, "exit\n") == 0
 		|| strcasecmp(str, "exit") == 0) {
 		free(str);
+		if (f) fclose(f);
 		return 0;
 	}
 	Token *tokens =

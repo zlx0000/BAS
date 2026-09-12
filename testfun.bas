@@ -85,7 +85,10 @@ fun f(x)
 
 endfun
 
-let ret = f(8)
+1 print "num = "
+    let num = getint
+if num <= 0 then 1
+let ret = f(num)
 print ret
 
 free ret
