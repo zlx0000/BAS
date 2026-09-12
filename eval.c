@@ -828,18 +828,7 @@ Value evalLine(ParseTreeNode *node)
 Value evalLet(ParseTreeNode *node)
 {
     char *name = node->children[0]->token->lexeme;
-    if (strcasecmp(name, "COS") == 0
-        || strcasecmp(name, "SIN") == 0
-        || strcasecmp(name, "COSF") == 0
-        || strcasecmp(name, "SINF") == 0
-        || strcasecmp(name, "TAN") == 0
-        || strcasecmp(name, "TANF") == 0
-        || strcasecmp(name, "EXP") == 0
-        || strcasecmp(name, "INT") == 0
-        || strcasecmp(name, "FLOAT") == 0
-        || strcasecmp(name, "NEW") == 0) {
-        ERR("cannot use built-in names", ERR_VAL_NULL);
-    }
+    NO_BUILT_IN_NAMES;
     if (node->children[0]->childCount == 0
         || node->children[0]->children[0] == NULL) {
         char *name = node->children[0]->token->lexeme;
