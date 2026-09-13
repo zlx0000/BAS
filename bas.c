@@ -33,6 +33,7 @@ extern Stack shadow_st;
 bool in_fun_def = false;
 BasFunction *def_fun = NULL;
 Stack def_shadow_st;
+bool is_repl = false;
 
 #ifndef WIN32
 static char *keyword_generator(const char *text, int state)
@@ -133,6 +134,7 @@ repl:
 		.type = INT_VAL,
 	};
 	if (!f && isatty(STDIN_FILENO)) {
+		is_repl = true;
 #ifdef WIN32
 		printf(">");
 		str = calloc(STR_SIZE, sizeof(char));

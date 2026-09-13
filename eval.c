@@ -57,6 +57,7 @@ extern Stack def_shadow_st;
 bool in_fun;
 BasFunction *cur_fun;
 bool is_ret = false;
+extern bool is_repl;
 
 struct CallStack {
     int pc;
@@ -726,10 +727,14 @@ void printVal(Value val)
                 printf("FALSE\n");
             break;
         case INT_VAL:
-            printf("%d\n", val.value.intVal);
+            printf("%d", val.value.intVal);
+            if (is_repl)
+                printf("\n");
             break;
         case FLOAT_VAL:
-            printf("%f\n", val.value.floatVal);
+            printf("%f", val.value.floatVal);
+            if (isatty(is_repl))
+                printf("\n");
             break;
         case STRING_VAL:
             printf("%s", val.value.string.str);
@@ -737,7 +742,8 @@ void printVal(Value val)
         case ARR_VAL:
             printArr(&val);
             free_arr_list(&accessdArr);
-            printf("\n");
+            if (isatty(is_repl))
+                printf("\n");
     }
 }
 
