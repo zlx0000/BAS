@@ -26,6 +26,20 @@
 #define IS_ERR(x) (x.type == ERR_VAL)
 #define ERR_RETURN_EVAL(err) {if (__unlikely(IS_ERR(err))) return ERRVAL(err.value.errVal);}
 #define DEF_VAL ((Value){.type = INT_VAL, .value.intVal = 0})
+#define NO_BUILT_IN_NAMES \
+        if (strcasecmp(name, "COS") == 0 \
+        || strcasecmp(name, "SIN") == 0 \
+        || strcasecmp(name, "COSF") == 0 \
+        || strcasecmp(name, "SINF") == 0 \
+        || strcasecmp(name, "TAN") == 0 \
+        || strcasecmp(name, "TANF") == 0 \
+        || strcasecmp(name, "EXP") == 0 \
+        || strcasecmp(name, "INT") == 0 \
+        || strcasecmp(name, "FLOAT") == 0 \
+        || strcasecmp(name, "NEW") == 0 \
+        || strcasecmp(name, "GETINT") == 0) { \
+        ERR("cannot use built-in names", ERR_VAL_NULL); \
+    }
 
 static VarListNode global;
 static VarListNode local;
@@ -610,7 +624,8 @@ Value call(Value *fun, Value *param, int cnt)
             copy_stack(&call_st[call_st_size - 1].if_st, &if_st);
             free_local_list(&local);
             mark_reachable(NULL);
-            mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
+            if (ret.type == ARR_VAL)
+                mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
             gc();
             del_freed_arr_pointer_in_var();
             local.next = call_st[call_st_size - 1].local.next;
@@ -629,7 +644,8 @@ Value call(Value *fun, Value *param, int cnt)
             copy_stack(&call_st[call_st_size - 1].if_st, &if_st);
             free_local_list(&local);
             mark_reachable(NULL);
-            mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
+            if (ret.type == ARR_VAL)
+                mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
             gc();
             del_freed_arr_pointer_in_var();
             local.next = call_st[call_st_size - 1].local.next;
@@ -648,7 +664,8 @@ Value call(Value *fun, Value *param, int cnt)
     copy_stack(&call_st[call_st_size - 1].if_st, &if_st);
     free_local_list(&local);
     mark_reachable(NULL);
-    mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
+    if (ret.type == ARR_VAL)
+        mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
     gc();
     del_freed_arr_pointer_in_var();
     local.next = call_st[call_st_size - 1].local.next;
@@ -811,18 +828,7 @@ Value evalLine(ParseTreeNode *node)
 Value evalLet(ParseTreeNode *node)
 {
     char *name = node->children[0]->token->lexeme;
-    if (strcasecmp(name, "COS") == 0
-        || strcasecmp(name, "SIN") == 0
-        || strcasecmp(name, "COSF") == 0
-        || strcasecmp(name, "SINF") == 0
-        || strcasecmp(name, "TAN") == 0
-        || strcasecmp(name, "TANF") == 0
-        || strcasecmp(name, "EXP") == 0
-        || strcasecmp(name, "INT") == 0
-        || strcasecmp(name, "FLOAT") == 0
-        || strcasecmp(name, "NEW") == 0) {
-        ERR("cannot use built-in names", ERR_VAL_NULL);
-    }
+    NO_BUILT_IN_NAMES;
     if (node->children[0]->childCount == 0
         || node->children[0]->children[0] == NULL) {
         char *name = node->children[0]->token->lexeme;
@@ -882,18 +888,7 @@ Value evalDim(ParseTreeNode *node)
     Value v;
     Value oldV;
     char *name = node->children[0]->token->lexeme;
-    if (strcasecmp(name, "COS") == 0
-        || strcasecmp(name, "SIN") == 0
-        || strcasecmp(name, "COSF") == 0
-        || strcasecmp(name, "SINF") == 0
-        || strcasecmp(name, "TAN") == 0
-        || strcasecmp(name, "TANF") == 0
-        || strcasecmp(name, "EXP") == 0
-        || strcasecmp(name, "INT") == 0
-        || strcasecmp(name, "FLOAT") == 0
-        || strcasecmp(name, "NEW") == 0) {
-        ERR("cannot use built-in names", ERR_VAL_NULL);
-    }
+    NO_BUILT_IN_NAMES;
     v.type = ARR_VAL;
     if (node->children[0]->childCount == 0
         || node->children[0]->children[0] == NULL) {
@@ -1338,18 +1333,7 @@ Value evalGc(ParseTreeNode *node)
 Value evalFree(ParseTreeNode *node)
 {
     char *name = node->children[0]->token->lexeme;
-    if (strcasecmp(name, "COS") == 0
-        || strcasecmp(name, "SIN") == 0
-        || strcasecmp(name, "COSF") == 0
-        || strcasecmp(name, "SINF") == 0
-        || strcasecmp(name, "TAN") == 0
-        || strcasecmp(name, "TANF") == 0
-        || strcasecmp(name, "EXP") == 0
-        || strcasecmp(name, "INT") == 0
-        || strcasecmp(name, "FLOAT") == 0
-        || strcasecmp(name, "NEW") == 0) {
-        ERR("cannot use built-in names", ERR_VAL_NULL);
-    }
+    NO_BUILT_IN_NAMES;
     if (node->children[0]->childCount == 0
         || node->children[0]->children[0] == NULL) {
         char *name = node->children[0]->token->lexeme;
@@ -1421,18 +1405,7 @@ Value evalFun(ParseTreeNode *node)
     if (findVar(name) && retriveVar(name).type == FUN_VAL) {
         ERR("already defined", ERR_VAL_NULL);
     }
-    if (strcasecmp(name, "COS") == 0
-        || strcasecmp(name, "SIN") == 0
-        || strcasecmp(name, "COSF") == 0
-        || strcasecmp(name, "SINF") == 0
-        || strcasecmp(name, "TAN") == 0
-        || strcasecmp(name, "TANF") == 0
-        || strcasecmp(name, "EXP") == 0
-        || strcasecmp(name, "INT") == 0
-        || strcasecmp(name, "FLOAT") == 0
-        || strcasecmp(name, "NEW") == 0) {
-        ERR("cannot use built-in names", ERR_VAL_NULL);
-    }
+    NO_BUILT_IN_NAMES;
     if (node->children[0]->childCount == 0
         || node->children[0]->children == NULL) {
         Value fun;
@@ -1503,18 +1476,7 @@ Value evalReturn(ParseTreeNode *node)
 Value evalDel(ParseTreeNode *node)
 {
     char *name = node->children[0]->token->lexeme;
-    if (strcasecmp(name, "COS") == 0
-        || strcasecmp(name, "SIN") == 0
-        || strcasecmp(name, "COSF") == 0
-        || strcasecmp(name, "SINF") == 0
-        || strcasecmp(name, "TAN") == 0
-        || strcasecmp(name, "TANF") == 0
-        || strcasecmp(name, "EXP") == 0
-        || strcasecmp(name, "INT") == 0
-        || strcasecmp(name, "FLOAT") == 0
-        || strcasecmp(name, "NEW") == 0) {
-        ERR("cannot use built-in names", ERR_VAL_NULL);
-    }
+    NO_BUILT_IN_NAMES;
     if (node->children[0]->childCount == 0
         || node->children[0]->children[0] == NULL) {
         char *name = node->children[0]->token->lexeme;
@@ -2243,7 +2205,14 @@ Value evalPrimary(ParseTreeNode *node)
     else if (node->children[0]->type == IDENTI) {
         if (node->children[0]->childCount == 0
             || node->children[0]->children[0] == NULL) {
-            Value id = retriveVar(node->children[0]->token->lexeme);
+            char *name = node->children[0]->token->lexeme;
+            if (strcasecmp(name, "GETINT") == 0) {
+                Value v;
+                v.type = INT_VAL;
+                scanf("%d", &v.value.intVal);
+                return v;
+            }
+            Value id = retriveVar(name);
             ERR_RETURN_EVAL(id);
             if (id.type == FUN_VAL) {
                 Value ret = call(&id, NULL, 0);
