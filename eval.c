@@ -58,6 +58,7 @@ bool in_fun;
 BasFunction *cur_fun;
 bool is_ret = false;
 extern bool is_repl;
+extern bool is_exit;
 
 struct CallStack {
     int pc;
@@ -826,6 +827,8 @@ Value evalLine(ParseTreeNode *node)
             return evalEndFun(statement);
         case GC:
             return evalGc(statement);
+        case END:
+            return evalEnd(statement);
         default:
             ERR("unknown statement", UNKNOWN_STATEMENT);
     }
@@ -1335,6 +1338,12 @@ Value evalGc(ParseTreeNode *node)
     return DEF_VAL;
 }
 
+Value evalEnd(ParseTreeNode *node)
+{
+    is_exit = true;
+    pc++;
+    return DEF_VAL;
+}
 
 Value evalFree(ParseTreeNode *node)
 {
@@ -2422,7 +2431,9 @@ next_arr_index:
                         );
                     }
                     if (IS_ERR(param[i])) {
-                        return param[i];
+                        Value ret = param[i];
+                        free(param);
+                        return ret;
                     }
                 }
                 Value ret = call(&id, param, cnt);

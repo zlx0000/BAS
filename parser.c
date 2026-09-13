@@ -388,6 +388,10 @@ ParseTreeNode *parseStatement(ParserContext *context)
 			node = parseGcStatement(context);
 			ERR_RET_NOFREE(node);
 		}
+		else if (strcasecmp(context->tokenPtr->lexeme, "END") == 0) {
+			node = parseEndStatement(context);
+			ERR_RET_NOFREE(node);
+		}
 		else {
 			ERR_NOFREE("Unknown statement type");
 		}
@@ -572,6 +576,19 @@ ParseTreeNode *parseGcStatement(ParserContext *context) {
 	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
 		strcasecmp(context->tokenPtr->lexeme, "GC") != 0)
 			ERR("Expected GC token.\n");
+	node->token = context->tokenPtr;
+	CONSUME_TOKEN;
+	return node;
+}
+
+ParseTreeNode *parseEndStatement(ParserContext *context) {
+	ParseTreeNode *node =
+		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
+	node->childCount = 0;
+	node->type = END;
+	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
+		strcasecmp(context->tokenPtr->lexeme, "END") != 0)
+			ERR("Expected END token.\n");
 	node->token = context->tokenPtr;
 	CONSUME_TOKEN;
 	return node;

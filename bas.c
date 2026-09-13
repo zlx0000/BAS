@@ -34,6 +34,7 @@ bool in_fun_def = false;
 BasFunction *def_fun = NULL;
 Stack def_shadow_st;
 bool is_repl = false;
+bool is_exit = false;
 
 #ifndef WIN32
 static char *keyword_generator(const char *text, int state)
@@ -126,7 +127,10 @@ int main(int argc, char **argv)
 		}
 	}
 repl:
-	;
+	if (is_exit) {
+		if (f) fclose(f);
+		return 0;
+	}
 #ifdef DEBUG
 	fprintf(stderr, "allocation: %d\n", allocate_cnt());
 #endif
@@ -298,8 +302,12 @@ repl:
 					}
 				}
 			}
-			while (pc >= 0 && pc < prog.lineCount) {
+			while (pc >= 0 && pc < prog.lineCount && !is_exit) {
 				if (__unlikely(ret.type == ERR_VAL)) {
+					if (!is_repl) {
+						if (f) fclose(f);
+						return -1;
+					}
 					prog.lineCount--;
 					free_tree(p);
 					free(tokens);

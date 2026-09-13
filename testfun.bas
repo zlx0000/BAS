@@ -85,30 +85,38 @@ fun f(x)
 
 endfun
 
-1 print "num = "
-    let num = getint
-if num <= 0 then 1
-let ret = f(num)
-print ret
-
-free ret
-
 fun one
     return 1
 endfun
+
 fun take(a,b)
     a(0) = 1
     return new(a(0))
 endfun
-let ret = take(new(1),one)
-print ret
-free ret
 
 fun id(a)
     return a
 endfun
 
-let a = id(new(10))
-a(0) = 123
-print a
-free a
+1 print "num = "
+    let num = getint
+    if num <= 0 or num > 50
+        end
+    fi
+    let ret = f(num)
+    print ret
+
+    free ret
+
+    let ret = take(new(1),one)
+    print ret
+    free ret
+
+    let a = id(new(num))
+    for i = 0 to num - 1
+        a(i) = i + 1
+    next i
+
+    print a
+    free a
+goto 1
