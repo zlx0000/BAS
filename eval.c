@@ -227,6 +227,7 @@ void mark_reachable_deep(Value *ptr, int size, Value *until)
     }
 }
 
+// mark_reachable will ignore the current tmp_arr frame.
 void mark_reachable(Value *until)
 {
     {
@@ -2432,20 +2433,35 @@ next_arr_index:
                     }
                     if (IS_ERR(param[i])) {
                         Value ret = param[i];
+                        mark_reachable(NULL);
+                        ArrPtrList *cur = tmp_arr.next;
+                        ArrPtrList *prev = &tmp_arr;
+                        while (cur != NULL) {
+                            ArrPtrList *next = cur->next;
+                            if (!cur->isReachable) {
+                                prev->next = next;
+                                free_arr(cur->ptr, cur->size);
+                                del_freed_arr_pointer_in_var();
+                                free(cur);
+                            } else {
+                                prev = cur;
+                            }
+                            cur = next;
+                        }
                         free(param);
                         return ret;
                     }
                 }
                 Value ret = call(&id, param, cnt);
+                mark_reachable(NULL);
+                if (ret.type == ARR_VAL)
+                    mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
                 ArrPtrList *cur = tmp_arr.next;
                 ArrPtrList *prev = &tmp_arr;
                 while (cur != NULL) {
                     ArrPtrList *next = cur->next;
                     if (!cur->isReachable) {
                         prev->next = next;
-                        mark_reachable(cur->ptr);
-                        if (ret.type == ARR_VAL)
-                            mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
                         free_arr(cur->ptr, cur->size);
                         del_freed_arr_pointer_in_var();
                         free(cur);
