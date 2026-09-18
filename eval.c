@@ -228,6 +228,7 @@ void mark_reachable_deep(Value *ptr, int size, Value *until)
 }
 
 // mark_reachable will ignore the current tmp_arr frame.
+// don't use until all function arguments are evaluated.
 void mark_reachable(Value *until)
 {
     {
