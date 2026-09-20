@@ -1,4 +1,4 @@
-#!/bin/bas
+#!/usr/bin/env bas
 
 LET SCREEN_WIDTH = 80
 LET SCREEN_HEIGHT = 22

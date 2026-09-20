@@ -1,4 +1,4 @@
-#!/bin/bas
+#!/usr/bin/env bas
 
 fun fib(n)
     if n <= 2
