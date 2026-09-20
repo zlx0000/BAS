@@ -174,7 +174,7 @@ repl:
 		return 0;
 	}
 	char *cur = str;
-	while (*cur == ' ') {
+	while (isspace((unsigned char)*cur)) {
 		cur++;
 	}
 	if (*cur == '#') {
