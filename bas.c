@@ -173,6 +173,14 @@ repl:
 		if (f) fclose(f);
 		return 0;
 	}
+	char *cur = str;
+	while (*cur == ' ') {
+		cur++;
+	}
+	if (*cur == '#') {
+		free(str);
+		goto repl;
+	}
 	Token *tokens =
 	(Token *)calloc(1, sizeof(Token) * MAX_TOKEN);
 	int len = lexer(str, tokens, prog.lineCount);
