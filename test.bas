@@ -1,4 +1,4 @@
-#!/bin/bas
+#!/usr/bin/env bas
 
 1000 LET N = 20000
 1001 LET I = 0
