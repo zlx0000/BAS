@@ -174,13 +174,10 @@ repl:
 		return 0;
 	}
 	char *cur = str;
-	while (isspace((unsigned char)*cur)) {
+	while (*cur != '#' && *cur != '\0') {
 		cur++;
 	}
-	if (*cur == '#') {
-		free(str);
-		goto repl;
-	}
+	*cur = '\0';
 	Token *tokens =
 	(Token *)calloc(1, sizeof(Token) * MAX_TOKEN);
 	int len = lexer(str, tokens, prog.lineCount);
