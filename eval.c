@@ -36,6 +36,8 @@
         || strcasecmp(name, "EXP") == 0 \
         || strcasecmp(name, "INT") == 0 \
         || strcasecmp(name, "FLOAT") == 0 \
+        || strcasecmp(name, "TRUE") == 0 \
+        || strcasecmp(name, "FALSE") == 0 \
         || strcasecmp(name, "NEW") == 0 \
         || strcasecmp(name, "GETINT") == 0) { \
         ERR("cannot use built-in names", ERR_VAL_NULL); \
@@ -2295,16 +2297,7 @@ Value evalUnary(ParseTreeNode *node)
 Value evalPrimary(ParseTreeNode *node)
 {
     Value v;
-    if (node->children[0]->type == KEYWORD_TOKEN) {
-        v.type = BOOL_VAL;
-        if (strcasecmp(node->token->lexeme, "FALSE") == 0)
-            v.value.boolVal = false;
-        else if (strcasecmp(node->token->lexeme, "TRUE") == 0)
-            v.value.boolVal = true;
-        else
-            ERR("unknown bool value", UNKNOWN_BOOL_VALUE);
-    }
-    else if (node->children[0]->type == INTEGER) {
+    if (node->children[0]->type == INTEGER) {
         v.type = INT_VAL;
         v.value.intVal = node->children[0]->token->literal.intValue;
     }
@@ -2331,6 +2324,16 @@ Value evalPrimary(ParseTreeNode *node)
                 Value v;
                 v.type = INT_VAL;
                 scanf("%d", &v.value.intVal);
+                return v;
+            }
+            else if (strcasecmp(name, "TRUE") == 0) {
+                v.type = BOOL_VAL;
+                v.value.boolVal = true;
+                return v;
+            }
+            else if (strcasecmp(name, "FALSE") == 0) {
+                v.type = BOOL_VAL;
+                v.value.boolVal = false;
                 return v;
             }
             Value id = retriveVar(name);
