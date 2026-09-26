@@ -332,8 +332,12 @@ ParseTreeNode *parseStatement(ParserContext *context)
 			node = parseForTail(context);
 			ERR_RET_NOFREE(node);
 		}
-		else if (strcasecmp(context->tokenPtr->lexeme, "GOSUB") == 0) {
-			node = parseGoSubStatement(context);
+		else if (strcasecmp(context->tokenPtr->lexeme, "DO WHILE") == 0) {
+			node = parseDoWhileStatement(context);
+			ERR_RET_NOFREE(node);
+		}
+		else if (strcasecmp(context->tokenPtr->lexeme, "DONE") == 0) {
+			node = parseDoneStatement(context);
 			ERR_RET_NOFREE(node);
 		}
 		else if (strcasecmp(context->tokenPtr->lexeme, "RETURN") == 0) {
@@ -376,7 +380,7 @@ ParseTreeNode *parseStatement(ParserContext *context)
 			node = parseFunStatement(context);
 			ERR_RET_NOFREE(node);
 		}
-		else if (strcasecmp(context->tokenPtr->lexeme, "ENDFUN") == 0) {
+		else if (strcasecmp(context->tokenPtr->lexeme, "END FUN") == 0) {
 			node = parseEndFunStatement(context);
 			ERR_RET_NOFREE(node);
 		}
@@ -783,6 +787,36 @@ ParseTreeNode *parseForTail(ParserContext *context)
 	return node;
 }
 
+ParseTreeNode *parseDoWhileStatement(ParserContext *context)
+{
+	ParseTreeNode *node =
+		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
+	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
+		strcasecmp(context->tokenPtr->lexeme, "DO WHILE") != 0)
+			ERR("Expected DO WHILE token.\n");
+	node->token = context->tokenPtr;
+	CONSUME_TOKEN;
+	node->type = DO_WHILE;
+	node->children = malloc(sizeof(uintptr_t));
+	node->children[0] = parseExpr(context);
+	ERR_RET(node->children[0]);
+	node->childCount++;
+	return node;
+}
+
+ParseTreeNode *parseDoneStatement(ParserContext *context) {
+	ParseTreeNode *node =
+		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
+	node->childCount = 0;
+	node->type = DONE;
+	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
+		strcasecmp(context->tokenPtr->lexeme, "DONE") != 0)
+			ERR("Expected DONE token.\n");
+	node->token = context->tokenPtr;
+	CONSUME_TOKEN;
+	return node;
+}
+
 ParseTreeNode *parseDelStatement(ParserContext *context)
 {
 	ParseTreeNode *node =
@@ -882,10 +916,10 @@ ParseTreeNode *parseEndFunStatement(ParserContext *context) {
 	ParseTreeNode *node =
 		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
 	node->childCount = 0;
-	node->type = ENDFUN;
+	node->type = END_FUN;
 	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
-		strcasecmp(context->tokenPtr->lexeme, "ENDFUN") != 0)
-			ERR("Expected ENDFUN token.\n");
+		strcasecmp(context->tokenPtr->lexeme, "END FUN") != 0)
+			ERR("Expected END FUN token.\n");
 	node->token = context->tokenPtr;
 	CONSUME_TOKEN;
 	return node;

@@ -5,7 +5,7 @@ fun fib(n)
         return 1
     fi
     return fib(n-2)+fib(n-1)
-endfun
+end fun
 
 
 fun f(x)
@@ -85,20 +85,20 @@ fun f(x)
 
     return d(nxt)
 
-endfun
+end fun
 
 fun one
     return 1
-endfun
+end fun
 
 fun take(a,b)
     a(0) = 1
     return new(a(0))
-endfun
+end fun
 
 fun id(a)
     return a
-endfun
+end fun
 
 1 print "num = "
     let num = getint

@@ -47,9 +47,11 @@ static ArrPtrList tmp_arr;
 static ArrPtrList arrPtrList;
 static ArrPtrList accessdArr;
 static Stack for_st;
+static Stack while_st;
 Stack shadow_st;
 Stack if_st;
 enum If_State if_state = IF_BEFORE;
+bool while_skip = false;
 extern bool in_fun_def;
 extern BasFunction *def_fun;
 char *def_fun_name;
@@ -66,12 +68,14 @@ struct CallStack {
     VarListNode local;
     ArrPtrList tmp_arr;
     Stack for_st;
+    Stack while_st;
+    bool while_skip;
     Stack if_st;
     Stack shadow_st;
     enum If_State if_state;
 };
 
-struct CallStack call_st[256];
+struct CallStack call_st[512];
 int a = sizeof (call_st);
 int call_st_size = 0;
 
@@ -106,8 +110,19 @@ bool is_if_else_or_fi(ParseTreeNode *node)
     unsigned int i = node->childCount - 1;
     return ((node->children[i]->type == IF
              && node->children[i]->childCount == 1)
-        ||node->children[i]->type == ELSE
+        || node->children[i]->type == ELSE
         || node->children[i]->type == FI);
+}
+
+bool is_if_else_or_fi_or_while_or_done(ParseTreeNode *node)
+{
+    unsigned int i = node->childCount - 1;
+    return ((node->children[i]->type == IF
+             && node->children[i]->childCount == 1)
+        || node->children[i]->type == ELSE
+        || node->children[i]->type == FI
+        || node->children[i]->type == DO_WHILE
+        || node->children[i]->type == DONE);
 }
 
 void init_eval()
@@ -588,9 +603,11 @@ Value call(Value *fun, Value *param, int cnt)
     }
 
     copy_stack(&for_st, &call_st[call_st_size - 1].for_st);
+    copy_stack(&while_st, &call_st[call_st_size - 1].while_st);
     copy_stack(&if_st, &call_st[call_st_size - 1].if_st);
     call_st[call_st_size - 1].cur_fun = cur_fun;
     call_st[call_st_size - 1].if_state = if_state;
+    call_st[call_st_size - 1].while_skip = while_skip;
     call_st[call_st_size - 1].local.next = local.next;
     call_st[call_st_size - 1].tmp_arr.next = tmp_arr.next;
     call_st[call_st_size - 1].pc = pc;
@@ -598,10 +615,12 @@ Value call(Value *fun, Value *param, int cnt)
     pc = 0;
     cur_fun = fun->value.function;
     for_st.size = 0;
+    while_st.size = 0;
     if_st.size = 0;
     local.next = NULL;
     tmp_arr.next = NULL;
     if_state = IF_BEFORE;
+    while_skip = false;
 
     if (fun->value.function->param_size != cnt) {
         ERR("param size doesn't match", ERR_VAL_NULL);
@@ -613,8 +632,8 @@ Value call(Value *fun, Value *param, int cnt)
     Value ret;
     while (pc >= 0 && pc < fun->value.function->lineCount) {
         if (__unlikely(if_state == IF_EXPECTING_ELSE_OR_FI
-			|| if_state == IF_EXPECTING_FI)) {
-			if (is_if_else_or_fi(fun->value.function->lines[pc]))
+			|| if_state == IF_EXPECTING_FI || while_skip)) {
+			if (is_if_else_or_fi_or_while_or_done(fun->value.function->lines[pc]))
 				ret = evalLine(fun->value.function->lines[pc]);
 			else
 				pc++;
@@ -623,8 +642,10 @@ Value call(Value *fun, Value *param, int cnt)
         if (is_ret) {
             pc = call_st[call_st_size - 1].pc;
             if_state = call_st[call_st_size - 1].if_state;
+            while_skip = call_st[call_st_size - 1].while_skip;
             cur_fun = call_st[call_st_size - 1].cur_fun;
             copy_stack(&call_st[call_st_size - 1].for_st, &for_st);
+            copy_stack(&call_st[call_st_size - 1].while_st, &while_st);
             copy_stack(&call_st[call_st_size - 1].if_st, &if_st);
             free_local_list(&local);
             mark_reachable(NULL);
@@ -643,8 +664,10 @@ Value call(Value *fun, Value *param, int cnt)
         if (IS_ERR(ret)) {
             pc = call_st[call_st_size - 1].pc;
             if_state = call_st[call_st_size - 1].if_state;
+            while_skip = call_st[call_st_size - 1].while_skip;
             cur_fun = call_st[call_st_size - 1].cur_fun;
             copy_stack(&call_st[call_st_size - 1].for_st, &for_st);
+            copy_stack(&call_st[call_st_size - 1].while_st, &while_st);
             copy_stack(&call_st[call_st_size - 1].if_st, &if_st);
             free_local_list(&local);
             mark_reachable(NULL);
@@ -663,8 +686,10 @@ Value call(Value *fun, Value *param, int cnt)
     }
     pc = call_st[call_st_size - 1].pc;
     if_state = call_st[call_st_size - 1].if_state;
+    while_skip = call_st[call_st_size - 1].while_skip;
     cur_fun = call_st[call_st_size - 1].cur_fun;
     copy_stack(&call_st[call_st_size - 1].for_st, &for_st);
+    copy_stack(&call_st[call_st_size - 1].while_st, &while_st);
     copy_stack(&call_st[call_st_size - 1].if_st, &if_st);
     free_local_list(&local);
     mark_reachable(NULL);
@@ -807,6 +832,10 @@ Value evalLine(ParseTreeNode *node)
             return evalFor(statement);
         case NEXT:
             return evalNext(statement);
+        case DO_WHILE:
+            return evalDoWhile(statement);
+        case DONE:
+            return evalDone(statement);
         case GOTO:
             return evalGoto(statement);
         case PUTCHAR:
@@ -825,7 +854,7 @@ Value evalLine(ParseTreeNode *node)
             return evalFun(statement);
         case RETURN:
             return evalReturn(statement);
-        case ENDFUN:
+        case END_FUN:
             return evalEndFun(statement);
         case GC:
             return evalGc(statement);
@@ -990,7 +1019,7 @@ Value evalIf(ParseTreeNode *node)
             push(&shadow_st, frame);
         }
         if (if_state == IF_EXPECTING_ELSE_OR_FI
-            || if_state == IF_EXPECTING_FI) {
+            || if_state == IF_EXPECTING_FI || while_skip) {
             Value frame = {
                 .type = IF_FRAME,
                 .value.ifFrame = {
@@ -1215,7 +1244,7 @@ Value evalFor(ParseTreeNode *node)
     Value top = peek(&for_st);
     if (top.type == ERR_VAL
         && top.value.errVal == STACK_UNDERFLOW) {
-        push(&for_st, ctx);
+        ERR_RETURN_EVAL(push(&for_st, ctx));
         insertVar(id, from, (in_fun ? &local : &global));
         pc++;
     }
@@ -1236,12 +1265,12 @@ Value evalFor(ParseTreeNode *node)
                 ERR("stack error", ERR_VAL_NULL);
             }
         } else {
-            push(&for_st, ctx);
+            ERR_RETURN_EVAL(push(&for_st, ctx));
             insertVar(id, from, (in_fun ? &local : &global));
             pc++;
         }
     } else {
-        push(&for_st,ctx);
+        ERR_RETURN_EVAL(push(&for_st,ctx));
         insertVar(id, from, (in_fun ? &local : &global));
         pc++;
     }
@@ -1270,6 +1299,80 @@ Value evalNext(ParseTreeNode *node)
     }
     pc = top.value.forCtx.pc;
     return newVar;
+}
+
+Value evalDoWhile(ParseTreeNode *node)
+{
+    Value frame;
+    frame.type = WHILE_CTX;
+    frame.value.whileCtx.start = pc;
+    Value top = peek(&while_st);
+    if (__unlikely(if_state == IF_EXPECTING_ELSE_OR_FI
+		|| if_state == IF_EXPECTING_FI) || while_skip) {
+        if (top.type == WHILE_CTX && top.value.whileCtx.start == pc) {
+            while_skip = true;
+            pc++;
+            return DEF_VAL;
+        }
+        frame.value.whileCtx.skip = true;
+        ERR_RETURN_EVAL(push(&while_st, frame));
+        pc++;
+        return DEF_VAL;
+    }
+    Value v = evalExpr(node->children[0]);
+    ERR_RETURN_EVAL(v);
+    bool f;
+    switch (v.type) {
+        case BOOL_VAL:
+            f = v.value.boolVal;
+            break;
+        case INT_VAL:
+            f = (bool)v.value.intVal;
+            break;
+        case FLOAT_VAL:
+            f = (bool)v.value.floatVal;
+            break;
+        default:
+            ERR("DO WHILE expected bool, int or float", INCOMPATIBLE_TYPES);
+    }
+    if (f) {
+        frame.value.whileCtx.skip = false;
+        while_skip = false;
+        if (top.type == WHILE_CTX && top.value.whileCtx.start == pc) {
+            pop(&while_st);
+        }
+        ERR_RETURN_EVAL(push(&while_st, frame));
+    } else {
+        while_skip = true;
+        frame.value.whileCtx.skip = true;
+        if (top.type == WHILE_CTX && top.value.whileCtx.start == pc) {
+            pop(&while_st);
+        }
+        ERR_RETURN_EVAL(push(&while_st, frame));
+    }
+    pc++;
+    return DEF_VAL;
+}
+
+Value evalDone(ParseTreeNode *node)
+{
+    Value top = peek(&while_st);
+    if (top.type != WHILE_CTX)
+        ERR("not in a while loop", ERR_VAL_NULL);
+    if (while_skip) {
+        pop(&while_st);
+        top = peek(&while_st);
+        if (top.type == WHILE_CTX) {
+            while_skip = top.value.whileCtx.skip;
+        } else {
+            while_skip = false;
+        }
+        pc++;
+        return DEF_VAL;
+    } else {
+        pc = top.value.whileCtx.start;
+        return DEF_VAL;
+    }
 }
 
 Value evalGoto(ParseTreeNode *node)
@@ -2212,6 +2315,7 @@ Value evalPrimary(ParseTreeNode *node)
     else if (node->children[0]->type == STRING) {
         v.type = STRING_VAL;
         v.value.string.str = node->children[0]->token->literal.string;
+        v.value.string.len = node->children[0]->token->literal.strlen;
         v.value.string.refcnt = 1;
     }
     else if (node->children[0]->type == OR_EXPR) {
@@ -2392,7 +2496,7 @@ Value evalPrimary(ParseTreeNode *node)
             }
             Value id = retriveVar(name);
             ERR_RETURN_EVAL(id);
-            if (id.type != ARR_VAL && id.type != FUN_VAL)
+            if (id.type != ARR_VAL && id.type != STRING_VAL && id.type != FUN_VAL)
                 ERR("not an array or a function", INCOMPATIBLE_TYPES);
             int i = 0;
             int cnt = node->children[0]->childCount;
@@ -2419,6 +2523,23 @@ next_arr_index:
                     i++;
                     goto next_arr_index;
                 }
+            }
+            else if (id.type == STRING_VAL) {
+                if (cnt > 1)
+                    ERR("index out of range", INDEX_OUT_OF_RANGE);
+                Value index_val = evalExpr(node->children[0]->children[i]);
+                ERR_RETURN_EVAL(index_val);
+                if (index_val.type != INT_VAL)
+                    ERR("index has to be INT type", INCOMPATIBLE_TYPES);
+                int index = index_val.value.intVal;
+                if (index >= id.value.string.len)
+                    ERR("index out of range", INDEX_OUT_OF_RANGE);
+                char *base = id.value.string.str;
+                char *ptr = base + index;
+                v.type = INT_VAL;
+                v.value.intVal = *ptr;
+                if (IS_ERR(v))
+                    ERR("uninitialized value", UNINIT_VAL);
             }
             else if (id.type == FUN_VAL) {
                 int cnt = node->children[0]->childCount;

@@ -386,6 +386,7 @@ static Literal literal(TokenType t, char *lexeme)
 					escape = false;
 				}
 			}
+			r.strlen = j;
 			return r;
 		}
 		default:

@@ -49,9 +49,9 @@
 # define __likely(cond)	__builtin_expect ((cond), 1)
 
 static char *keywords[] = {"LET", "PRINT", "INPUT", "IF", "ELSE", "FI", "THEN", "FOR", "TO",
-                  	 "STEP", "NEXT", "GOTO", "GOSUB", "RETURN", "RETURN", "END",
+                  	 "STEP", "NEXT", "DO WHILE", "DONE", "GOTO", "GOSUB", "RETURN", "RETURN", "END",
                   	 "REM", "AND", "OR", "NOT", "DIM", "PUTCHAR", "CLEAR", "HOME", "SLEEP",
-					 "DELETE", "FREE", "FUN", "ENDFUN", "RETURN", "GC"};
+					 "DELETE", "FREE", "FUN", "END FUN", "RETURN", "GC"};
 
 #define KEYWORDS_SIZE sizeof(keywords) / sizeof(keywords[0])
 
@@ -113,12 +113,14 @@ typedef enum NodeType {
 	DEL,
 	FREE,
 	FUN,
-	ENDFUN,
+	END_FUN,
 	RETURN,
 	FOR,
 	TO,
 	STEP,
 	NEXT,
+	DO_WHILE,
+	DONE,
 	GOTO,
 	GOSUB,
 	END,
@@ -150,7 +152,10 @@ typedef enum NodeType {
 typedef union Literal {
 	double floatValue;
 	int intValue;
-	char string[BFSIZE];
+	struct {
+		char string[BFSIZE];
+		size_t strlen;
+	};
 	//int linenum;
 } Literal;
 
@@ -199,6 +204,8 @@ ParseTreeNode *parseElseStatement(ParserContext *context);
 ParseTreeNode *parseFiStatement(ParserContext *context);
 ParseTreeNode *parseForStatement(ParserContext *context);
 ParseTreeNode *parseForTail(ParserContext *context);
+ParseTreeNode *parseDoWhileStatement(ParserContext *context);
+ParseTreeNode *parseDoneStatement(ParserContext *context);
 ParseTreeNode *parseGoSubStatement(ParserContext *context);
 ParseTreeNode *parseReturnStatement(ParserContext *context);
 ParseTreeNode *parseGotoStatement(ParserContext *context);
@@ -238,10 +245,11 @@ ParseTreeNode *parseRelOperator(ParserContext *context);
 ParseTreeNode *parseUnaryOperand(ParserContext *context);
 
 
-#define STASK_SIZE 256
+#define STASK_SIZE 32
 
 typedef struct {
 	char *str;
+	size_t len;
 	size_t refcnt;
 } String;
 
@@ -252,6 +260,7 @@ typedef struct Value {
 		IDENTI_VAL,
 		SUB_CTX,
 		FOR_CTX,
+		WHILE_CTX,
 		IF_FRAME,
 		BOOL_VAL,
         INT_VAL,
@@ -289,6 +298,10 @@ typedef struct Value {
 				float floatStep;
 			} step;
 		} forCtx;
+		struct WhileCtx {
+			int start;
+			bool skip;
+		} whileCtx;
 		struct IfFrame {
 			int entry;
 			enum If_State {
@@ -364,6 +377,7 @@ extern Stack if_st;
 extern Stack shadow_st;
 
 int lineNum_to_pc(int lineNum);
+bool is_if_else_or_fi_or_while_or_done(ParseTreeNode *node);
 bool is_if_else_or_fi(ParseTreeNode *node);
 void copy_stack(Stack *src, Stack* dst);
 Value push(Stack *st, Value val);
@@ -382,6 +396,8 @@ Value evalElse(ParseTreeNode *node);
 Value evalFi(ParseTreeNode *node);
 Value evalFor(ParseTreeNode *node);
 Value evalNext(ParseTreeNode *node);
+Value evalDoWhile(ParseTreeNode *node);
+Value evalDone(ParseTreeNode *node);
 Value evalGoto(ParseTreeNode *node);
 Value evalSleep(ParseTreeNode *node);
 Value evalClear(ParseTreeNode *node);

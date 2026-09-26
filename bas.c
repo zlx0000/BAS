@@ -35,6 +35,7 @@ BasFunction *def_fun = NULL;
 Stack def_shadow_st;
 bool is_repl = false;
 bool is_exit = false;
+extern bool while_skip;
 
 #ifndef WIN32
 static char *keyword_generator(const char *text, int state)
@@ -212,7 +213,7 @@ repl:
 					ret.type = INT_VAL;
 					goto repl;
 				}
-				else if (p->children[p->childCount-1]->type == ENDFUN) {
+				else if (p->children[p->childCount-1]->type == END_FUN) {
 					evalLine(p);
 					free_tree(p);
 					free(tokens);
@@ -320,8 +321,8 @@ repl:
 					goto repl;
 				}
 				if (__unlikely(if_state == IF_EXPECTING_ELSE_OR_FI
-					|| if_state == IF_EXPECTING_FI)) {
-					if (is_if_else_or_fi(prog.lines[pc]))
+					|| if_state == IF_EXPECTING_FI) || while_skip) {
+					if (is_if_else_or_fi_or_while_or_done(prog.lines[pc]))
 						ret = evalLine(prog.lines[pc]);
 					else
 						pc++;
