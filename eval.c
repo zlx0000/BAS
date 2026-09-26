@@ -1763,7 +1763,7 @@ Value evalRelExpr(ParseTreeNode *node)
             if (node->children[i]->type == EQ || node->children[i]->type == LT
                 || node->children[i]->type == GT || node->children[i]->type == LE
                 || node->children[i]->type == GE || node->children[i]->type == NE) {
-                TokenType t = node->children[i]->type;
+                NodeType t = node->children[i]->type;
                 Value tmp = evalAddExpr(node->children[i+1]);
                 ERR_RETURN_EVAL(tmp);
                 switch (t) {
