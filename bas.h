@@ -245,7 +245,7 @@ ParseTreeNode *parseRelOperator(ParserContext *context);
 ParseTreeNode *parseUnaryOperand(ParserContext *context);
 
 
-#define STASK_SIZE 32
+#define STASK_SIZE 64
 
 typedef struct {
 	char *str;
