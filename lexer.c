@@ -359,15 +359,16 @@ static Literal literal(TokenType t, char *lexeme)
 			bool escape = false;
 			int j = 0;
 			for (int i = 1; i < strlen(lexeme)-1; i++) {
-				if (lexeme[i] == '\\') {
+				if ( (!escape) && lexeme[i] == '\\') {
 					escape = true;
 					continue;
 				}
 				if (! escape)
 					r.string[j++] = lexeme[i];
 				else {
-					if (lexeme[i] == 'n')
+					if (lexeme[i] == 'n') {
 						r.string[j++] = '\n';
+					}
 					else if (IS_DIGIT(lexeme[i])) {
 						int c = lexeme[i] - '0';
 						i++;
@@ -376,13 +377,14 @@ static Literal literal(TokenType t, char *lexeme)
 							c += lexeme[i] - '0';
 							i++;
 						}
+						i--;
 						if (c <= INT8_MAX)
 							r.string[j++] = (char)c;
 						else
-							r.string[j++] = lexeme[i];
-					}
-					else
+							r.string[j++] = (char)INT8_MAX;
+					} else {
 						r.string[j++] = lexeme[i];
+					}
 					escape = false;
 				}
 			}

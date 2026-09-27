@@ -176,7 +176,10 @@ repl:
 	}
 	char *cur = str;
 	while (*cur != '#' && *cur != '\0') {
-		cur++;
+		if (*cur == '\\')
+			cur += 2;
+		else
+			cur++;
 	}
 	*cur = '\0';
 	Token *tokens =
