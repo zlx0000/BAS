@@ -64,7 +64,7 @@ static char *keyword_generator(const char *text, int state)
     return NULL;
 }
 
-static char **gbasic_completion(
+static char **bas_completion(
     const char *text,
     int start,
     int end)
@@ -104,9 +104,9 @@ int main(int argc, char **argv)
 	//prog.shadow_st = (Stack *)calloc(16384, sizeof (Stack));
 #ifndef WIN32
 	rl_variable_bind("enable-bracketed-paste", "off");
-	rl_attempted_completion_function = gbasic_completion;
+	rl_attempted_completion_function = bas_completion;
 	using_history();
-    read_history(".gbasic_history");
+    read_history(".bas_history");
 #endif
 	/*
 	for (int i = 0; i < 16384; i++) {
