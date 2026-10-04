@@ -101,7 +101,7 @@ fun id(a)
 end fun
 
 fun collect
-    #gc
+    gc
     return 0
 end fun
 
