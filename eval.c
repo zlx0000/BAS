@@ -2691,7 +2691,7 @@ next_arr_index:
                 while (cur != NULL && is_new) {
                     ArrPtrList *next = cur->next;
                     ArrPtrList *ptr = retriveArrPtr(cur->ptr, &arrPtrList);
-                    if (ptr && !retriveArrPtr(cur->ptr, &arrPtrList)->isReachable) {
+                    if (ptr && ptr->isReachable) {
                         prev->next = next;
                         free_arr(cur->ptr, cur->size);
                         del_freed_arr_pointer_in_var();

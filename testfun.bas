@@ -101,7 +101,7 @@ fun id(a)
 end fun
 
 fun collect
-    gc
+    #gc
     return 0
 end fun
 
@@ -115,7 +115,7 @@ end fun
 
     free ret
 
-    let ret = take(new(1),id(id(1)), collect)
+    let ret = take(id(new(1)),id(id(1)), collect)
     print ret
     free ret
     let a = id(new(num))
