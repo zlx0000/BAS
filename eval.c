@@ -188,6 +188,7 @@ Value insertArrPtr(Value *ptr, int size, ArrPtrList *list)
     while (cur->next != NULL) {
         cur = cur->next;
         if (cur->ptr == ptr) {
+            if (v) free(v);
             return ERRVAL(VAR_ALREADY_EXIST);
         }
     }
@@ -2691,7 +2692,7 @@ next_arr_index:
                 while (cur != NULL && is_new) {
                     ArrPtrList *next = cur->next;
                     ArrPtrList *ptr = retriveArrPtr(cur->ptr, &arrPtrList);
-                    if (ptr && ptr->isReachable) {
+                    if (ptr && !ptr->isReachable) {
                         prev->next = next;
                         free_arr(cur->ptr, cur->size);
                         del_freed_arr_pointer_in_var();
