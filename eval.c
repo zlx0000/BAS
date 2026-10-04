@@ -686,8 +686,10 @@ Value call(Value *fun, Value *param, int cnt)
                     if (ret.type == ARR_VAL) {
                         if (!(ret.value.arr.ptr
                             ==
-                            cur->var.val.value.arr.ptr))
+                            cur->var.val.value.arr.ptr)) {
                             f = true;
+                            ret.value.arr.is_new = true;
+                        }
                     } else {
                         f = true;
                     }
