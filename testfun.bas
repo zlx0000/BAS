@@ -87,17 +87,22 @@ fun f(x)
 
 end fun
 
-fun one
-    return 1
+fun n(x)
+    return x
 end fun
 
-fun take(a,b)
-    a(0) = 1
+fun take(a,b,c)
+    a(0) = b + c
     return new(a(0))
 end fun
 
 fun id(a)
     return a
+end fun
+
+fun collect
+    gc
+    return 0
 end fun
 
 1 print "num = "
@@ -110,10 +115,9 @@ end fun
 
     free ret
 
-    let ret = take(new(1),one)
+    let ret = take(new(1),id(id(1)), collect)
     print ret
     free ret
-
     let a = id(new(num))
     for i = 0 to num - 1
         a(i) = i + 1

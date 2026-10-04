@@ -21,6 +21,8 @@
 #include <math.h>
 #include <unistd.h>
 
+#define TRUE_VAL ((Value){.type = BOOL_VAL, .value.intVal = true})
+#define FALSE_VAL ((Value){.type = BOOL_VAL, .value.intVal = false})
 #define ERR(str, err) {fprintf(stderr, "%s\n", str); return ERRVAL(err);}
 #define ERRVAL(err) ((Value) {.type = ERR_VAL, .value.errVal = err})
 #define IS_ERR(x) (x.type == ERR_VAL)
@@ -63,6 +65,9 @@ BasFunction *cur_fun;
 bool is_ret = false;
 extern bool is_repl;
 extern bool is_exit;
+//bool in_args = false;
+//Stack arg_st;
+int arg_depth = 0;
 
 struct CallStack {
     int pc;
@@ -75,6 +80,9 @@ struct CallStack {
     Stack if_st;
     Stack shadow_st;
     enum If_State if_state;
+    int arg_depth;
+    //bool in_args;
+    //Stack arg_st;
 };
 
 struct CallStack call_st[512];
@@ -244,9 +252,7 @@ void mark_reachable_deep(Value *ptr, int size, Value *until)
     }
 }
 
-// mark_reachable will ignore the current tmp_arr frame.
-// don't use until all function arguments are evaluated.
-void mark_reachable(Value *until)
+void mark_reachable(Value *until, bool include_tmp)
 {
     {
         ArrPtrList *cur = &arrPtrList;
@@ -265,6 +271,19 @@ void mark_reachable(Value *until)
                 //arr->isReachable = true;
                 mark_reachable_deep(cur->var.val.value.arr.ptr,
                     cur->var.val.value.arr.size, until);
+            }
+        }
+    }
+    if (include_tmp){
+        ArrPtrList *cur = &tmp_arr;
+        while (cur->next != NULL) {
+            cur = cur->next;
+            //ArrPtrList *arr = retriveArrPtr(cur->var.val.value.arr.ptr
+            //                                    ,&arrPtrList);
+            if ((!until || cur->ptr != until) /*&& arr != NULL*/) {
+                //arr->isReachable = true;
+                mark_reachable_deep(cur->ptr,
+                    cur->size, until);
             }
         }
     }
@@ -607,8 +626,11 @@ Value call(Value *fun, Value *param, int cnt)
     copy_stack(&for_st, &call_st[call_st_size - 1].for_st);
     copy_stack(&while_st, &call_st[call_st_size - 1].while_st);
     copy_stack(&if_st, &call_st[call_st_size - 1].if_st);
+    //copy_stack(&arg_st, &call_st[call_st_size - 1].arg_st);
     call_st[call_st_size - 1].cur_fun = cur_fun;
     call_st[call_st_size - 1].if_state = if_state;
+    //call_st[call_st_size - 1].in_args = in_args;
+    call_st[call_st_size - 1].arg_depth = arg_depth;
     call_st[call_st_size - 1].while_skip = while_skip;
     call_st[call_st_size - 1].local.next = local.next;
     call_st[call_st_size - 1].tmp_arr.next = tmp_arr.next;
@@ -622,6 +644,8 @@ Value call(Value *fun, Value *param, int cnt)
     local.next = NULL;
     tmp_arr.next = NULL;
     if_state = IF_BEFORE;
+    //in_args = false;
+    arg_depth = 0;
     while_skip = false;
 
     if (fun->value.function->param_size != cnt) {
@@ -644,18 +668,32 @@ Value call(Value *fun, Value *param, int cnt)
         if (is_ret) {
             pc = call_st[call_st_size - 1].pc;
             if_state = call_st[call_st_size - 1].if_state;
+            //in_args = call_st[call_st_size - 1].in_args;
+            arg_depth = call_st[call_st_size - 1].arg_depth;
             while_skip = call_st[call_st_size - 1].while_skip;
             cur_fun = call_st[call_st_size - 1].cur_fun;
             copy_stack(&call_st[call_st_size - 1].for_st, &for_st);
             copy_stack(&call_st[call_st_size - 1].while_st, &while_st);
             copy_stack(&call_st[call_st_size - 1].if_st, &if_st);
+            //copy_stack(&call_st[call_st_size - 1].arg_st, &arg_st);
+            
+            VarListNode *cur = &local;
+            bool f = false;
+            while (cur->next != NULL) {
+                cur = cur->next;
+                if (cur->var.val.type == ARR_VAL)
+                    f = true;
+            }
             free_local_list(&local);
-            mark_reachable(NULL);
-            if (ret.type == ARR_VAL)
-                mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
-            gc();
-            del_freed_arr_pointer_in_var();
+            if (f) {
+                mark_reachable(NULL, false);
+                if (ret.type == ARR_VAL)
+                    mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
+                gc();
+                del_freed_arr_pointer_in_var();
+            }
             local.next = call_st[call_st_size - 1].local.next;
+            free_arr_list(&tmp_arr);
             tmp_arr.next = call_st[call_st_size - 1].tmp_arr.next;
             call_st_size--;
 
@@ -666,18 +704,32 @@ Value call(Value *fun, Value *param, int cnt)
         if (IS_ERR(ret)) {
             pc = call_st[call_st_size - 1].pc;
             if_state = call_st[call_st_size - 1].if_state;
+            //in_args = call_st[call_st_size - 1].in_args;
+            arg_depth = call_st[call_st_size - 1].arg_depth;
             while_skip = call_st[call_st_size - 1].while_skip;
             cur_fun = call_st[call_st_size - 1].cur_fun;
             copy_stack(&call_st[call_st_size - 1].for_st, &for_st);
             copy_stack(&call_st[call_st_size - 1].while_st, &while_st);
             copy_stack(&call_st[call_st_size - 1].if_st, &if_st);
+            //copy_stack(&call_st[call_st_size - 1].arg_st, &arg_st);
+
+            VarListNode *cur = &local;
+            bool f = false;
+            while (cur->next != NULL) {
+                cur = cur->next;
+                if (cur->var.val.type == ARR_VAL)
+                    f = true;
+            }
             free_local_list(&local);
-            mark_reachable(NULL);
-            if (ret.type == ARR_VAL)
-                mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
-            gc();
-            del_freed_arr_pointer_in_var();
+            if (f) {
+                mark_reachable(NULL, false);
+                if (ret.type == ARR_VAL)
+                    mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
+                gc();
+                del_freed_arr_pointer_in_var();
+            }
             local.next = call_st[call_st_size - 1].local.next;
+            free_arr_list(&tmp_arr);
             tmp_arr.next = call_st[call_st_size - 1].tmp_arr.next;
             call_st_size--;
 
@@ -688,18 +740,31 @@ Value call(Value *fun, Value *param, int cnt)
     }
     pc = call_st[call_st_size - 1].pc;
     if_state = call_st[call_st_size - 1].if_state;
+    //in_args = call_st[call_st_size - 1].in_args;
+    arg_depth = call_st[call_st_size - 1].arg_depth;
     while_skip = call_st[call_st_size - 1].while_skip;
     cur_fun = call_st[call_st_size - 1].cur_fun;
     copy_stack(&call_st[call_st_size - 1].for_st, &for_st);
     copy_stack(&call_st[call_st_size - 1].while_st, &while_st);
     copy_stack(&call_st[call_st_size - 1].if_st, &if_st);
+    //copy_stack(&call_st[call_st_size - 1].arg_st, &arg_st);
+    VarListNode *cur = &local;
+    bool f = false;
+    while (cur->next != NULL) {
+        cur = cur->next;
+        if (cur->var.val.type == ARR_VAL)
+            f = true;
+    }
     free_local_list(&local);
-    mark_reachable(NULL);
-    if (ret.type == ARR_VAL)
-        mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
-    gc();
-    del_freed_arr_pointer_in_var();
+    if (f) {
+        mark_reachable(NULL, false);
+        if (ret.type == ARR_VAL)
+            mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
+        gc();
+        del_freed_arr_pointer_in_var();
+    }
     local.next = call_st[call_st_size - 1].local.next;
+    free_arr_list(&tmp_arr);
     tmp_arr.next = call_st[call_st_size - 1].tmp_arr.next;
     call_st_size--;
 
@@ -1438,7 +1503,7 @@ Value evalHome(ParseTreeNode *node)
 
 Value evalGc(ParseTreeNode *node)
 {
-    mark_reachable(NULL);
+    mark_reachable(NULL, false);
     gc();
     del_freed_arr_pointer_in_var();
     pc++;
@@ -1461,7 +1526,7 @@ Value evalFree(ParseTreeNode *node)
         char *name = node->children[0]->token->lexeme;
         Value v = retriveVar(name);
         if (v.type == ARR_VAL) {
-            mark_reachable(v.value.arr.ptr);
+            mark_reachable(v.value.arr.ptr, false);
             free_arr(v.value.arr.ptr, v.value.arr.size);
             del_freed_arr_pointer_in_var();
         } else {
@@ -1501,7 +1566,7 @@ Value evalFree(ParseTreeNode *node)
         }
         if (ptr->type != ARR_VAL)
             ERR("not an array", INCOMPATIBLE_TYPES);
-        mark_reachable(ptr->value.arr.ptr);
+        mark_reachable(ptr->value.arr.ptr, false);
         free_arr(ptr->value.arr.ptr, ptr->value.arr.size);
         del_freed_arr_pointer_in_var();
         if (findArrPtr(base, &arrPtrList)) {
@@ -2548,7 +2613,9 @@ next_arr_index:
                 int cnt = node->children[0]->childCount;
                 Value *param = malloc(cnt * sizeof (Value));
                 for (int i = 0; i < cnt; i++) {
+                    arg_depth++;
                     param[i] = evalExpr(node->children[0]->children[i]);
+                    arg_depth--;
                     if (param[i].type == ARR_VAL) {
                         insertArrPtr(
                             param[i].value.arr.ptr,
@@ -2558,12 +2625,12 @@ next_arr_index:
                     }
                     if (IS_ERR(param[i])) {
                         Value ret = param[i];
-                        mark_reachable(NULL);
+                        mark_reachable(NULL, arg_depth > 0);
                         ArrPtrList *cur = tmp_arr.next;
                         ArrPtrList *prev = &tmp_arr;
                         while (cur != NULL) {
                             ArrPtrList *next = cur->next;
-                            if (!cur->isReachable) {
+                            if (!retriveArrPtr(cur->ptr, &arrPtrList)->isReachable) {
                                 prev->next = next;
                                 free_arr(cur->ptr, cur->size);
                                 del_freed_arr_pointer_in_var();
@@ -2578,14 +2645,14 @@ next_arr_index:
                     }
                 }
                 Value ret = call(&id, param, cnt);
-                mark_reachable(NULL);
+                mark_reachable(NULL, arg_depth > 0);
                 if (ret.type == ARR_VAL)
                     mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
                 ArrPtrList *cur = tmp_arr.next;
                 ArrPtrList *prev = &tmp_arr;
                 while (cur != NULL) {
                     ArrPtrList *next = cur->next;
-                    if (!cur->isReachable) {
+                    if (!retriveArrPtr(cur->ptr, &arrPtrList)->isReachable) {
                         prev->next = next;
                         free_arr(cur->ptr, cur->size);
                         del_freed_arr_pointer_in_var();
