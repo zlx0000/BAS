@@ -681,8 +681,16 @@ Value call(Value *fun, Value *param, int cnt)
             bool f = false;
             while (cur->next != NULL) {
                 cur = cur->next;
-                if (cur->var.val.type == ARR_VAL)
-                    f = true;
+                if (cur->var.val.type == ARR_VAL && cur->var.val.value.arr.is_new) {
+                    if (ret.type == ARR_VAL) {
+                        if (!(ret.value.arr.ptr
+                            ==
+                            cur->var.val.value.arr.ptr))
+                            f = true;
+                    } else {
+                        f = true;
+                    }
+                }
             }
             free_local_list(&local);
             if (f) {
@@ -717,8 +725,16 @@ Value call(Value *fun, Value *param, int cnt)
             bool f = false;
             while (cur->next != NULL) {
                 cur = cur->next;
-                if (cur->var.val.type == ARR_VAL)
-                    f = true;
+                if (cur->var.val.type == ARR_VAL && cur->var.val.value.arr.is_new) {
+                    if (ret.type == ARR_VAL) {
+                        if (!(ret.value.arr.ptr
+                            ==
+                            cur->var.val.value.arr.ptr))
+                            f = true;
+                    } else {
+                        f = true;
+                    }
+                }
             }
             free_local_list(&local);
             if (f) {
@@ -751,10 +767,18 @@ Value call(Value *fun, Value *param, int cnt)
     VarListNode *cur = &local;
     bool f = false;
     while (cur->next != NULL) {
-        cur = cur->next;
-        if (cur->var.val.type == ARR_VAL)
-            f = true;
-    }
+                cur = cur->next;
+                if (cur->var.val.type == ARR_VAL && cur->var.val.value.arr.is_new) {
+                    if (ret.type == ARR_VAL) {
+                        if (!(ret.value.arr.ptr
+                            ==
+                            cur->var.val.value.arr.ptr))
+                            f = true;
+                    } else {
+                        f = true;
+                    }
+                }
+            }
     free_local_list(&local);
     if (f) {
         mark_reachable(NULL, false);
@@ -1033,6 +1057,7 @@ Value evalDim(ParseTreeNode *node)
     if (v.value.arr.ptr == NULL)
         ERR("out of memory", OUT_OF_MEMORY);
     v.value.arr.size = size.value.intVal;
+    v.value.arr.is_new = true;
     insertArrPtr(v.value.arr.ptr, v.value.arr.size, &arrPtrList);
     for (int i = 0; i < size.value.intVal; i++) {
         v.value.arr.ptr[i].type = INT_VAL;
@@ -2409,6 +2434,9 @@ Value evalPrimary(ParseTreeNode *node)
             }
             v.type = id.type;
             v.value = id.value;
+            if (v.type == ARR_VAL) {
+                v.value.arr.is_new = false;
+            }
         } else {
             char *name = node->children[0]->token->lexeme;
             if (strcasecmp(name, "COS") == 0) {
@@ -2556,6 +2584,7 @@ Value evalPrimary(ParseTreeNode *node)
                 if (v.value.arr.ptr == NULL)
                     ERR("out of memory", OUT_OF_MEMORY);
                 v.value.arr.size = size.value.intVal;
+                v.value.arr.is_new = true;
                 insertArrPtr(v.value.arr.ptr, v.value.arr.size, &arrPtrList);
                 for (int i = 0; i < size.value.intVal; i++) {
                     v.value.arr.ptr[i].type = INT_VAL;
@@ -2582,6 +2611,9 @@ next_arr_index:
                 Value *ptr = base + index;
                 v.type = ptr->type;
                 v.value = ptr->value;
+                if (v.type == ARR_VAL) {
+                    v.value.arr.is_new = false;
+                }
                 if (IS_ERR(v))
                     ERR("uninitialized value", UNINIT_VAL);
                 if (i < cnt - 1) {
@@ -2612,11 +2644,14 @@ next_arr_index:
             else if (id.type == FUN_VAL) {
                 int cnt = node->children[0]->childCount;
                 Value *param = malloc(cnt * sizeof (Value));
+                bool is_new = false;
                 for (int i = 0; i < cnt; i++) {
                     arg_depth++;
                     param[i] = evalExpr(node->children[0]->children[i]);
                     arg_depth--;
                     if (param[i].type == ARR_VAL) {
+                        if (! is_new && param[i].value.arr.is_new)
+                            is_new = true;
                         insertArrPtr(
                             param[i].value.arr.ptr,
                             param[i].value.arr.size,
@@ -2625,13 +2660,14 @@ next_arr_index:
                     }
                     if (IS_ERR(param[i])) {
                         Value ret = param[i];
-                        if (tmp_arr.next)
+                        if (tmp_arr.next && is_new)
                             mark_reachable(NULL, arg_depth > 0);
                         ArrPtrList *cur = tmp_arr.next;
                         ArrPtrList *prev = &tmp_arr;
-                        while (cur != NULL) {
+                        while (cur != NULL && is_new) {
                             ArrPtrList *next = cur->next;
-                            if (!retriveArrPtr(cur->ptr, &arrPtrList)->isReachable) {
+                            ArrPtrList *ptr = retriveArrPtr(cur->ptr, &arrPtrList);
+                            if (ptr && !ptr->isReachable) {
                                 prev->next = next;
                                 free_arr(cur->ptr, cur->size);
                                 del_freed_arr_pointer_in_var();
@@ -2646,15 +2682,16 @@ next_arr_index:
                     }
                 }
                 Value ret = call(&id, param, cnt);
-                if (tmp_arr.next)
+                if (tmp_arr.next && is_new)
                     mark_reachable(NULL, arg_depth > 0);
                 if (ret.type == ARR_VAL)
                     mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
                 ArrPtrList *cur = tmp_arr.next;
                 ArrPtrList *prev = &tmp_arr;
-                while (cur != NULL) {
+                while (cur != NULL && is_new) {
                     ArrPtrList *next = cur->next;
-                    if (!retriveArrPtr(cur->ptr, &arrPtrList)->isReachable) {
+                    ArrPtrList *ptr = retriveArrPtr(cur->ptr, &arrPtrList);
+                    if (ptr && !retriveArrPtr(cur->ptr, &arrPtrList)->isReachable) {
                         prev->next = next;
                         free_arr(cur->ptr, cur->size);
                         del_freed_arr_pointer_in_var();

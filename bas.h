@@ -281,6 +281,7 @@ typedef struct Value {
 			char** alias;
 			int size;
 			size_t refcnt;
+			bool is_new;
 		} arr;
 		int lineNum;
 		struct Value *pointer;
