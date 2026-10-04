@@ -688,6 +688,7 @@ Value call(Value *fun, Value *param, int cnt)
                             ==
                             cur->var.val.value.arr.ptr)) {
                             f = true;
+                        } else {
                             ret.value.arr.is_new = true;
                         }
                     } else {
