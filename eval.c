@@ -2625,7 +2625,8 @@ next_arr_index:
                     }
                     if (IS_ERR(param[i])) {
                         Value ret = param[i];
-                        mark_reachable(NULL, arg_depth > 0);
+                        if (tmp_arr.next)
+                            mark_reachable(NULL, arg_depth > 0);
                         ArrPtrList *cur = tmp_arr.next;
                         ArrPtrList *prev = &tmp_arr;
                         while (cur != NULL) {
@@ -2645,7 +2646,8 @@ next_arr_index:
                     }
                 }
                 Value ret = call(&id, param, cnt);
-                mark_reachable(NULL, arg_depth > 0);
+                if (tmp_arr.next)
+                    mark_reachable(NULL, arg_depth > 0);
                 if (ret.type == ARR_VAL)
                     mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
                 ArrPtrList *cur = tmp_arr.next;
