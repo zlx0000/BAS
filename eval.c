@@ -598,8 +598,8 @@ void copy_stack(Stack *src, Stack* dst) {
 
 static void free_arr(Value *arr, int size)
 {
-    if (findArrPtr(arr, &arrPtrList)
-        && !retriveArrPtr(arr, &arrPtrList)->isReachable) {
+    ArrPtrList *p = retriveArrPtr(arr, &arrPtrList);
+    if (p && !p->isReachable) {
         delArrPtr(arr, &arrPtrList);
         for (int i = 0; i < size; i++) {
             if ((arr + i)->type == ARR_VAL) {
@@ -804,8 +804,12 @@ Value call(Value *fun, Value *param, int cnt)
     return ret;
 }
 
-void printArr(Value *val)
+void printArr(Value *val, int depth)
 {
+    if (depth > 1024) {
+        printf("...");
+        return;
+    }
     Value ret = insertArrPtr(val, 1, &accessdArr);
     printf("[");
     for (int i = 0; i < val->value.arr.size; i++)
@@ -833,7 +837,7 @@ void printArr(Value *val)
                     || findArrPtr(ptr, &accessdArr))
                     printf("...");
                 else
-                    printArr(ptr);
+                    printArr(ptr, depth+1);
                 break;
         }
         if (i != val->value.arr.size - 1)
@@ -866,7 +870,7 @@ void printVal(Value val)
             printf("%s", val.value.string.str);
             break;
         case ARR_VAL:
-            printArr(&val);
+            printArr(&val, 0);
             free_arr_list(&accessdArr);
             if (isatty(is_repl))
                 printf("\n");
