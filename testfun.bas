@@ -111,18 +111,18 @@ end fun
         end
     fi
     let ret = f(num)
-    print ret
+    print ret, "\n"
 
     free ret
 
     let ret = take(id(new(1)),id(id(1)), collect)
-    print ret
+    print ret, "\n"
     free ret
     let a = id(new(num))
     for i = 0 to num - 1
         a(i) = i + 1
     next i
 
-    print a
+    print a, "\n"
     free a
 goto 1

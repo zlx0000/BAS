@@ -864,7 +864,7 @@ void printVal(Value val)
             break;
         case FLOAT_VAL:
             printf("%f", val.value.floatVal);
-            if (isatty(is_repl))
+            if (is_repl)
                 printf("\n");
             break;
         case STRING_VAL:
@@ -873,7 +873,7 @@ void printVal(Value val)
         case ARR_VAL:
             printArr(&val, 0);
             free_arr_list(&accessdArr);
-            if (isatty(is_repl))
+            if (is_repl)
                 printf("\n");
     }
 }
