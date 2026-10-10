@@ -41,6 +41,7 @@
         || strcasecmp(name, "TRUE") == 0 \
         || strcasecmp(name, "FALSE") == 0 \
         || strcasecmp(name, "NEW") == 0 \
+        || strcasecmp(name, "GETCHAR") == 0 \
         || strcasecmp(name, "GETINT") == 0) { \
         ERR("cannot use built-in names", ERR_VAL_NULL); \
     }
@@ -2425,6 +2426,12 @@ Value evalPrimary(ParseTreeNode *node)
                 Value v;
                 v.type = INT_VAL;
                 scanf("%d", &v.value.intVal);
+                return v;
+            }
+            else if (strcasecmp(name, "GETCHAR") == 0) {
+                Value v;
+                v.type = INT_VAL;
+                v.value.intVal = getchar();
                 return v;
             }
             else if (strcasecmp(name, "TRUE") == 0) {
