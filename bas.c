@@ -176,7 +176,7 @@ repl:
 	}
 	char *cur = str;
 	while (*cur != '#' && *cur != '\0') {
-		if (*cur == '\\' && *cur + 1 != '\0')
+		if (*cur == '\\' && *(cur + 1) != '\0')
 			cur += 2;
 		else
 			cur++;
