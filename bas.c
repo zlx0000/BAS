@@ -35,6 +35,7 @@ BasFunction *def_fun = NULL;
 Stack def_shadow_st;
 bool is_repl = false;
 bool is_exit = false;
+extern bool while_skip;
 
 #ifndef WIN32
 static char *keyword_generator(const char *text, int state)
@@ -63,7 +64,7 @@ static char *keyword_generator(const char *text, int state)
     return NULL;
 }
 
-static char **gbasic_completion(
+static char **bas_completion(
     const char *text,
     int start,
     int end)
@@ -103,9 +104,9 @@ int main(int argc, char **argv)
 	//prog.shadow_st = (Stack *)calloc(16384, sizeof (Stack));
 #ifndef WIN32
 	rl_variable_bind("enable-bracketed-paste", "off");
-	rl_attempted_completion_function = gbasic_completion;
+	rl_attempted_completion_function = bas_completion;
 	using_history();
-    read_history(".gbasic_history");
+    read_history(".bas_history");
 #endif
 	/*
 	for (int i = 0; i < 16384; i++) {
@@ -175,7 +176,10 @@ repl:
 	}
 	char *cur = str;
 	while (*cur != '#' && *cur != '\0') {
-		cur++;
+		if (*cur == '\\' && *(cur + 1) != '\0')
+			cur += 2;
+		else
+			cur++;
 	}
 	*cur = '\0';
 	Token *tokens =
@@ -212,7 +216,7 @@ repl:
 					ret.type = INT_VAL;
 					goto repl;
 				}
-				else if (p->children[p->childCount-1]->type == ENDFUN) {
+				else if (p->children[p->childCount-1]->type == END_FUN) {
 					evalLine(p);
 					free_tree(p);
 					free(tokens);
@@ -320,8 +324,8 @@ repl:
 					goto repl;
 				}
 				if (__unlikely(if_state == IF_EXPECTING_ELSE_OR_FI
-					|| if_state == IF_EXPECTING_FI)) {
-					if (is_if_else_or_fi(prog.lines[pc]))
+					|| if_state == IF_EXPECTING_FI) || while_skip) {
+					if (is_if_else_or_fi_or_while_or_done(prog.lines[pc]))
 						ret = evalLine(prog.lines[pc]);
 					else
 						pc++;

@@ -5,7 +5,7 @@ fun fib(n)
         return 1
     fi
     return fib(n-2)+fib(n-1)
-endfun
+end fun
 
 
 fun f(x)
@@ -85,20 +85,25 @@ fun f(x)
 
     return d(nxt)
 
-endfun
+end fun
 
-fun one
-    return 1
-endfun
+fun n(x)
+    return x
+end fun
 
-fun take(a,b)
-    a(0) = 1
+fun take(a,b,c)
+    a(0) = b + c
     return new(a(0))
-endfun
+end fun
 
 fun id(a)
     return a
-endfun
+end fun
+
+fun collect
+    gc
+    return 0
+end fun
 
 1 print "num = "
     let num = getint
@@ -106,19 +111,18 @@ endfun
         end
     fi
     let ret = f(num)
-    print ret
+    print ret, "\n"
 
     free ret
 
-    let ret = take(new(1),one)
-    print ret
+    let ret = take(id(new(1)),id(id(1)), collect)
+    print ret, "\n"
     free ret
-
     let a = id(new(num))
     for i = 0 to num - 1
         a(i) = i + 1
     next i
 
-    print a
+    print a, "\n"
     free a
 goto 1
