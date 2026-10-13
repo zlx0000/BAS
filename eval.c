@@ -998,7 +998,7 @@ Value evalLet(ParseTreeNode *node)
         if (index_val.type != INT_VAL)
             ERR("index has to be INT type", INCOMPATIBLE_TYPES);
         int index = index_val.value.intVal;
-        if (index >= id.value.arr.size)
+        if (index >= id.value.arr.size || index < 0)
             ERR("index out of range", INDEX_OUT_OF_RANGE);
         Value v = evalExpr(node->children[2]);
         ERR_RETURN_EVAL(v);
@@ -1013,7 +1013,7 @@ Value evalLet(ParseTreeNode *node)
             if (index_val.type != INT_VAL)
                 ERR("index has to be INT type", INCOMPATIBLE_TYPES);
             int index = index_val.value.intVal;
-            if (index >= ptr->value.arr.size)
+            if (index >= ptr->value.arr.size || index < 0)
                 ERR("index out of range", INDEX_OUT_OF_RANGE);
             base = ptr->value.arr.ptr;
             ptr = base + index;
@@ -1582,7 +1582,7 @@ Value evalFree(ParseTreeNode *node)
         if (index_val.type != INT_VAL)
             ERR("index has to be INT type", INCOMPATIBLE_TYPES);
         int index = index_val.value.intVal;
-        if (index >= id.value.arr.size)
+        if (index >= id.value.arr.size || index < 0)
             ERR("index out of range", INDEX_OUT_OF_RANGE);
         Value *base = id.value.arr.ptr;
         Value *ptr = base + index;
@@ -1595,7 +1595,7 @@ Value evalFree(ParseTreeNode *node)
             if (index_val.type != INT_VAL)
                 ERR("index has to be INT type", INCOMPATIBLE_TYPES);
             int index = index_val.value.intVal;
-            if (index >= ptr->value.arr.size)
+            if (index >= ptr->value.arr.size || index < 0)
                 ERR("index out of range", INDEX_OUT_OF_RANGE);
             base = ptr->value.arr.ptr;
             ptr = base + index;
@@ -2623,7 +2623,7 @@ next_arr_index:
                 if (index_val.type != INT_VAL)
                     ERR("index has to be INT type", INCOMPATIBLE_TYPES);
                 int index = index_val.value.intVal;
-                if (index >= id.value.arr.size)
+                if (index >= id.value.arr.size || index < 0)
                     ERR("index out of range", INDEX_OUT_OF_RANGE);
                 Value *base = id.value.arr.ptr;
                 Value *ptr = base + index;
@@ -2650,7 +2650,7 @@ next_arr_index:
                 if (index_val.type != INT_VAL)
                     ERR("index has to be INT type", INCOMPATIBLE_TYPES);
                 int index = index_val.value.intVal;
-                if (index >= id.value.string.len)
+                if (index >= id.value.string.len || index < 0)
                     ERR("index out of range", INDEX_OUT_OF_RANGE);
                 char *base = id.value.string.str;
                 char *ptr = base + index;
