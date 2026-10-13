@@ -1,0 +1,85 @@
+PRINT "TEST 1: OUTER TRUE, INNER TRUE\n"
+
+LET A = 10
+LET B = 5
+
+IF A > B
+    PRINT "OUTER TRUE\n"
+
+    IF B > 0
+        PRINT "INNER TRUE\n"
+    ELSE
+        PRINT "INNER FALSE\n"
+    FI
+ELSE
+    PRINT "OUTER FALSE\n"
+FI
+
+
+PRINT "TEST 2: OUTER TRUE, INNER FALSE\n"
+
+LET A = 10
+LET B = -5
+
+IF A > B
+    PRINT "OUTER TRUE\n"
+
+    IF B > 0
+        PRINT "INNER TRUE\n"
+    ELSE
+        PRINT "INNER FALSE\n"
+    FI
+ELSE
+    PRINT "OUTER FALSE\n"
+FI
+
+
+PRINT "TEST 3: OUTER FALSE\n"
+
+LET A = 2
+LET B = 5
+
+IF A > B
+    PRINT "OUTER TRUE\n"
+
+    IF A > 0
+        PRINT "THIS MUST NOT RUN\n"
+    ELSE
+        PRINT "THIS MUST NOT RUN EITHER\n"
+    FI
+ELSE
+    PRINT "OUTER FALSE\n"
+
+    IF B > 0
+        PRINT "ELSE INNER TRUE\n"
+    ELSE
+        PRINT "ELSE INNER FALSE\n"
+    FI
+FI
+
+
+PRINT "TEST 4: THREE LEVELS\n"
+
+LET X = 10
+LET Y = 20
+LET Z = 30
+
+IF X < Y
+    PRINT "LEVEL 1 TRUE\n"
+
+    IF Y < Z
+        PRINT "LEVEL 2 TRUE\n"
+
+        IF X + Y = Z
+            PRINT "LEVEL 3 TRUE\n"
+        ELSE
+            PRINT "LEVEL 3 FALSE\n"
+        FI
+    ELSE
+        PRINT "LEVEL 2 FALSE\n"
+    FI
+ELSE
+    PRINT "LEVEL 1 FALSE\n"
+FI
+
+PRINT "ALL TESTS FINISHED\n"

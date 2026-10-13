@@ -1,0 +1,186 @@
+LET PI = 3.141592653589793
+
+LET N = 15
+LET SIZE = 1
+
+FOR I = 1 TO N
+    LET SIZE = SIZE * 2
+NEXT I
+
+DIM AR(SIZE)
+DIM AI(SIZE)
+
+LET FREQ = 5
+
+FOR I = 0 TO SIZE - 1
+    LET AR(I) = SINF(2.0 * PI * FREQ * I / SIZE)
+    LET AI(I) = 0.0
+NEXT I
+
+LET PRINTSIZE = SIZE
+
+IF PRINTSIZE > 32
+    LET PRINTSIZE = 32
+FI
+
+PRINT "INPUT"
+
+FOR I = 0 TO PRINTSIZE - 1
+    PRINT I, AR(I), AI(I)
+NEXT I
+
+LET RET = 1
+GOTO 3000
+
+
+100 GOTO 1000
+
+
+200 PRINT "FFT"
+
+FOR I = 0 TO PRINTSIZE - 1
+    PRINT I, AR(I), AI(I)
+NEXT I
+
+LET RET = 2
+GOTO 3000
+
+
+300 GOTO 2000
+
+
+400 LET INV_SIZE = 1.0 / SIZE
+
+FOR I = 0 TO SIZE - 1
+    LET AR(I) = AR(I) * INV_SIZE
+    LET AI(I) = AI(I) * INV_SIZE
+NEXT I
+
+PRINT "IFFT"
+
+FOR I = 0 TO PRINTSIZE - 1
+    PRINT I, AR(I), AI(I)
+NEXT I
+
+FREE AR
+FREE AI
+
+GOTO 9999
+
+
+1000 LET M = 2
+
+1010 IF M > SIZE THEN 200
+
+LET ANGLE = -2.0 * PI / M
+LET WMRE = COSF(ANGLE)
+LET WMIM = SINF(ANGLE)
+
+FOR J = 0 TO SIZE - 1 STEP M
+
+    LET WRE = 1.0
+    LET WIM = 0.0
+
+    FOR K = 0 TO M / 2 - 1
+
+        LET APOS = J + K
+        LET BPOS = APOS + M / 2
+
+        LET TRE = WRE * AR(BPOS) - WIM * AI(BPOS)
+        LET TIM = WRE * AI(BPOS) + WIM * AR(BPOS)
+
+        LET URE = AR(APOS)
+        LET UIM = AI(APOS)
+
+        LET AR(APOS) = URE + TRE
+        LET AI(APOS) = UIM + TIM
+
+        LET AR(BPOS) = URE - TRE
+        LET AI(BPOS) = UIM - TIM
+
+        LET NWRE = WRE * WMRE - WIM * WMIM
+        LET WIM = WRE * WMIM + WIM * WMRE
+        LET WRE = NWRE
+
+    NEXT K
+
+NEXT J
+
+LET M = M * 2
+GOTO 1010
+
+
+2000 LET M = 2
+
+2010 IF M > SIZE THEN 400
+
+LET ANGLE = 2.0 * PI / M
+LET WMRE = COSF(ANGLE)
+LET WMIM = SINF(ANGLE)
+
+FOR J = 0 TO SIZE - 1 STEP M
+
+    LET WRE = 1.0
+    LET WIM = 0.0
+
+    FOR K = 0 TO M / 2 - 1
+
+        LET APOS = J + K
+        LET BPOS = APOS + M / 2
+
+        LET TRE = WRE * AR(BPOS) - WIM * AI(BPOS)
+        LET TIM = WRE * AI(BPOS) + WIM * AR(BPOS)
+
+        LET URE = AR(APOS)
+        LET UIM = AI(APOS)
+
+        LET AR(APOS) = URE + TRE
+        LET AI(APOS) = UIM + TIM
+
+        LET AR(BPOS) = URE - TRE
+        LET AI(BPOS) = UIM - TIM
+
+        LET NWRE = WRE * WMRE - WIM * WMIM
+        LET WIM = WRE * WMIM + WIM * WMRE
+        LET WRE = NWRE
+
+    NEXT K
+
+NEXT J
+
+LET M = M * 2
+GOTO 2010
+
+
+3000 IF SIZE = 1 THEN 3900
+
+LET J = 0
+
+FOR I = 1 TO SIZE - 1
+
+    LET BIT = SIZE / 2
+
+3010 IF J < BIT THEN 3020
+    LET J = J - BIT
+    LET BIT = BIT / 2
+    GOTO 3010
+
+3020 LET J = J + BIT
+
+    IF I < J
+        LET TMP = AR(I)
+        LET AR(I) = AR(J)
+        LET AR(J) = TMP
+
+        LET TMP = AI(I)
+        LET AI(I) = AI(J)
+        LET AI(J) = TMP
+    FI
+
+NEXT I
+
+3900 IF RET = 1 THEN 100
+GOTO 300
+
+
+9999 LET DONE = 1
