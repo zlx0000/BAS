@@ -127,6 +127,11 @@ int main(int argc, char **argv)
 			return 0;
 		}
 	}
+	if(!f && isatty(STDIN_FILENO)) {
+		printf("BAS  Copyright (C) 2026  Leo Z\n");
+		printf("This is free software with ABSOLUTELY NO WARRANTY.\n");
+		printf("For details type `warranty'.\n");
+	}
 repl:
 	if (is_exit) {
 		if (f) fclose(f);
@@ -173,6 +178,22 @@ repl:
 		free(str);
 		if (f) fclose(f);
 		return 0;
+	}
+	else if (strcasecmp(str, "warranty\n") == 0
+		|| strcasecmp(str, "warranty") == 0) {
+		printf("BAS  Copyright (C) 2026  Leo Z\n");
+		printf("    This program is free software: you can redistribute it and/or modify\n");
+		printf("    it under the terms of the GNU General Public License as published by\n");
+		printf("    the Free Software Foundation, either version 3 of the License, or\n");
+		printf("    (at your option) any later version.\n\n");
+		printf("    This program is distributed in the hope that it will be useful,\n");
+		printf("    but WITHOUT ANY WARRANTY; without even the implied warranty of\n");
+		printf("    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n");
+		printf("    GNU General Public License for more details.\n\n");
+		printf("    You should have received a copy of the GNU General Public License\n");
+		printf("    along with this program.  If not, see <https://www.gnu.org/licenses/>.\n");
+		free(str);
+		goto repl;
 	}
 	char *cur = str;
 	while (*cur != '#' && *cur != '\0') {
