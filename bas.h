@@ -24,9 +24,13 @@
 #include <strings.h>
 #include <stdint.h>
 #include <ctype.h>
-#include <termios.h>
 #include <unistd.h>
+#ifdef WIN32
+#include <conio.h>
+#else
+#include <termios.h>
 #include <poll.h>
+#endif
 
 #define MAX_TOKEN 25600
 #define BFSIZE 256

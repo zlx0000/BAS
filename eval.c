@@ -2487,6 +2487,10 @@ Value evalPrimary(ParseTreeNode *node)
                 Value v;
                 v.type = INT_VAL;
                 v.value.intVal = 0;
+#ifdef WIN32
+                if (_kbhit())
+                v.value.intVal = _getch();
+#else
                 enable_key_mode();
                 int ret = poll(&pfd, 1, 0);
                 if (ret > 0 && (pfd.revents & POLLIN)) {
@@ -2495,6 +2499,7 @@ Value evalPrimary(ParseTreeNode *node)
                         v.value.intVal = c;
                 }
                 restore_terminal();
+#endif
                 return v;
             }
             else if (strcasecmp(name, "TRUE") == 0) {
