@@ -353,6 +353,9 @@ Value retriveVar(char *name) {
         if (strcasecmp(cur->var.name, name) == 0) {
             v.type = cur->var.val.type;
             v.value = cur->var.val.value;
+            if (v.type == FUN_VAL) {
+                v.is_ref = true;
+            }
             return v;
         }
     }
@@ -362,6 +365,9 @@ Value retriveVar(char *name) {
         if (strcasecmp(cur->var.name, name) == 0) {
             v.type = cur->var.val.type;
             v.value = cur->var.val.value;
+            if (v.type == FUN_VAL) {
+                v.is_ref = true;
+            }
             return v;
         }
     }
@@ -480,8 +486,15 @@ Value modVar(char *name, Value val) {
     while (cur->next != NULL) {
         cur = cur->next;
         if (strcasecmp(cur->var.name, name) == 0) {
+            if (cur->var.val.type == FUN_VAL &&
+                cur->var.val.is_ref == false) {
+                ERR("can't overwrite a function", INCOMPATIBLE_TYPES);
+            }
             cur->var.val.type = val.type;
             cur->var.val.value = val.value;
+            if (val.type == FUN_VAL) {
+                cur->var.val.is_ref = true;
+            }
             return val;
         }
     }
@@ -489,8 +502,15 @@ Value modVar(char *name, Value val) {
     while (cur->next != NULL) {
         cur = cur->next;
         if (strcasecmp(cur->var.name, name) == 0) {
+            if (cur->var.val.type == FUN_VAL &&
+                cur->var.val.is_ref == false) {
+                ERR("can't overwrite a function", INCOMPATIBLE_TYPES);
+            }
             cur->var.val.type = val.type;
             cur->var.val.value = val.value;
+            if (val.type == FUN_VAL) {
+                cur->var.val.is_ref = true;
+            }
             return val;
         }
     }
@@ -617,6 +637,11 @@ Value call(Value *fun, Value *param, int cnt)
     if (fun->type != FUN_VAL) {
         ERR("not an function", INCOMPATIBLE_TYPES);
     }
+
+    if (fun->value.function->param_size != cnt) {
+        ERR("param size doesn't match", ERR_VAL_NULL);
+    }
+
     call_st_size++;
     in_fun = true;
     if (call_st_size >= 255) {
@@ -649,10 +674,6 @@ Value call(Value *fun, Value *param, int cnt)
     //in_args = false;
     arg_depth = 0;
     while_skip = false;
-
-    if (fun->value.function->param_size != cnt) {
-        ERR("param size doesn't match", ERR_VAL_NULL);
-    }
 
     for (int j = 0; j < fun->value.function->param_size; j++) {
         insertVar(fun->value.function->param[j], param[j], &local);
@@ -977,6 +998,9 @@ Value evalLet(ParseTreeNode *node)
         char *name = node->children[0]->token->lexeme;
         Value v = evalExpr(node->children[2]);
         ERR_RETURN_EVAL(v);
+        if (v.type == FUN_VAL) {
+            v.is_ref = true;
+        }
         if (node->token == NULL) {
             pc++;
             return modVar(name, v);
@@ -1679,6 +1703,7 @@ Value evalEndFun(ParseTreeNode *node)
     Value fun;
     fun.type = FUN_VAL;
     fun.value.function = def_fun;
+    fun.is_ref = false;
     if (IS_ERR(insertVar(def_fun_name, fun, &global))) {
         ERR("unknown error", ERR_VAL_NULL);
     }
@@ -2443,6 +2468,16 @@ Value evalPrimary(ParseTreeNode *node)
                 v.type = BOOL_VAL;
                 v.value.boolVal = false;
                 return v;
+            }
+            if (name[0] == '&') {
+                char *fn = name + 1;
+                Value f = retriveVar(fn);
+                ERR_RETURN_EVAL(f);
+                if (f.type == FUN_VAL) {
+                    return f;
+                } else {
+                    ERR("not a function", INCOMPATIBLE_TYPES);
+                }
             }
             Value id = retriveVar(name);
             ERR_RETURN_EVAL(id);

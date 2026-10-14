@@ -30,7 +30,7 @@
 
 #define IS_DIGIT(c) ((c) >= '0' && (c) <= '9')
 #define IS_ALPHA(c)                                                              \
-	(((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z') || (c) == '_')
+	(((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z') || (c) == '_' || (c) == '&')
 #define IS_SPACE(c) ((c) == ' ' || (c) == '\t' || (c) == '\n' || (c) == '\r')
 #define IS_CHAR(c) (IS_ALPHA(c) || IS_DIGIT(c) || (c) == '_')
 #define IS_QUOT(c) ((c) == '"' || (c) == '\'')
@@ -254,6 +254,7 @@ typedef struct {
 } String;
 
 typedef struct Value {
+	bool is_ref;
     enum ValueType {
         ERR_VAL,
 		LINENUM_VAL,

@@ -1,11 +1,128 @@
 #!/usr/bin/env bas
 
+let cnt = 0
+
 fun fib(n)
+    cnt = cnt + 1
     if n <= 2
         return 1
     fi
     return fib(n-2)+fib(n-1)
 end fun
+
+fun local_alias_test
+    let alias = &fib
+    let result = alias(10)
+    let alias = 0
+    return result = 55 and alias = 0
+end fun
+
+fun apply(fn)
+    return fn(10)
+end fun
+
+fun return_fib
+    return &fib
+end fun
+
+fun return_local_alias
+    let alias = &fib
+    return &alias
+end fun
+
+fun return_function_parameter(fn)
+    return &fn
+end fun
+
+# Function alias regression checks.
+let result = fib(10)
+if result != 55 or cnt != 109
+    print "FAIL: recursive function call\n"
+    end
+fi
+
+let fib_alias = &fib
+let result = fib_alias(10)
+if result != 55
+    print "FAIL: function alias call\n"
+    end
+fi
+
+let alias_copy = &fib_alias
+let result = alias_copy(10)
+let alias_copy = 0
+if result != 55 or alias_copy != 0
+    print "FAIL: alias of alias\n"
+    end
+fi
+
+let fib_alias = 0
+let result = fib(10)
+if fib_alias != 0 or result != 55
+    print "FAIL: alias reassignment changed the original function\n"
+    end
+fi
+
+let result = local_alias_test
+if not result
+    print "FAIL: local alias reassignment\n"
+    end
+fi
+
+let result = apply(&fib)
+if result != 55
+    print "FAIL: function parameter\n"
+    end
+fi
+print "PASS: function aliases\n"
+
+# Returned functions must remain callable after their call frame is gone.
+let returned_alias = return_fib
+let result = returned_alias(10)
+let returned_alias = 0
+if result != 55 or returned_alias != 0
+    print "FAIL: returning a global function\n"
+    end
+fi
+
+let returned_alias = return_local_alias
+let result = returned_alias(10)
+let returned_alias = 0
+if result != 55 or returned_alias != 0
+    print "FAIL: returning a local function alias\n"
+    end
+fi
+
+let returned_alias = return_function_parameter(return_local_alias)
+let result = returned_alias(10)
+let returned_alias = 0
+if result != 55 or returned_alias != 0
+    print "FAIL: forwarding a returned function through a parameter\n"
+    end
+fi
+
+let result = apply(return_fib)
+if result != 55
+    print "FAIL: calling a returned function through a parameter\n"
+    end
+fi
+
+let result = fib(10)
+if result != 55
+    print "FAIL: returned alias reassignment changed the original function\n"
+    end
+fi
+print "PASS: returning functions\n"
+
+# Run these expected-error checks in the REPL after defining fib above.
+# File execution stops at a runtime error, so these are manual checks.
+# fib = 0              -> can't overwrite a function
+# print fib(10)        -> 55
+# let fib_alias = fib  -> param size doesn't match
+# let fib_alias = &fib -> succeeds after the failed call
+# print fib_alias(10)  -> 55
+# let fib_alias = 0    -> succeeds
+# print fib_alias      -> 0
 
 
 fun f(x)
