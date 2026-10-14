@@ -24,6 +24,9 @@
 #include <strings.h>
 #include <stdint.h>
 #include <ctype.h>
+#include <termios.h>
+#include <unistd.h>
+#include <poll.h>
 
 #define MAX_TOKEN 25600
 #define BFSIZE 256

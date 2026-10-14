@@ -42,7 +42,8 @@
         || strcasecmp(name, "FALSE") == 0 \
         || strcasecmp(name, "NEW") == 0 \
         || strcasecmp(name, "GETCHAR") == 0 \
-        || strcasecmp(name, "GETINT") == 0) { \
+        || strcasecmp(name, "GETINT") == 0 \
+        || strcasecmp(name, "GETKEY") == 0) { \
         ERR("cannot use built-in names", ERR_VAL_NULL); \
     }
 
@@ -89,6 +90,25 @@ struct CallStack {
 struct CallStack call_st[512];
 int a = sizeof (call_st);
 int call_st_size = 0;
+
+struct termios old_term;
+
+void enable_key_mode(void)
+{
+    struct termios term;
+
+    tcgetattr(STDIN_FILENO, &old_term);
+
+    term = old_term;
+    term.c_lflag &= ~(ICANON | ECHO);
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &term);
+}
+
+void restore_terminal(void)
+{
+    tcsetattr(STDIN_FILENO, TCSANOW, &old_term);
+}
 
 void *resize(void *ptr, size_t size)
 {
@@ -2457,6 +2477,24 @@ Value evalPrimary(ParseTreeNode *node)
                 Value v;
                 v.type = INT_VAL;
                 v.value.intVal = getchar();
+                return v;
+            }
+            else if (strcasecmp(name, "GETKEY") == 0) {
+                struct pollfd pfd = {
+                    .fd = STDIN_FILENO,
+                    .events = POLLIN
+                };
+                Value v;
+                v.type = INT_VAL;
+                v.value.intVal = 0;
+                enable_key_mode();
+                int ret = poll(&pfd, 1, 0);
+                if (ret > 0 && (pfd.revents & POLLIN)) {
+                    unsigned char c;
+                    if (read(STDIN_FILENO, &c, 1) == 1)
+                        v.value.intVal = c;
+                }
+                restore_terminal();
                 return v;
             }
             else if (strcasecmp(name, "TRUE") == 0) {
