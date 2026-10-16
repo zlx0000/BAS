@@ -2480,10 +2480,12 @@ Value evalPrimary(ParseTreeNode *node)
                 return v;
             }
             else if (strcasecmp(name, "GETKEY") == 0) {
+#ifndef WIN32
                 struct pollfd pfd = {
                     .fd = STDIN_FILENO,
                     .events = POLLIN
                 };
+#endif
                 Value v;
                 v.type = INT_VAL;
                 v.value.intVal = 0;
