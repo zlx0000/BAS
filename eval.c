@@ -1722,6 +1722,9 @@ Value evalFun(ParseTreeNode *node)
 
 Value evalEndFun(ParseTreeNode *node)
 {
+    if (!in_fun_def) {
+        ERR("not in an function", ERR_VAL_NULL);
+    }
     Value fun;
     fun.type = FUN_VAL;
     fun.value.function = def_fun;
