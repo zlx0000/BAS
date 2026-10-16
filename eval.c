@@ -91,6 +91,7 @@ struct CallStack call_st[512];
 int a = sizeof (call_st);
 int call_st_size = 0;
 
+#ifndef WIN32
 struct termios old_term;
 
 void enable_key_mode(void)
@@ -109,6 +110,7 @@ void restore_terminal(void)
 {
     tcsetattr(STDIN_FILENO, TCSANOW, &old_term);
 }
+#endif
 
 void *resize(void *ptr, size_t size)
 {
