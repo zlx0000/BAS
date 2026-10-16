@@ -83,7 +83,8 @@ let bag = new(7)
 let bag_left = 0
 
 # Deterministic LCG seed. Change this value for another piece sequence.
-let seed = 10279
+print "seed? "
+let seed = getint
 
 let piece = 0
 let next_piece = 0
