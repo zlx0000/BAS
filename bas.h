@@ -27,6 +27,7 @@
 #include <unistd.h>
 #ifdef WIN32
 #include <conio.h>
+#include <windows.h>
 #else
 #include <termios.h>
 #include <poll.h>
