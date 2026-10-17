@@ -1,69 +1,32 @@
 #!/usr/bin/env bas
 
-# Tetris port for BAS
-# Requires non-blocking getkey: ASCII byte when ready, 0 otherwise.
-# SLEEP is in microseconds in the current BAS implementation.
+# Tetris for an ANSI-compatible terminal, at least 80 columns x 24 rows.
+# BAS docs(3): CALL, persistent KEYMODE, zero-argument calls without ().
+# Run: bas tetris.bas
+# Use Q to quit so the program can restore key mode and the cursor.
+# Gravity uses accumulated SLEEP time; rendering adds a little overhead.
 
 let W = 10
 let H = 20
 let FRAME_US = 20000
-
-# Board is flattened: board(y * W + x)
 let board = new(W * H)
+let view = new(W * H)
 
-# Seven tetrominoes.  Each shape occupies a fixed 4x4 slot.
-let shape = new(7 * 16)
+# Four rows of four bytes per shape. O rotates in 2x2, the others in 3x3/4x4.
+let shape = new(7)
+shape(0) = "....XXXX........"
+shape(1) = "XX..XX.........."
+shape(2) = ".X..XXX........."
+shape(3) = ".XX.XX.........."
+shape(4) = "XX...XX........."
+shape(5) = "X...XXX........."
+shape(6) = "..X.XXX........."
 let size = new(7)
-
 size(0) = 4
 size(1) = 2
-size(2) = 3
-size(3) = 3
-size(4) = 3
-size(5) = 3
-size(6) = 3
-
-# I: .... / #### / .... / ....
-shape(0 * 16 + 4) = 1
-shape(0 * 16 + 5) = 1
-shape(0 * 16 + 6) = 1
-shape(0 * 16 + 7) = 1
-
-# O: ## / ##
-shape(1 * 16 + 0) = 1
-shape(1 * 16 + 1) = 1
-shape(1 * 16 + 4) = 1
-shape(1 * 16 + 5) = 1
-
-# T: .#. / ### / ...
-shape(2 * 16 + 1) = 1
-shape(2 * 16 + 4) = 1
-shape(2 * 16 + 5) = 1
-shape(2 * 16 + 6) = 1
-
-# S: .## / ##. / ...
-shape(3 * 16 + 1) = 1
-shape(3 * 16 + 2) = 1
-shape(3 * 16 + 4) = 1
-shape(3 * 16 + 5) = 1
-
-# Z: ##. / .## / ...
-shape(4 * 16 + 0) = 1
-shape(4 * 16 + 1) = 1
-shape(4 * 16 + 5) = 1
-shape(4 * 16 + 6) = 1
-
-# J: #.. / ### / ...
-shape(5 * 16 + 0) = 1
-shape(5 * 16 + 4) = 1
-shape(5 * 16 + 5) = 1
-shape(5 * 16 + 6) = 1
-
-# L: ..# / ### / ...
-shape(6 * 16 + 2) = 1
-shape(6 * 16 + 4) = 1
-shape(6 * 16 + 5) = 1
-shape(6 * 16 + 6) = 1
+for i = 2 to 6
+    size(i) = 3
+next i
 
 let kick = new(5)
 kick(0) = 0
@@ -71,21 +34,25 @@ kick(1) = -1
 kick(2) = 1
 kick(3) = -2
 kick(4) = 2
-
 let award = new(5)
-award(0) = 0
 award(1) = 100
 award(2) = 300
 award(3) = 500
 award(4) = 800
+let color = new(7)
+color(0) = 36
+color(1) = 33
+color(2) = 35
+color(3) = 32
+color(4) = 31
+color(5) = 34
+color(6) = 37
 
 let bag = new(7)
 let bag_left = 0
-
-# Deterministic LCG seed. Change this value for another piece sequence.
-print "seed? "
+print "Seed (integer; same seed gives the same pieces): "
 let seed = getint
-
+seed = ((seed % 65536) + 65536) % 65536
 let piece = 0
 let next_piece = 0
 let rotation = 0
@@ -95,483 +62,544 @@ let over = 0
 let paused = 0
 let score = 0
 let lines = 0
-
-# Incremental ANSI arrow-key parser state.
-let escape = 0
+let gravity = 0
+let running = 1
+let dirty = 1
+let escape_state = 0
+let escape_age = 0
 
 fun random_word
-	seed = (25173 * seed + 13849) % 65536
-	return seed
+    seed = (25173 * seed + 13849) % 65536
+    return seed
 end fun
 
 fun take_piece
-	if bag_left = 0
-		for i = 0 to 6
-			bag(i) = i
-		next i
-
-		let i = 6
-		do while i > 0
-			let r = random_word
-			let j = r % (i + 1)
-			let t = bag(i)
-			bag(i) = bag(j)
-			bag(j) = t
-			i = i - 1
-		done
-
-		bag_left = 7
-	fi
-
-	bag_left = bag_left - 1
-	return bag(bag_left)
+    if bag_left = 0
+        let i = 0
+        do while i < 7
+            bag(i) = i
+            i = i + 1
+        done
+        i = 6
+        do while i > 0
+            let r = random_word
+            let j = int(r / 256) % (i + 1)
+            let t = bag(i)
+            bag(i) = bag(j)
+            bag(j) = t
+            i = i - 1
+        done
+        bag_left = 7
+    fi
+    bag_left = bag_left - 1
+    return bag(bag_left)
 end fun
 
-# Inverse rotation: map a displayed cell back into the unrotated shape.
+# Inverse rotation maps a displayed coordinate into the base shape.
 fun cell(p, r, x, y)
-	let n = size(p)
-
-	if x < 0 or y < 0 or x >= n or y >= n
-		return 0
-	fi
-
-	if p = 1
-		r = 0
-	fi
-
-	do while r > 0
-		let t = x
-		x = y
-		y = n - 1 - t
-		r = r - 1
-	done
-
-	return shape(p * 16 + y * 4 + x)
+    let n = size(p)
+    if x < 0 or y < 0 or x >= n or y >= n
+        return 0
+    fi
+    if p = 1
+        r = 0
+    fi
+    do while r > 0
+        let t = x
+        x = y
+        y = n - 1 - t
+        r = r - 1
+    done
+    let pattern = shape(p)
+    if pattern(y * 4 + x) = 88
+        return 1
+    fi
+    return 0
 end fun
 
 fun fits(x, y, r)
-	let b = 0
-	do while b < size(piece)
-		let a = 0
-		do while a < size(piece)
-			let occupied = cell(piece, r, a, b)
-			if occupied != 0
-				let bx = x + a
-				let by = y + b
-
-				if bx < 0 or bx >= W or by >= H
-					return 0
-				fi
-
-				if by >= 0
-					if board(by * W + bx) != 0
-						return 0
-					fi
-				fi
-			fi
-			a = a + 1
-		done
-		b = b + 1
-	done
-
-	return 1
+    let b = 0
+    do while b < size(piece)
+        let a = 0
+        do while a < size(piece)
+            if cell(piece, r, a, b) != 0
+                let bx = x + a
+                let by = y + b
+                if bx < 0 or bx >= W or by >= H
+                    return 0
+                fi
+                if by >= 0
+                    if board(by * W + bx) != 0
+                        return 0
+                    fi
+                fi
+            fi
+            a = a + 1
+        done
+        b = b + 1
+    done
+    return 1
 end fun
 
 fun spawn
-	piece = next_piece
-	next_piece = take_piece
-	rotation = 0
-	px = int((W - size(piece)) / 2)
-	py = -1
-
-	if fits(px, py, rotation) = 0
-		over = 1
-	fi
-
-	return 0
+    piece = next_piece
+    next_piece = take_piece
+    rotation = 0
+    px = int((W - size(piece)) / 2)
+    py = 0
+    # The I shape has a blank first row.
+    if piece = 0
+        py = -1
+    fi
+    gravity = 0
+    if fits(px, py, rotation) = 0
+        over = 1
+    fi
+    return 0
 end fun
 
+# Compact surviving rows downward in one pass, including adjacent full rows.
 fun clear_lines
-	let y = H - 1
-	let count = 0
-
-	do while y >= 0
-		let full = 1
-		let x = 0
-
-		do while x < W
-			if board(y * W + x) = 0
-				full = 0
-			fi
-			x = x + 1
-		done
-
-		if full != 0
-			count = count + 1
-
-			let k = y
-			do while k > 0
-				let xx = 0
-				do while xx < W
-					board(k * W + xx) = board((k - 1) * W + xx)
-					xx = xx + 1
-				done
-				k = k - 1
-			done
-
-			let xx = 0
-			do while xx < W
-				board(xx) = 0
-				xx = xx + 1
-			done
-
-			# Re-check the same row after shifting.
-		else
-			y = y - 1
-		fi
-	done
-
-	return count
+    let src = H - 1
+    let dst = H - 1
+    let count = 0
+    do while src >= 0
+        let full = 1
+        let x = 0
+        do while x < W
+            if board(src * W + x) = 0
+                full = 0
+            fi
+            x = x + 1
+        done
+        if full != 0
+            count = count + 1
+        else
+            x = 0
+            do while x < W
+                board(dst * W + x) = board(src * W + x)
+                x = x + 1
+            done
+            dst = dst - 1
+        fi
+        src = src - 1
+    done
+    do while dst >= 0
+        let x = 0
+        do while x < W
+            board(dst * W + x) = 0
+            x = x + 1
+        done
+        dst = dst - 1
+    done
+    return count
 end fun
 
 fun lock_piece
-	# Top-out check before modifying the board.
-	let y = 0
-	do while y < size(piece)
-		let x = 0
-		do while x < size(piece)
-			if cell(piece, rotation, x, y) != 0
-				if py + y < 0
-					over = 1
-					return 0
-				fi
-			fi
-			x = x + 1
-		done
-		y = y + 1
-	done
-
-	y = 0
-	do while y < size(piece)
-		let x = 0
-		do while x < size(piece)
-			if cell(piece, rotation, x, y) != 0
-				board((py + y) * W + px + x) = piece + 1
-			fi
-			x = x + 1
-		done
-		y = y + 1
-	done
-
-	let n = clear_lines
-	let level = int(lines / 10)
-	score = score + award(n) * (1 + level)
-	lines = lines + n
-
-	let dummy = spawn
-	return 0
+    # Check all cells before writing, so top-out cannot partially lock a piece.
+    let y = 0
+    do while y < size(piece)
+        let x = 0
+        do while x < size(piece)
+            if cell(piece, rotation, x, y) != 0
+                if py + y < 0
+                    over = 1
+                    return 0
+                fi
+            fi
+            x = x + 1
+        done
+        y = y + 1
+    done
+    y = 0
+    do while y < size(piece)
+        let x = 0
+        do while x < size(piece)
+            if cell(piece, rotation, x, y) != 0
+                board((py + y) * W + px + x) = piece + 1
+            fi
+            x = x + 1
+        done
+        y = y + 1
+    done
+    let n = clear_lines
+    score = score + award(n) * (1 + int(lines / 10))
+    lines = lines + n
+    call spawn
+    return 0
 end fun
 
+# Simple horizontal wall kicks; this is not the full SRS rotation system.
 fun turn_piece(direction)
-	let r = rotation + direction
-
-	if r < 0
-		r = r + 4
-	fi
-	if r >= 4
-		r = r - 4
-	fi
-
-	let i = 0
-	do while i < 5
-		if fits(px + kick(i), py, r) != 0
-			px = px + kick(i)
-			rotation = r
-			return 0
-		fi
-		i = i + 1
-	done
-
-	return 0
+    let r = (rotation + direction + 4) % 4
+    let i = 0
+    do while i < 5
+        if fits(px + kick(i), py, r) != 0
+            px = px + kick(i)
+            rotation = r
+            return 1
+        fi
+        i = i + 1
+    done
+    return 0
 end fun
 
 fun fall_interval
-	let level = int(lines / 10)
+    let level = int(lines / 10)
+    if level >= 13
+        return 100000
+    fi
+    return 750000 - level * 50000
+end fun
 
-	if level >= 13
-		return 100000
-	fi
+fun restart
+    let i = 0
+    do while i < W * H
+        board(i) = 0
+        i = i + 1
+    done
+    score = 0
+    lines = 0
+    over = 0
+    paused = 0
+    bag_left = 0
+    next_piece = take_piece
+    call spawn
+    dirty = 1
+    return 0
+end fun
 
-	return 750000 - level * 50000
+# Start a line at an explicit screen coordinate.
+# No write reaches column 80, including on the bottom row: no wrap or scroll.
+fun screen_row(row)
+    putchar 27
+    print "[", row, ";1H"
+    putchar 27
+    print "[0m"
+    return 0
+end fun
+
+fun erase_tail
+    putchar 27
+    print "[K"
+    return 0
+end fun
+
+fun block(ink)
+    if ink = -1
+        putchar 27
+        print "[90m.."
+    else
+        putchar 27
+        print "[", color(ink - 1), "m[]"
+    fi
+    putchar 27
+    print "[0m"
+    return 0
 end fun
 
 fun sidebar(row)
-	if row = 0
-		print "    Score: ", score
-	fi
+    if row = 0
+        print "    Score: ", score
+    fi
+    if row = 1
+        print "    Lines: ", lines
+    fi
+    if row = 2
+        print "    Level: ", 1 + int(lines / 10)
+    fi
+    if row = 4
+        print "    Next:"
+    fi
+    if row >= 5 and row <= 8
+        print "    "
+        let x = 0
+        do while x < 4
+            if cell(next_piece, 0, x, row - 5) != 0
+                call block(next_piece + 1)
+            else
+                print "  "
+            fi
+            x = x + 1
+        done
+    fi
+    if row = 10
+        print "    A/D or Left/Right: move"
+    fi
+    if row = 11
+        print "    W / Up: rotate clockwise"
+    fi
+    if row = 12
+        print "    X: rotate counterclockwise"
+    fi
+    if row = 13
+        print "    S / Down: soft drop"
+    fi
+    if row = 14
+        print "    Space: hard drop"
+    fi
+    if row = 15
+        print "    P: pause    Q: quit"
+    fi
+    if row = 16
+        print "    R: restart after game over"
+    fi
+    if row = 18
+        print "    .. = landing position"
+    fi
+    return 0
+end fun
 
-	if row = 1
-		print "    Lines: ", lines
-	fi
-
-	if row = 2
-		print "    Level: ", 1 + int(lines / 10)
-	fi
-
-	if row = 4
-		print "    Next:"
-	fi
-
-	if row >= 5 and row <= 8
-		print "    "
-		let x = 0
-		do while x < 4
-			if cell(next_piece, 0, x, row - 5) != 0
-				print "[]"
-			else
-				print "  "
-			fi
-			x = x + 1
-		done
-	fi
-
-	if row = 10
-		print "    a/d or arrows  Move"
-	fi
-	if row = 11
-		print "    w/up, x        Rotate CW / CCW"
-	fi
-	if row = 12
-		print "    s/down         Soft drop"
-	fi
-	if row = 13
-		print "    Space          Hard drop"
-	fi
-	if row = 14
-		print "    p Pause        q Quit"
-	fi
-	if row = 16
-		print "    Automatic gravity; faster each level."
-	fi
-	if row = 17
-		print "    .. shows the landing position."
-	fi
-
-	if row = 19
-		if over != 0
-			print "    GAME OVER - press q to exit"
-		else
-			if paused != 0
-				print "    PAUSED - press p to resume"
-			fi
-		fi
-	fi
-
-	return 0
+# Overlay only the piece's small bounding box, rather than testing every cell.
+fun overlay(y, ink)
+    let b = 0
+    do while b < size(piece)
+        let a = 0
+        do while a < size(piece)
+            if cell(piece, rotation, a, b) != 0
+                let bx = px + a
+                let by = y + b
+                if bx >= 0 and bx < W and by >= 0 and by < H
+                    view(by * W + bx) = ink
+                fi
+            fi
+            a = a + 1
+        done
+        b = b + 1
+    done
+    return 0
 end fun
 
 fun draw
-	let ghost = py
-
-	if over = 0
-		do while fits(px, ghost + 1, rotation) != 0
-			ghost = ghost + 1
-		done
-	fi
-
-	home
-	print "TETRIS - BAS\n"
-	print "+--------------------+\n"
-
-	let y = 0
-	do while y < H
-		print "|"
-
-		let x = 0
-		do while x < W
-			let drawn = 0
-
-			if over = 0
-				if cell(piece, rotation, x - px, y - py) != 0
-					print "[]"
-					drawn = 1
-				fi
-			fi
-
-			if drawn = 0
-				if board(y * W + x) != 0
-					print "[]"
-					drawn = 1
-				fi
-			fi
-
-			if drawn = 0 and over = 0
-				if cell(piece, rotation, x - px, y - ghost) != 0
-					print ".."
-					drawn = 1
-				fi
-			fi
-
-			if drawn = 0
-				print "  "
-			fi
-
-			x = x + 1
-		done
-
-		print "|"
-		let dummy = sidebar(y)
-		print "                                        \n"
-		y = y + 1
-	done
-
-	print "+--------------------+\n"
-	return 0
+    let i = 0
+    do while i < W * H
+        view(i) = board(i)
+        i = i + 1
+    done
+    if over = 0
+        let ghost = py
+        do while fits(px, ghost + 1, rotation) != 0
+            ghost = ghost + 1
+        done
+        call overlay(ghost, -1)
+        call overlay(py, piece + 1)
+    fi
+    call screen_row(1)
+    print "TETRIS / BAS"
+    call erase_tail
+    call screen_row(2)
+    print "+--------------------+"
+    call erase_tail
+    let y = 0
+    do while y < H
+        call screen_row(y + 3)
+        print "|"
+        let x = 0
+        do while x < W
+            let ink = view(y * W + x)
+            if ink = 0
+                print "  "
+            else
+                call block(ink)
+            fi
+            x = x + 1
+        done
+        print "|"
+        call sidebar(y)
+        call erase_tail
+        y = y + 1
+    done
+    call screen_row(23)
+    print "+--------------------+"
+    call erase_tail
+    call screen_row(24)
+    if over != 0
+        print "GAME OVER - R: restart, Q: quit"
+    else
+        if paused != 0
+            print "PAUSED - P: resume, Q: quit"
+        else
+            print "Clear lines to increase the level."
+        fi
+    fi
+    call erase_tail
+    # Flush line-buffered stdout with a newline safely at the TOP of the screen.
+    # A newline at row 24 would scroll the board.
+    call screen_row(1)
+    print "\n"
+    return 0
 end fun
 
-# ------------------------------------------------------------------
-# Main game
-# ------------------------------------------------------------------
+# Return an ordinary action byte, or 0 while consuming an escape sequence.
+# Accept both CSI (ESC [) and SS3 (ESC O) arrows, including CSI parameters.
+fun decode_key(ch)
+    if ch = 27
+        escape_state = 1
+        escape_age = 0
+        return 0
+    fi
+    if escape_state = 1
+        escape_state = 0
+        if ch = 91 or ch = 79
+            escape_state = 2
+            return 0
+        fi
+        # An isolated Escape must not swallow the next ordinary letter.
+    else
+        if escape_state = 2
+            escape_age = 0
+            if ch >= 64 and ch <= 126
+                escape_state = 0
+                if ch = 65
+                    return 119
+                fi
+                if ch = 66
+                    return 115
+                fi
+                if ch = 67
+                    return 100
+                fi
+                if ch = 68
+                    return 97
+                fi
+            else
+                if ch < 32 or ch > 63
+                    escape_state = 0
+                fi
+            fi
+            return 0
+        fi
+    fi
+    # Fold ordinary ASCII uppercase letters, after decoding arrow suffixes.
+    if ch >= 65 and ch <= 90
+        ch = ch + 32
+    fi
+    return ch
+end fun
 
+fun handle_key(ch)
+    if ch = 113
+        running = 0
+        return 0
+    fi
+    if over != 0
+        if ch = 114
+            call restart
+        fi
+        return 0
+    fi
+    if ch = 112
+        paused = 1 - paused
+        gravity = 0
+        dirty = 1
+        return 0
+    fi
+    if paused != 0
+        return 0
+    fi
+    if ch = 97
+        if fits(px - 1, py, rotation) != 0
+            px = px - 1
+            dirty = 1
+        fi
+    fi
+    if ch = 100
+        if fits(px + 1, py, rotation) != 0
+            px = px + 1
+            dirty = 1
+        fi
+    fi
+    if ch = 119
+        if turn_piece(1) != 0
+            dirty = 1
+        fi
+    fi
+    if ch = 120
+        if turn_piece(-1) != 0
+            dirty = 1
+        fi
+    fi
+    if ch = 115
+        if fits(px, py + 1, rotation) != 0
+            py = py + 1
+            score = score + 1
+        else
+            call lock_piece
+        fi
+        gravity = 0
+        dirty = 1
+    fi
+    if ch = 32
+        do while fits(px, py + 1, rotation) != 0
+            py = py + 1
+            score = score + 2
+        done
+        call lock_piece
+        dirty = 1
+    fi
+    return 0
+end fun
+
+# Enter the alternate screen and hide the cursor.
+call restart
+call keymode(true)
+putchar 27
+print "[?1049h"
+putchar 27
+print "[?25l"
 clear
-
-let dummy = 0
-next_piece = take_piece
-dummy = spawn
-dummy = draw
-
-let running = 1
-let gravity = 0
-
-# ASCII:
-# a=97 d=100 w=119 x=120 s=115 p=112 q=113 space=32
-# A=65  D=68  W=87  X=88  S=83  P=80  Q=81
-# ESC=27, '['=91, 'O'=79, arrow A/B/C/D = 65/66/67/68
+call draw
+dirty = 0
 
 do while running != 0
-	let dirty = 0
-	let ch = getkey
-
-	# Drain every key byte already waiting this frame.
-	do while ch != 0
-		if ch = 113 or ch = 81
-			running = 0
-		fi
-
-		if running != 0
-			if ch = 27
-				escape = 1
-			else
-				if escape = 1
-					if ch = 91 or ch = 79
-						escape = 2
-					else
-						escape = 0
-					fi
-				else
-					if escape = 2
-						escape = 0
-						if ch = 65
-							ch = 119
-						fi
-						if ch = 66
-							ch = 115
-						fi
-						if ch = 67
-							ch = 100
-						fi
-						if ch = 68
-							ch = 97
-						fi
-					fi
-
-					if ch = 112 or ch = 80
-						if over = 0
-							if paused = 0
-								paused = 1
-							else
-								paused = 0
-							fi
-							gravity = 0
-							dirty = 1
-						fi
-					fi
-
-					if over = 0 and paused = 0
-						if ch = 97 or ch = 65
-							if fits(px - 1, py, rotation) != 0
-								px = px - 1
-								dirty = 1
-							fi
-						fi
-
-						if ch = 100 or ch = 68
-							if fits(px + 1, py, rotation) != 0
-								px = px + 1
-								dirty = 1
-							fi
-						fi
-
-						if ch = 119 or ch = 87
-							dummy = turn_piece(1)
-							dirty = 1
-						fi
-
-						if ch = 120 or ch = 88
-							dummy = turn_piece(-1)
-							dirty = 1
-						fi
-
-						if ch = 115 or ch = 83
-							if fits(px, py + 1, rotation) != 0
-								py = py + 1
-								score = score + 1
-							else
-								dummy = lock_piece
-								gravity = 0
-							fi
-							dirty = 1
-						fi
-
-						if ch = 32
-							do while fits(px, py + 1, rotation) != 0
-								py = py + 1
-								score = score + 2
-							done
-							dummy = lock_piece
-							gravity = 0
-							dirty = 1
-						fi
-					fi
-				fi
-			fi
-		fi
-
-		ch = getkey
-	done
-
-	if running != 0
-		if over = 0 and paused = 0
-			gravity = gravity + FRAME_US
-
-			if gravity >= fall_interval
-				if fits(px, py + 1, rotation) != 0
-					py = py + 1
-				else
-					dummy = lock_piece
-				fi
-				gravity = 0
-				dirty = 1
-			fi
-		fi
-
-		if dirty != 0
-			dummy = draw
-		fi
-
-		sleep FRAME_US
-	fi
+    # Bound input work so a key flood cannot indefinitely starve gravity.
+    let count = 0
+    let ch = getkey
+    do while ch != 0 and running != 0 and count < 32
+        let action = decode_key(ch)
+        if action != 0
+            call handle_key(action)
+        fi
+        count = count + 1
+        ch = 0
+        if running != 0 and count < 32
+            ch = getkey
+        fi
+    done
+    if escape_state != 0
+        escape_age = escape_age + 1
+        if escape_age >= 10
+            escape_state = 0
+            escape_age = 0
+        fi
+    fi
+    if running != 0
+        if dirty != 0
+            call draw
+            dirty = 0
+        fi
+        sleep FRAME_US
+        if over = 0 and paused = 0
+            gravity = gravity + FRAME_US
+            if gravity >= fall_interval
+                gravity = 0
+                if fits(px, py + 1, rotation) != 0
+                    py = py + 1
+                else
+                    call lock_piece
+                fi
+                dirty = 1
+            fi
+        fi
+    fi
 done
 
-clear
+# Restore the original terminal before printing the final result.
+call keymode(false)
+putchar 27
+print "[0m"
+putchar 27
+print "[?25h"
+putchar 27
+print "[?1049l"
 print "Final score: ", score, "   Lines: ", lines, "\n"
