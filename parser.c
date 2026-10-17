@@ -274,7 +274,7 @@ ParseTreeNode *parseFloatLiteral(ParserContext *context)
 	if (!IN_RANGE || context->tokenPtr->type != FLOAT_TOKEN)
 		ERR("Not a float");
 	node->childCount = 0;
-	node->type = FLOAT;
+	node->type = _FLOAT;
 	node->token = context->tokenPtr;
 	CONSUME_TOKEN;
 	return node;
@@ -669,7 +669,7 @@ ParseTreeNode *parseInputStatement(ParserContext *context)
 	ParseTreeNode *node =
 		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
 	node->childCount = 0;
-	node->type = INPUT;
+	node->type = _INPUT;
 	node->token = context->tokenPtr;
 	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
 		strcasecmp(context->tokenPtr->lexeme, "INPUT") != 0)

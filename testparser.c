@@ -19,7 +19,7 @@
 
 #include "bas.h"
 
-static const char *token_type_to_string(TokenType type)
+static const char *token_type_to_string(BasTokenType type)
 {
 	switch (type) {
 		case TOKEN_TYPE_NULL:

@@ -68,7 +68,7 @@ static char *relops[] = {"=", "==", "<>", "!=", "<=", ">=", "<", ">"};
 
 #define RELOPS_SIZE sizeof(relops) / sizeof(relops[0])
 
-typedef enum TokenType { //the order of which reflects the precedence.
+typedef enum BasTokenType { //the order of which reflects the precedence.
 	TOKEN_TYPE_NULL = 0,
     STRING_TOKEN,
     KEYWORD_TOKEN,
@@ -82,7 +82,7 @@ typedef enum TokenType { //the order of which reflects the precedence.
 	SEMICOLON_TOKEN,
     SPACE_TOKEN,
     TOKEN_TYPE_END
-} TokenType;
+} BasTokenType;
 
 typedef enum NodeType {
 	NODE_TYPE_NULL = 0,
@@ -97,7 +97,7 @@ typedef enum NodeType {
 	PRIMARY,
 	LINENUM,
 	INTEGER,
-	FLOAT,
+	_FLOAT,
 	INTEGERIDENT,
 	FLOATIDENT,
 	STRING,
@@ -116,7 +116,7 @@ typedef enum NodeType {
 	CLEAR,
 	HOME,
 	GC,
-	INPUT,
+	_INPUT,
 	INPUT_LIST,
 	SLEEP,
 	DEL,
@@ -170,7 +170,7 @@ typedef union Literal {
 } Literal;
 
 typedef struct {
-	TokenType type;
+	BasTokenType type;
 	char lexeme[BFSIZE];
 	Literal literal;
 	int lineNum;

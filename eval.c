@@ -2484,7 +2484,7 @@ Value evalPrimary(ParseTreeNode *node)
         v.type = INT_VAL;
         v.value.intVal = node->children[0]->token->literal.intValue;
     }
-    else if (node->children[0]->type == FLOAT) {
+    else if (node->children[0]->type == _FLOAT) {
         v.type = FLOAT_VAL;
         v.value.floatVal = node->children[0]->token->literal.floatValue;
     }

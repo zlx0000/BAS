@@ -337,14 +337,14 @@ static DFA_state is_relop(char *t)
 
 static bool possible(DFA_state *s)
 {
-	for (TokenType i = TOKEN_TYPE_NULL+1; i < TOKEN_TYPE_END; i++) {
+	for (BasTokenType i = TOKEN_TYPE_NULL+1; i < TOKEN_TYPE_END; i++) {
 		if (s[i] != MISMATCH)
 			return true;
 	}
 	return false;
 }
 
-static Literal literal(TokenType t, char *lexeme)
+static Literal literal(BasTokenType t, char *lexeme)
 {
 	Literal r;
 	memset(&r, 0, sizeof(r));
@@ -400,14 +400,14 @@ int lexer(char *bf, Token *tokens, int lineNum)
 {
 	int col = 0;
 	char *bfend = bf;
-	TokenType prev = TOKEN_TYPE_NULL;
+	BasTokenType prev = TOKEN_TYPE_NULL;
 	while(*bfend != '\0') bfend++;
 	if (bfend == bf) return 0;
 	DFA_state states[TOKEN_TYPE_END];
 	struct longest_match {
 		char *end;
 		size_t len;
-		TokenType type;
+		BasTokenType type;
 	} m;
 	
 	char *start = bf;
@@ -417,7 +417,7 @@ int lexer(char *bf, Token *tokens, int lineNum)
 next:
 	m.len = 0;
 	m.type = TOKEN_TYPE_NULL;
-	for (TokenType i = TOKEN_TYPE_NULL+1; i < TOKEN_TYPE_END; i++)
+	for (BasTokenType i = TOKEN_TYPE_NULL+1; i < TOKEN_TYPE_END; i++)
     	states[i] = PENDING;
 	char t[BFSIZE];
 	memset(t, 0, sizeof(t));
@@ -432,7 +432,7 @@ next:
 			return -1;
 		}
 		strncpy(t, start, tlen);
-		for (TokenType i = TOKEN_TYPE_NULL+1; i < TOKEN_TYPE_END; i++) {
+		for (BasTokenType i = TOKEN_TYPE_NULL+1; i < TOKEN_TYPE_END; i++) {
 			switch (i) {
 				case IDENT_TOKEN:
 					if (states[IDENT_TOKEN] != MISMATCH)
@@ -480,7 +480,7 @@ next:
 					break;
 			}
 		}
-		for (TokenType i = TOKEN_TYPE_NULL+1; i < TOKEN_TYPE_END; i++) {
+		for (BasTokenType i = TOKEN_TYPE_NULL+1; i < TOKEN_TYPE_END; i++) {
 			if (states[i] == MATCH) {
 				if (tlen >= m.len) {
 					m.len = tlen;
