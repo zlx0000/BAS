@@ -388,6 +388,10 @@ ParseTreeNode *parseStatement(ParserContext *context)
 			node = parseReturnStatement(context);
 			ERR_RET_NOFREE(node);
 		}
+		else if (strcasecmp(context->tokenPtr->lexeme, "CALL") == 0) {
+			node = parseCallStatement(context);
+			ERR_RET_NOFREE(node);
+		}
 		else if (strcasecmp(context->tokenPtr->lexeme, "GC") == 0) {
 			node = parseGcStatement(context);
 			ERR_RET_NOFREE(node);
@@ -569,6 +573,23 @@ ParseTreeNode *parseHomeStatement(ParserContext *context) {
 			ERR("Expected ELSE token.\n");
 	node->token = context->tokenPtr;
 	CONSUME_TOKEN;
+	return node;
+}
+
+ParseTreeNode *parseCallStatement(ParserContext *context)
+{
+	ParseTreeNode *node =
+		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
+	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
+		strcasecmp(context->tokenPtr->lexeme, "CALL") != 0)
+			ERR("Expected CALL token.\n");
+	node->token = context->tokenPtr;
+	CONSUME_TOKEN;
+	node->type = CALL;
+	node->children = malloc(sizeof(uintptr_t));
+	node->children[0] = parseExpr(context);
+	ERR_RET(node->children[0]);
+	node->childCount++;
 	return node;
 }
 

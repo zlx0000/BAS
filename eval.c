@@ -1008,6 +1008,8 @@ Value evalLine(ParseTreeNode *node)
             return evalReturn(statement);
         case END_FUN:
             return evalEndFun(statement);
+        case CALL:
+            return evalCall(statement);
         case GC:
             return evalGc(statement);
         case END:
@@ -1751,6 +1753,13 @@ Value evalReturn(ParseTreeNode *node)
     is_ret = true;
     pc++;
     return ret;
+}
+
+Value evalCall(ParseTreeNode *node)
+{
+    Value v = evalExpr(node->children[0]);
+    pc++;
+    return v;
 }
 
 Value evalDel(ParseTreeNode *node)

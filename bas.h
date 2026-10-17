@@ -59,7 +59,7 @@
 static char *keywords[] = {"LET", "PRINT", "INPUT", "IF", "ELSE", "FI", "THEN", "FOR", "TO",
                   	 "STEP", "NEXT", "DO WHILE", "DONE", "GOTO", "GOSUB", "RETURN", "RETURN", "END",
                   	 "REM", "AND", "OR", "NOT", "DIM", "PUTCHAR", "CLEAR", "HOME", "SLEEP",
-					 "DELETE", "FREE", "FUN", "END FUN", "RETURN", "GC"};
+					 "DELETE", "FREE", "FUN", "END FUN", "RETURN", "GC", "CALL"};
 
 #define KEYWORDS_SIZE sizeof(keywords) / sizeof(keywords[0])
 
@@ -123,6 +123,7 @@ typedef enum NodeType {
 	FUN,
 	END_FUN,
 	RETURN,
+	CALL,
 	FOR,
 	TO,
 	STEP,
@@ -230,6 +231,7 @@ ParseTreeNode *parseFreeStatement(ParserContext *context);
 ParseTreeNode *parseFunStatement(ParserContext *context);
 ParseTreeNode *parseEndFunStatement(ParserContext *context);
 ParseTreeNode *parseReturnStatement(ParserContext *context);
+ParseTreeNode *parseCallStatement(ParserContext *context);
 ParseTreeNode *parsePrintList(ParserContext *context);
 ParseTreeNode *parsePrintItem(ParserContext *context);
 ParseTreeNode *parseInputStatement(ParserContext *context);
@@ -420,6 +422,7 @@ Value evalFree(ParseTreeNode *node);
 Value evalDel(ParseTreeNode *node);
 Value evalFun(ParseTreeNode *node);
 Value evalEndFun(ParseTreeNode *node);
+Value evalCall(ParseTreeNode *node);
 Value evalReturn(ParseTreeNode *node);
 Value evalOrExpr(ParseTreeNode *node);
 Value evalAndExpr(ParseTreeNode *node);
