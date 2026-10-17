@@ -935,6 +935,7 @@ void printVal(Value val)
             free_arr_list(&accessdArr);
             if (is_repl)
                 printf("\n");
+            break;
         case FD_VAL:
             printf("%x", val.value.fd_val);
             if (is_repl)
