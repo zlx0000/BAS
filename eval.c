@@ -94,6 +94,7 @@ int call_st_size = 0;
 
 #ifndef WIN32
 struct termios old_term;
+bool key_mode = false;
 
 void enable_key_mode(void)
 {
@@ -2513,14 +2514,14 @@ Value evalPrimary(ParseTreeNode *node)
                 if (_kbhit())
                 v.value.intVal = _getch();
 #else
-                enable_key_mode();
+                if (!key_mode) enable_key_mode();
                 int ret = poll(&pfd, 1, 0);
                 if (ret > 0 && (pfd.revents & POLLIN)) {
                     unsigned char c;
                     if (read(STDIN_FILENO, &c, 1) == 1)
                         v.value.intVal = c;
                 }
-                restore_terminal();
+                if (!key_mode) restore_terminal();
 #endif
                 return v;
             }
@@ -2557,7 +2558,27 @@ Value evalPrimary(ParseTreeNode *node)
             }
         } else {
             char *name = node->children[0]->token->lexeme;
-            if (strcasecmp(name, "COS") == 0) {
+            if (strcasecmp(name, "NEW") == 0) {
+                Value size = evalExpr(node->children[0]->children[0]);
+                v.type = ARR_VAL;
+                if (size.type != INT_VAL)
+                    ERR("size has to be INT type", INCOMPATIBLE_TYPES);
+                if (size.value.intVal <= 0) {
+                    ERR("array size can't be zero", ERR_VAL_NULL);
+                }
+                v.value.arr.refcnt = 1;
+                v.value.arr.ptr = (Value *)calloc(size.value.intVal, sizeof(Value));
+                if (v.value.arr.ptr == NULL)
+                    ERR("out of memory", OUT_OF_MEMORY);
+                v.value.arr.size = size.value.intVal;
+                v.value.arr.is_new = true;
+                insertArrPtr(v.value.arr.ptr, v.value.arr.size, &arrPtrList);
+                for (int i = 0; i < size.value.intVal; i++) {
+                    v.value.arr.ptr[i].type = INT_VAL;
+                }
+                return v;
+            }
+            else if (strcasecmp(name, "COS") == 0) {
                 Value index_val = evalExpr(node->children[0]->children[0]);
                 v.type = FLOAT_VAL;
                 if (index_val.type == FLOAT_VAL) {
@@ -2855,25 +2876,29 @@ Value evalPrimary(ParseTreeNode *node)
 			    v.value.intVal = 1;
 			    return v;
 			}
-            else if (strcasecmp(name, "NEW") == 0) {
-                Value size = evalExpr(node->children[0]->children[0]);
+            else if (strcasecmp(name, "KEYMODE") == 0) {
+                if (node->children[0]->childCount < 1) {
+			        ERR("too few args", ERR_VAL_NULL);
+			    }
+                Value flag = evalExpr(node->children[0]->children[0]);
                 v.type = ARR_VAL;
-                if (size.type != INT_VAL)
-                    ERR("size has to be INT type", INCOMPATIBLE_TYPES);
-                if (size.value.intVal <= 0) {
-                    ERR("array size can't be zero", ERR_VAL_NULL);
+                if (flag.type == BOOL_VAL) {
+                    key_mode = flag.value.boolVal;
                 }
-                v.value.arr.refcnt = 1;
-                v.value.arr.ptr = (Value *)calloc(size.value.intVal, sizeof(Value));
-                if (v.value.arr.ptr == NULL)
-                    ERR("out of memory", OUT_OF_MEMORY);
-                v.value.arr.size = size.value.intVal;
-                v.value.arr.is_new = true;
-                insertArrPtr(v.value.arr.ptr, v.value.arr.size, &arrPtrList);
-                for (int i = 0; i < size.value.intVal; i++) {
-                    v.value.arr.ptr[i].type = INT_VAL;
+                else if (flag.type == INT_VAL) {
+                    key_mode = (bool)flag.value.intVal;
                 }
-                return v;
+                else if (flag.type == FLOAT_VAL) {
+                    key_mode = (bool)flag.value.floatVal;
+                } else {
+                    ERR("incompatible types", INCOMPATIBLE_TYPES);
+                }
+                if (key_mode) {
+                    enable_key_mode();
+                } else {
+                    restore_terminal();
+                }
+                return flag;
             }
             Value id = retriveVar(name);
             ERR_RETURN_EVAL(id);
