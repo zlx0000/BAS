@@ -30,6 +30,7 @@
 #else
 #include <termios.h>
 #include <poll.h>
+#include <sys/types.h>
 #endif
 
 #define MAX_TOKEN 25600
@@ -275,6 +276,7 @@ typedef struct Value {
         FLOAT_VAL,
         STRING_VAL,
 		ARR_VAL,
+		FD_VAL,
 		FUN_VAL,
 		POINTER_VAL
 	} type;
@@ -295,6 +297,7 @@ typedef struct Value {
 		struct Value *pointer;
 		char *identi;
 		struct BasFunction *function;
+		FILE *fd_val;
 		struct SubCtx {
 			int lineNum;
 		} subctx;

@@ -41,6 +41,7 @@
         || strcasecmp(name, "TRUE") == 0 \
         || strcasecmp(name, "FALSE") == 0 \
         || strcasecmp(name, "NEW") == 0 \
+        || strcasecmp(name, "FOPEN") == 0 \
         || strcasecmp(name, "GETCHAR") == 0 \
         || strcasecmp(name, "GETINT") == 0 \
         || strcasecmp(name, "GETKEY") == 0) { \
@@ -723,25 +724,25 @@ Value call(Value *fun, Value *param, int cnt)
             //copy_stack(&call_st[call_st_size - 1].arg_st, &arg_st);
             
             VarListNode *cur = &local;
-            bool f = false;
+            bool need_gc = false;
             while (cur->next != NULL) {
                 cur = cur->next;
                 if (cur->var.val.type == ARR_VAL && cur->var.val.value.arr.is_new) {
                     if (ret.type == ARR_VAL) {
-                        if (!(ret.value.arr.ptr
-                            ==
-                            cur->var.val.value.arr.ptr)) {
-                            f = true;
+                        if (ret.value.arr.ptr
+                            !=
+                            cur->var.val.value.arr.ptr) {
+                            need_gc = true;
                         } else {
                             ret.value.arr.is_new = true;
                         }
                     } else {
-                        f = true;
+                        need_gc = true;
                     }
                 }
             }
             free_local_list(&local);
-            if (f) {
+            if (need_gc) {
                 mark_reachable(NULL, false);
                 if (ret.type == ARR_VAL)
                     mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
@@ -770,25 +771,25 @@ Value call(Value *fun, Value *param, int cnt)
             //copy_stack(&call_st[call_st_size - 1].arg_st, &arg_st);
 
             VarListNode *cur = &local;
-            bool f = false;
+            bool need_gc = false;
             while (cur->next != NULL) {
                 cur = cur->next;
                 if (cur->var.val.type == ARR_VAL && cur->var.val.value.arr.is_new) {
                     if (ret.type == ARR_VAL) {
-                        if (!(ret.value.arr.ptr
-                            ==
-                            cur->var.val.value.arr.ptr)) {
-                            f = true;
+                        if (ret.value.arr.ptr
+                            !=
+                            cur->var.val.value.arr.ptr) {
+                            need_gc = true;
                         } else {
                             ret.value.arr.is_new = true;
                         }
                     } else {
-                        f = true;
+                        need_gc = true;
                     }
                 }
             }
             free_local_list(&local);
-            if (f) {
+            if (need_gc) {
                 mark_reachable(NULL, false);
                 if (ret.type == ARR_VAL)
                     mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
@@ -816,7 +817,7 @@ Value call(Value *fun, Value *param, int cnt)
     copy_stack(&call_st[call_st_size - 1].if_st, &if_st);
     //copy_stack(&call_st[call_st_size - 1].arg_st, &arg_st);
     VarListNode *cur = &local;
-    bool f = false;
+    bool need_gc = false;
     while (cur->next != NULL) {
                 cur = cur->next;
                 if (cur->var.val.type == ARR_VAL && cur->var.val.value.arr.is_new) {
@@ -824,14 +825,14 @@ Value call(Value *fun, Value *param, int cnt)
                         if (!(ret.value.arr.ptr
                             ==
                             cur->var.val.value.arr.ptr))
-                            f = true;
+                            need_gc = true;
                     } else {
-                        f = true;
+                        need_gc = true;
                     }
                 }
             }
     free_local_list(&local);
-    if (f) {
+    if (need_gc) {
         mark_reachable(NULL, false);
         if (ret.type == ARR_VAL)
             mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
@@ -918,6 +919,11 @@ void printVal(Value val)
             free_arr_list(&accessdArr);
             if (is_repl)
                 printf("\n");
+        case FD_VAL:
+            printf("%x", val.value.fd_val);
+            if (is_repl)
+                printf("\n");
+            break;
     }
 }
 
@@ -2668,12 +2674,178 @@ Value evalPrimary(ParseTreeNode *node)
                 }
                 else if (index_val.type == BOOL_VAL) {
                     v.value.floatVal = (float)index_val.value.boolVal;
-                }
-                else {
+                } else {
                     ERR("incompatible types", INCOMPATIBLE_TYPES);
                 }
                 return v;
             }
+            else if (strcasecmp(name, "FOPEN") == 0) {
+                if(node->children[0]->childCount < 2) {
+                    ERR("too few args", ERR_VAL_NULL);
+                }
+                Value path = evalExpr(node->children[0]->children[0]);
+                Value mode = evalExpr(node->children[0]->children[1]);
+                if (mode.type != STRING_VAL) {
+                    ERR("incompatible types", INCOMPATIBLE_TYPES);
+                }
+                FILE *fd;
+                if (path.type == STRING_VAL) {
+                    fd = fopen(path.value.string.str, mode.value.string.str);
+                }
+                else if (path.type == ARR_VAL) {
+                    int size = path.value.arr.size;
+                    char *p = malloc(size + 1);
+                    for (int i = 0; i < size; i++) {
+                        Value ch = path.value.arr.ptr[i];
+                        if (ch.type != INT_VAL) {
+                            free(p);
+                            ERR("not a path", INCOMPATIBLE_TYPES);
+                        }
+                        p[i] = (char)ch.value.intVal;
+                    }
+                    p[size] = '\0';
+                    fd = fopen(p, mode.value.string.str);
+                    free(p);
+                } else {
+                    ERR("not a path", INCOMPATIBLE_TYPES);
+                }
+                v.type = FD_VAL;
+                v.value.fd_val = fd;
+                return v;
+            }
+            else if (strcasecmp(name, "FCLOSE") == 0) {
+                if(node->children[0]->childCount < 1) {
+                    ERR("too few args", ERR_VAL_NULL);
+                }
+                Value fd_v = evalExpr(node->children[0]->children[0]);
+                if (fd_v.type != FD_VAL) {
+                    ERR("not a file", INCOMPATIBLE_TYPES);
+                }
+                if (fd_v.value.fd_val == NULL) {
+                    return DEF_VAL;
+                }
+                FILE *fd = fd_v.value.fd_val;
+                v.type = INT_VAL;
+                v.value.intVal = fclose(fd);
+                return v;
+            }
+            else if (strcasecmp(name, "FREAD") == 0) {
+                if (node->children[0]->childCount < 2) {
+                    ERR("too few args", ERR_VAL_NULL);
+                }
+                Value fd_v = evalExpr(node->children[0]->children[0]);
+                Value off1 = evalExpr(node->children[0]->children[1]);
+                if (fd_v.type != FD_VAL) {
+                    ERR("not a file", INCOMPATIBLE_TYPES);
+                }
+                if (fd_v.value.fd_val == NULL) {
+                    return DEF_VAL;
+                }
+                if (off1.type != INT_VAL) {
+                    ERR("offset is not an integer", INCOMPATIBLE_TYPES);
+                }
+                int64_t off;
+                if (node->children[0]->childCount >= 3) {
+                    Value off2 = evalExpr(node->children[0]->children[2]);
+                    if (off2.type != INT_VAL) {
+                        ERR("offset is not an integer", INCOMPATIBLE_TYPES);
+                    }
+                    off = ((int64_t)off1.value.intVal << 32)
+                        | (uint32_t)off2.value.intVal;
+                } else {
+                    off = (int64_t)off1.value.intVal;
+                }
+                FILE *fd = fd_v.value.fd_val;
+#ifdef WIN32
+                if (_fseeki64(fd, off, SEEK_SET) != 0) {
+                    ERR("seek failed", ERR_VAL_NULL);
+                }
+#else
+                if (fseeko(fd, (off_t)off, SEEK_SET) != 0) {
+                    ERR("seek failed", ERR_VAL_NULL);
+                }
+#endif
+                unsigned char ch;
+                if (fread(&ch, 1, 1, fd) != 1) {
+                    if (feof(fd)) {
+                        v.type = INT_VAL;
+                        v.value.intVal = -1;
+                        return v;
+                    }
+                    ERR("file read failed", ERR_VAL_NULL);
+                }
+                v.type = INT_VAL;
+                v.value.intVal = (int)ch;
+                return v;
+            }
+			else if (strcasecmp(name, "FWRITE") == 0) {
+			    if (node->children[0]->childCount < 3) {
+			        ERR("too few args", ERR_VAL_NULL);
+			    }
+
+			    Value fd_v = evalExpr(node->children[0]->children[0]);
+			    Value ch_v = evalExpr(node->children[0]->children[1]);
+			    Value off1 = evalExpr(node->children[0]->children[2]);
+
+			    if (fd_v.type != FD_VAL) {
+			        ERR("not a file", INCOMPATIBLE_TYPES);
+			    }
+
+			    if (fd_v.value.fd_val == NULL) {
+			        return DEF_VAL;
+			    }
+
+			    if (ch_v.type != INT_VAL) {
+			        ERR("byte is not an integer", INCOMPATIBLE_TYPES);
+			    }
+
+			    if (off1.type != INT_VAL) {
+			        ERR("offset is not an integer", INCOMPATIBLE_TYPES);
+			    }
+
+			    if (ch_v.value.intVal < 0 || ch_v.value.intVal > 255) {
+			        ERR("byte out of range", ERR_VAL_NULL);
+			    }
+
+			    int64_t off;
+
+			    if (node->children[0]->childCount >= 4) {
+			        Value off2 = evalExpr(node->children[0]->children[3]);
+
+			        if (off2.type != INT_VAL) {
+			            ERR("offset is not an integer", INCOMPATIBLE_TYPES);
+			        }
+
+			        off = (int64_t)(
+			            ((uint64_t)(uint32_t)off1.value.intVal << 32)
+			            | (uint32_t)off2.value.intVal
+			        );
+			    } else {
+			        off = (int64_t)off1.value.intVal;
+			    }
+
+			    FILE *fd = fd_v.value.fd_val;
+
+#ifdef WIN32
+			    if (_fseeki64(fd, off, SEEK_SET) != 0) {
+			        ERR("seek failed", ERR_VAL_NULL);
+			    }
+#else
+			    if (fseeko(fd, (off_t)off, SEEK_SET) != 0) {
+			        ERR("seek failed", ERR_VAL_NULL);
+			    }
+#endif
+
+			    unsigned char ch = (unsigned char)ch_v.value.intVal;
+
+			    if (fwrite(&ch, 1, 1, fd) != 1) {
+			        ERR("file write failed", ERR_VAL_NULL);
+			    }
+
+			    v.type = INT_VAL;
+			    v.value.intVal = 1;
+			    return v;
+			}
             else if (strcasecmp(name, "NEW") == 0) {
                 Value size = evalExpr(node->children[0]->children[0]);
                 v.type = ARR_VAL;
@@ -2753,8 +2925,10 @@ next_arr_index:
                     param[i] = evalExpr(node->children[0]->children[i]);
                     arg_depth--;
                     if (param[i].type == ARR_VAL) {
-                        if (! is_new && param[i].value.arr.is_new)
+                        // insert iff it's new
+                        if (! is_new && param[i].value.arr.is_new) {
                             is_new = true;
+                        }
                         insertArrPtr(
                             param[i].value.arr.ptr,
                             param[i].value.arr.size,
