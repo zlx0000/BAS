@@ -92,25 +92,40 @@ struct CallStack call_st[512];
 int a = sizeof (call_st);
 int call_st_size = 0;
 
+bool key_mode = false;
 #ifndef WIN32
 struct termios old_term;
-bool key_mode = false;
 
 void enable_key_mode(void)
 {
     struct termios term;
-
     tcgetattr(STDIN_FILENO, &old_term);
-
     term = old_term;
     term.c_lflag &= ~(ICANON | ECHO);
-
     tcsetattr(STDIN_FILENO, TCSANOW, &term);
 }
 
 void restore_terminal(void)
 {
     tcsetattr(STDIN_FILENO, TCSANOW, &old_term);
+}
+#else
+static DWORD old_mode;
+
+void enable_key_mode(void)
+{
+    HANDLE h = GetStdHandle(STD_INPUT_HANDLE);
+    GetConsoleMode(h, &old_mode);
+    DWORD mode = old_mode;
+    mode &= ~ENABLE_LINE_INPUT;
+    mode &= ~ENABLE_ECHO_INPUT;
+    SetConsoleMode(h, mode);
+}
+
+void restore_terminal(void)
+{
+    HANDLE h = GetStdHandle(STD_INPUT_HANDLE);
+    SetConsoleMode(h, old_mode);
 }
 #endif
 
@@ -2812,40 +2827,30 @@ Value evalPrimary(ParseTreeNode *node)
 			    if (node->children[0]->childCount < 3) {
 			        ERR("too few args", ERR_VAL_NULL);
 			    }
-
 			    Value fd_v = evalExpr(node->children[0]->children[0]);
 			    Value ch_v = evalExpr(node->children[0]->children[1]);
 			    Value off1 = evalExpr(node->children[0]->children[2]);
-
 			    if (fd_v.type != FD_VAL) {
 			        ERR("not a file", INCOMPATIBLE_TYPES);
 			    }
-
 			    if (fd_v.value.fd_val == NULL) {
 			        return DEF_VAL;
 			    }
-
 			    if (ch_v.type != INT_VAL) {
 			        ERR("byte is not an integer", INCOMPATIBLE_TYPES);
 			    }
-
 			    if (off1.type != INT_VAL) {
 			        ERR("offset is not an integer", INCOMPATIBLE_TYPES);
 			    }
-
 			    if (ch_v.value.intVal < 0 || ch_v.value.intVal > 255) {
 			        ERR("byte out of range", ERR_VAL_NULL);
 			    }
-
 			    int64_t off;
-
 			    if (node->children[0]->childCount >= 4) {
 			        Value off2 = evalExpr(node->children[0]->children[3]);
-
 			        if (off2.type != INT_VAL) {
 			            ERR("offset is not an integer", INCOMPATIBLE_TYPES);
 			        }
-
 			        off = (int64_t)(
 			            ((uint64_t)(uint32_t)off1.value.intVal << 32)
 			            | (uint32_t)off2.value.intVal
@@ -2853,9 +2858,7 @@ Value evalPrimary(ParseTreeNode *node)
 			    } else {
 			        off = (int64_t)off1.value.intVal;
 			    }
-
 			    FILE *fd = fd_v.value.fd_val;
-
 #ifdef WIN32
 			    if (_fseeki64(fd, off, SEEK_SET) != 0) {
 			        ERR("seek failed", ERR_VAL_NULL);
@@ -2865,13 +2868,10 @@ Value evalPrimary(ParseTreeNode *node)
 			        ERR("seek failed", ERR_VAL_NULL);
 			    }
 #endif
-
 			    unsigned char ch = (unsigned char)ch_v.value.intVal;
-
 			    if (fwrite(&ch, 1, 1, fd) != 1) {
 			        ERR("file write failed", ERR_VAL_NULL);
 			    }
-
 			    v.type = INT_VAL;
 			    v.value.intVal = 1;
 			    return v;
