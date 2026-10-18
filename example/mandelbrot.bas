@@ -239,7 +239,7 @@ do while running
             cx = -0.5
             cy = 0.0
             span = 3.5
-            limit = 96
+            limit = 192
             dirty = 1
         fi
     fi
