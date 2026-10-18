@@ -887,7 +887,7 @@ void printArr(Value *val, int depth)
                 printf("%ld", ptr->value.intVal);
                 break;
             case FLOAT_VAL:
-                printf("%.17f", ptr->value.floatVal);
+                printf("%.17g", ptr->value.floatVal);
                 break;
             case STRING_VAL:
                 printf("\"%s\"", ptr->value.string.str);
@@ -923,7 +923,7 @@ void printVal(Value val)
                 printf("\n");
             break;
         case FLOAT_VAL:
-            printf("%.17f", val.value.floatVal);
+            printf("%.17g", val.value.floatVal);
             if (is_repl)
                 printf("\n");
             break;
