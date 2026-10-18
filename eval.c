@@ -884,10 +884,10 @@ void printArr(Value *val, int depth)
                     printf("FALSE");
                 break;
             case INT_VAL:
-                printf("%d", ptr->value.intVal);
+                printf("%ld", ptr->value.intVal);
                 break;
             case FLOAT_VAL:
-                printf("%f", ptr->value.floatVal);
+                printf("%.17f", ptr->value.floatVal);
                 break;
             case STRING_VAL:
                 printf("\"%s\"", ptr->value.string.str);
@@ -918,12 +918,12 @@ void printVal(Value val)
                 printf("FALSE\n");
             break;
         case INT_VAL:
-            printf("%d", val.value.intVal);
+            printf("%ld", val.value.intVal);
             if (is_repl)
                 printf("\n");
             break;
         case FLOAT_VAL:
-            printf("%f", val.value.floatVal);
+            printf("%.17f", val.value.floatVal);
             if (is_repl)
                 printf("\n");
             break;
@@ -2507,7 +2507,7 @@ Value evalPrimary(ParseTreeNode *node)
             if (strcasecmp(name, "GETINT") == 0) {
                 Value v;
                 v.type = INT_VAL;
-                scanf("%d", &v.value.intVal);
+                scanf("%ld", &v.value.intVal);
                 return v;
             }
             else if (strcasecmp(name, "GETCHAR") == 0) {
@@ -2696,13 +2696,13 @@ Value evalPrimary(ParseTreeNode *node)
                 Value index_val = evalExpr(node->children[0]->children[0]);
                 v.type = INT_VAL;
                 if (index_val.type == FLOAT_VAL) {
-                    v.value.intVal = (int)index_val.value.floatVal;
+                    v.value.intVal = (long)index_val.value.floatVal;
                 }
                 else if (index_val.type == INT_VAL) {
                     v.value.intVal = index_val.value.intVal;
                 }
                 else if (index_val.type == BOOL_VAL) {
-                    v.value.intVal = (int)index_val.value.boolVal;
+                    v.value.intVal = (long)index_val.value.boolVal;
                 }
                 else {
                     ERR("incompatible types", INCOMPATIBLE_TYPES);
@@ -2716,10 +2716,10 @@ Value evalPrimary(ParseTreeNode *node)
                     v.value.floatVal = index_val.value.floatVal;
                 }
                 else if (index_val.type == INT_VAL) {
-                    v.value.floatVal = (float)index_val.value.intVal;
+                    v.value.floatVal = (double)index_val.value.intVal;
                 }
                 else if (index_val.type == BOOL_VAL) {
-                    v.value.floatVal = (float)index_val.value.boolVal;
+                    v.value.floatVal = (double)index_val.value.boolVal;
                 } else {
                     ERR("incompatible types", INCOMPATIBLE_TYPES);
                 }

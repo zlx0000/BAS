@@ -161,7 +161,7 @@ typedef enum NodeType {
 
 typedef union Literal {
 	double floatValue;
-	int intValue;
+	long intValue;
 	struct {
 		char string[BFSIZE];
 		size_t strlen;
@@ -285,8 +285,8 @@ typedef struct Value {
 	} type;
     union ValueVal {
 		bool boolVal;
-        int intVal;
-        float floatVal;
+        long intVal;
+        double floatVal;
         String string;
 		struct Array {
 			struct Value *ptr;
@@ -309,8 +309,8 @@ typedef struct Value {
 			int pc;
 			int next;
 			union {
-				int intStep;
-				float floatStep;
+				long intStep;
+				double floatStep;
 			} step;
 		} forCtx;
 		struct WhileCtx {

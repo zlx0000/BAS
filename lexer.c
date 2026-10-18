@@ -350,7 +350,7 @@ static Literal literal(BasTokenType t, char *lexeme)
 	memset(&r, 0, sizeof(r));
 	switch (t) {
 		case INT_TOKEN:
-			r.intValue = atoi(lexeme);
+			r.intValue = strtol(lexeme, NULL, 10);
 			return r;
 		case FLOAT_TOKEN:
 			r.floatValue = atof(lexeme);
