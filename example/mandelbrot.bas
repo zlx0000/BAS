@@ -209,9 +209,9 @@ do while running
         fi
         if key = 43 or key = 61 or key = 122
             span = span / 1.5
-            if span < 0.00000005
-                span = 0.00000005
-            fi
+            #if span < 0.00000005
+            #   span = 0.00000005
+            #fi
             dirty = 1
         fi
         if key = 45 or key = 95 or key = 120
