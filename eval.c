@@ -410,7 +410,10 @@ Value retriveVar(char *name) {
             return v;
         }
     }
-    ERR("variable not found", VAR_NOT_FOUND);
+    return (Value) {
+        .type = ERR_VAL,
+        .value.errVal = VAR_NOT_FOUND
+    };
 }
 
 bool findVar(char *name) {
@@ -2504,6 +2507,20 @@ Value evalPrimary(ParseTreeNode *node)
         if (node->children[0]->childCount == 0
             || node->children[0]->children[0] == NULL) {
             char *name = node->children[0]->token->lexeme;
+            if (name[0] == '&') {
+                char *fn = name + 1;
+                Value f = retriveVar(fn);
+                ERR_RETURN_EVAL(f);
+                if (f.type == FUN_VAL) {
+                    return f;
+                } else {
+                    ERR("not a function", INCOMPATIBLE_TYPES);
+                }
+            }
+            Value id = retriveVar(name);
+            if (!IS_ERR(id)) {
+                goto skip_builtin1;
+            }
             if (strcasecmp(name, "GETINT") == 0) {
                 Value v;
                 v.type = INT_VAL;
@@ -2550,19 +2567,10 @@ Value evalPrimary(ParseTreeNode *node)
                 v.type = BOOL_VAL;
                 v.value.boolVal = false;
                 return v;
+            } else {
+                ERR("variable not found", VAR_NOT_FOUND);
             }
-            if (name[0] == '&') {
-                char *fn = name + 1;
-                Value f = retriveVar(fn);
-                ERR_RETURN_EVAL(f);
-                if (f.type == FUN_VAL) {
-                    return f;
-                } else {
-                    ERR("not a function", INCOMPATIBLE_TYPES);
-                }
-            }
-            Value id = retriveVar(name);
-            ERR_RETURN_EVAL(id);
+skip_builtin1:
             if (id.type == FUN_VAL) {
                 Value ret = call(&id, NULL, 0);
                 return ret;
@@ -2574,6 +2582,10 @@ Value evalPrimary(ParseTreeNode *node)
             }
         } else {
             char *name = node->children[0]->token->lexeme;
+            Value id = retriveVar(name);
+            if (!IS_ERR(id)) {
+                goto skip_builtin2;
+            }
             if (strcasecmp(name, "NEW") == 0) {
                 Value size = evalExpr(node->children[0]->children[0]);
                 v.type = ARR_VAL;
@@ -2900,9 +2912,10 @@ Value evalPrimary(ParseTreeNode *node)
                     restore_terminal();
                 }
                 return flag;
+            } else {
+                ERR("variable not found", VAR_NOT_FOUND);
             }
-            Value id = retriveVar(name);
-            ERR_RETURN_EVAL(id);
+skip_builtin2:
             if (id.type != ARR_VAL && id.type != STRING_VAL && id.type != FUN_VAL)
                 ERR("not an array or a function", INCOMPATIBLE_TYPES);
             int i = 0;

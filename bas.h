@@ -182,6 +182,7 @@ typedef struct ParseTreeNode {
 	NodeType type;
 	unsigned int childCount;
 	struct ParseTreeNode **children;
+	struct Value *cachedId;
 } ParseTreeNode;
 
 typedef struct ParserContext {
