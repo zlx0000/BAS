@@ -573,6 +573,7 @@ Value insertVar(char *name, Value val, VarListNode *list)
             return modVar(name, val);
         }
     }
+    NO_BUILT_IN_NAMES;
     VarListNode *v = calloc(1, sizeof(VarListNode));
     v->var.name = name;
     v->var.val = val;
@@ -1059,7 +1060,6 @@ Value evalLet(ParseTreeNode *node)
             pc++;
             return modVar(name, v);
         } else {
-            NO_BUILT_IN_NAMES;
             pc++;
             return insertVar(name, v, (in_fun ? &local : &global));
         }
