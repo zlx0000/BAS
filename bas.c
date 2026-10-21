@@ -36,6 +36,8 @@ Stack def_shadow_st;
 bool is_repl = false;
 bool is_exit = false;
 extern bool while_skip;
+int argc_g;
+char **argv_g;
 
 #ifndef WIN32
 static char *keyword_generator(const char *text, int state)
@@ -95,6 +97,9 @@ bool find_lineNum_fun(BasFunction *f, int n)
 
 int main(int argc, char **argv)
 {
+	argc_g = argc;
+	argv_g = argv;
+	int argi = 1;
 	char *str;
 	ParseTreeNode *p = NULL;
 	ParserContext ctx;
@@ -120,7 +125,8 @@ int main(int argc, char **argv)
 	pc = 0;
 	expectedLineNum = -1;
     init_eval();
-	if (argc == 2) {
+	if (argc >= 2) {
+		argi = 2;
 		f = fopen(argv[1], "r");
 		if (!f) {
 			perror("can't open file");

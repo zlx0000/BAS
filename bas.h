@@ -286,7 +286,7 @@ typedef struct Value {
 	} type;
     union ValueVal {
 		bool boolVal;
-        long intVal;
+        int64_t intVal;
         double floatVal;
         String string;
 		struct Array {

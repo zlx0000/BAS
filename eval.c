@@ -40,6 +40,8 @@
         || strcasecmp(name, "FLOAT") == 0 \
         || strcasecmp(name, "TRUE") == 0 \
         || strcasecmp(name, "FALSE") == 0 \
+        || strcasecmp(name, "ARGC") == 0 \
+        || strcasecmp(name, "ARGV") == 0 \
         || strcasecmp(name, "NEW") == 0 \
         || strcasecmp(name, "FOPEN") == 0 \
         || strcasecmp(name, "GETCHAR") == 0 \
@@ -47,6 +49,9 @@
         || strcasecmp(name, "GETKEY") == 0) { \
         ERR("cannot use built-in names", ERR_VAL_NULL); \
     }
+
+extern int argc_g;
+extern char **argv_g;
 
 static VarListNode global;
 static VarListNode local;
@@ -887,7 +892,7 @@ void printArr(Value *val, int depth)
                     printf("FALSE");
                 break;
             case INT_VAL:
-                printf("%ld", ptr->value.intVal);
+                printf("%jd", (intmax_t)ptr->value.intVal);
                 break;
             case FLOAT_VAL:
                 printf("%.17g", ptr->value.floatVal);
@@ -921,7 +926,7 @@ void printVal(Value val)
                 printf("FALSE\n");
             break;
         case INT_VAL:
-            printf("%ld", val.value.intVal);
+            printf("%jd", (intmax_t)val.value.intVal);
             if (is_repl)
                 printf("\n");
             break;
@@ -940,7 +945,7 @@ void printVal(Value val)
                 printf("\n");
             break;
         case FD_VAL:
-            printf("%x", val.value.fd_val);
+            printf("FD: 0x%lx", val.value.fd_val);
             if (is_repl)
                 printf("\n");
             break;
@@ -1042,7 +1047,6 @@ Value evalLine(ParseTreeNode *node)
 Value evalLet(ParseTreeNode *node)
 {
     char *name = node->children[0]->token->lexeme;
-    NO_BUILT_IN_NAMES;
     if (node->children[0]->childCount == 0
         || node->children[0]->children[0] == NULL) {
         char *name = node->children[0]->token->lexeme;
@@ -1055,6 +1059,7 @@ Value evalLet(ParseTreeNode *node)
             pc++;
             return modVar(name, v);
         } else {
+            NO_BUILT_IN_NAMES;
             pc++;
             return insertVar(name, v, (in_fun ? &local : &global));
         }
@@ -2521,10 +2526,22 @@ Value evalPrimary(ParseTreeNode *node)
             if (!IS_ERR(id)) {
                 goto skip_builtin1;
             }
-            if (strcasecmp(name, "GETINT") == 0) {
+            if (strcasecmp(name, "TRUE") == 0) {
+                v.type = BOOL_VAL;
+                v.value.boolVal = true;
+                return v;
+            }
+            else if (strcasecmp(name, "FALSE") == 0) {
+                v.type = BOOL_VAL;
+                v.value.boolVal = false;
+                return v;
+            }
+            else if (strcasecmp(name, "GETINT") == 0) {
                 Value v;
                 v.type = INT_VAL;
-                scanf("%ld", &v.value.intVal);
+                intmax_t input = 0;
+                scanf("%jd", &input);
+                v.value.intVal = (int64_t)input;
                 return v;
             }
             else if (strcasecmp(name, "GETCHAR") == 0) {
@@ -2558,14 +2575,9 @@ Value evalPrimary(ParseTreeNode *node)
 #endif
                 return v;
             }
-            else if (strcasecmp(name, "TRUE") == 0) {
-                v.type = BOOL_VAL;
-                v.value.boolVal = true;
-                return v;
-            }
-            else if (strcasecmp(name, "FALSE") == 0) {
-                v.type = BOOL_VAL;
-                v.value.boolVal = false;
+            else if (strcasecmp(name, "ARGC") == 0) {
+                v.type = INT_VAL;
+                v.value.intVal = (int64_t)argc_g;
                 return v;
             } else {
                 ERR("variable not found", VAR_NOT_FOUND);
@@ -2708,13 +2720,13 @@ skip_builtin1:
                 Value index_val = evalExpr(node->children[0]->children[0]);
                 v.type = INT_VAL;
                 if (index_val.type == FLOAT_VAL) {
-                    v.value.intVal = (long)index_val.value.floatVal;
+                    v.value.intVal = (int64_t)index_val.value.floatVal;
                 }
                 else if (index_val.type == INT_VAL) {
                     v.value.intVal = index_val.value.intVal;
                 }
                 else if (index_val.type == BOOL_VAL) {
-                    v.value.intVal = (long)index_val.value.boolVal;
+                    v.value.intVal = (int64_t)index_val.value.boolVal;
                 }
                 else {
                     ERR("incompatible types", INCOMPATIBLE_TYPES);
@@ -2735,6 +2747,22 @@ skip_builtin1:
                 } else {
                     ERR("incompatible types", INCOMPATIBLE_TYPES);
                 }
+                return v;
+            }
+            else if (strcasecmp(name, "ARGV") == 0) {
+                if(node->children[0]->childCount < 1) {
+                    ERR("too few args", ERR_VAL_NULL);
+                }
+                Value index_val = evalExpr(node->children[0]->children[0]);
+                if (index_val.type != INT_VAL) {
+                    ERR("index has to be INT", INCOMPATIBLE_TYPES);
+                }
+                int i = index_val.value.intVal;
+                if (i >= argc_g || i < 0) {
+                    ERR("index out of range", INDEX_OUT_OF_RANGE);
+                }
+                v.type = STRING_VAL;
+                v.value.string.str = argv_g[i];
                 return v;
             }
             else if (strcasecmp(name, "FOPEN") == 0) {
