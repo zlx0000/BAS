@@ -230,6 +230,7 @@ Value insertArrPtr(Value *ptr, int size, ArrPtrList *list)
     ArrPtrList *v = calloc(1, sizeof(ArrPtrList));
     v->ptr = ptr;
     v->size = size;
+    /*
     while (cur->next != NULL) {
         cur = cur->next;
         if (cur->ptr == ptr) {
@@ -237,6 +238,7 @@ Value insertArrPtr(Value *ptr, int size, ArrPtrList *list)
             return ERRVAL(VAR_ALREADY_EXIST);
         }
     }
+    */
     v->next = list->next;
     list->next = v;
     return DEF_VAL;
