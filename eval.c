@@ -2792,27 +2792,17 @@ skip_builtin1:
                     ERR("too few args", ERR_VAL_NULL);
                 }
                 Value fd_v = evalExpr(node->children[0]->children[0]);
-                Value off1 = evalExpr(node->children[0]->children[1]);
+                Value off_v = evalExpr(node->children[0]->children[1]);
                 if (fd_v.type != FD_VAL) {
                     ERR("not a file", INCOMPATIBLE_TYPES);
                 }
                 if (fd_v.value.fd_val == NULL) {
                     return DEF_VAL;
                 }
-                if (off1.type != INT_VAL) {
+                if (off_v.type != INT_VAL) {
                     ERR("offset is not an integer", INCOMPATIBLE_TYPES);
                 }
-                int64_t off;
-                if (node->children[0]->childCount >= 3) {
-                    Value off2 = evalExpr(node->children[0]->children[2]);
-                    if (off2.type != INT_VAL) {
-                        ERR("offset is not an integer", INCOMPATIBLE_TYPES);
-                    }
-                    off = ((int64_t)off1.value.intVal << 32)
-                        | (uint32_t)off2.value.intVal;
-                } else {
-                    off = (int64_t)off1.value.intVal;
-                }
+                int64_t off = (int64_t)off_v.value.intVal;
                 FILE *fd = fd_v.value.fd_val;
 #ifdef WIN32
                 if (_fseeki64(fd, off, SEEK_SET) != 0) {
@@ -2842,7 +2832,7 @@ skip_builtin1:
 			    }
 			    Value fd_v = evalExpr(node->children[0]->children[0]);
 			    Value ch_v = evalExpr(node->children[0]->children[1]);
-			    Value off1 = evalExpr(node->children[0]->children[2]);
+			    Value off_v = evalExpr(node->children[0]->children[2]);
 			    if (fd_v.type != FD_VAL) {
 			        ERR("not a file", INCOMPATIBLE_TYPES);
 			    }
@@ -2852,25 +2842,13 @@ skip_builtin1:
 			    if (ch_v.type != INT_VAL) {
 			        ERR("byte is not an integer", INCOMPATIBLE_TYPES);
 			    }
-			    if (off1.type != INT_VAL) {
+			    if (off_v.type != INT_VAL) {
 			        ERR("offset is not an integer", INCOMPATIBLE_TYPES);
 			    }
 			    if (ch_v.value.intVal < 0 || ch_v.value.intVal > 255) {
 			        ERR("byte out of range", ERR_VAL_NULL);
 			    }
-			    int64_t off;
-			    if (node->children[0]->childCount >= 4) {
-			        Value off2 = evalExpr(node->children[0]->children[3]);
-			        if (off2.type != INT_VAL) {
-			            ERR("offset is not an integer", INCOMPATIBLE_TYPES);
-			        }
-			        off = (int64_t)(
-			            ((uint64_t)(uint32_t)off1.value.intVal << 32)
-			            | (uint32_t)off2.value.intVal
-			        );
-			    } else {
-			        off = (int64_t)off1.value.intVal;
-			    }
+			    int64_t off = (int64_t)off_v.value.intVal;
 			    FILE *fd = fd_v.value.fd_val;
 #ifdef WIN32
 			    if (_fseeki64(fd, off, SEEK_SET) != 0) {
