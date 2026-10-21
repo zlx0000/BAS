@@ -2763,6 +2763,7 @@ skip_builtin1:
                 }
                 v.type = STRING_VAL;
                 v.value.string.str = argv_g[i];
+                v.value.string.len = strlen(argv_g[i]);
                 return v;
             }
             else if (strcasecmp(name, "FOPEN") == 0) {
