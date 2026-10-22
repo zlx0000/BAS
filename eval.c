@@ -224,6 +224,7 @@ int allocate_cnt() {
     return cnt;
 }
 
+// Assume ptrs are unique.
 Value insertArrPtr(Value *ptr, int size, ArrPtrList *list)
 {
     ArrPtrList *cur = list;

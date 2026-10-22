@@ -378,6 +378,7 @@ typedef struct Program {
 	Stack *shadow_st;
 } Program;
 
+// TODO: add a hash index.
 typedef struct ArrPtrList {
 	Value *ptr;
 	size_t size;
