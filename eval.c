@@ -134,6 +134,7 @@ void restore_terminal(void)
 }
 #endif
 
+// Reallocate a buffer, or free it and return NULL when size is zero.
 void *resize(void *ptr, size_t size)
 {
     if (size == 0) {
@@ -194,6 +195,7 @@ void init_eval()
     shadow_st.size = 0;
 }
 
+// Test pointer membership without dereferencing the buffer.
 bool findArrPtr(Value *ptr, ArrPtrList *list) {
     ArrPtrList *cur = list;
     while (cur->next != NULL) {
@@ -204,6 +206,8 @@ bool findArrPtr(Value *ptr, ArrPtrList *list) {
     return false;
 }
 
+// Deprecated: O(n) lookup; use the array's reg for live allocations.
+// Returns the matching bookkeeping node, or NULL.
 ArrPtrList *retriveArrPtr(Value *ptr, ArrPtrList *list) {
     ArrPtrList *cur = list;
     while (cur->next != NULL) {
@@ -214,6 +218,7 @@ ArrPtrList *retriveArrPtr(Value *ptr, ArrPtrList *list) {
     return NULL;
 }
 
+// Count currently registered array buffers.
 int allocate_cnt() {
     ArrPtrList *cur = &arrPtrList;
     int cnt = 0;
@@ -224,13 +229,14 @@ int allocate_cnt() {
     return cnt;
 }
 
-// Assume ptrs are unique.
-Value insertArrPtr(Value *ptr, int size, ArrPtrList *list)
+// Prepend a bookkeeping node and return it as POINTER_VAL; duplicates are unchecked.
+Value insertArrPtr(Value *ptr, int size, ArrPtrList *reg, bool isStale, ArrPtrList *list)
 {
     ArrPtrList *cur = list;
     ArrPtrList *v = calloc(1, sizeof(ArrPtrList));
     v->ptr = ptr;
     v->size = size;
+    v->reg = reg;
     /*
     while (cur->next != NULL) {
         cur = cur->next;
@@ -242,9 +248,13 @@ Value insertArrPtr(Value *ptr, int size, ArrPtrList *list)
     */
     v->next = list->next;
     list->next = v;
-    return DEF_VAL;
+    Value ret;
+    ret.type = POINTER_VAL;
+    ret.value.pointer = v;
+    return ret;
 }
 
+// Remove the first matching node without freeing its array buffer.
 Value delArrPtr(Value *ptr, ArrPtrList *list)
 {
     ArrPtrList *cur = list;
@@ -262,6 +272,7 @@ Value delArrPtr(Value *ptr, ArrPtrList *list)
     ERR("no such pointer", VAR_NOT_FOUND);
 }
 
+// Free bookkeeping nodes after the sentinel; leave array buffers intact.
 void free_arr_list(ArrPtrList *ptr)
 {
     ArrPtrList *cur = ptr;
@@ -274,6 +285,7 @@ void free_arr_list(ArrPtrList *ptr)
     ptr->next = NULL;
 }
 
+// Free variable nodes after the sentinel; leave referenced names and buffers intact.
 void free_local_list(VarListNode *ptr)
 {
     VarListNode *cur = ptr;
@@ -286,21 +298,136 @@ void free_local_list(VarListNode *ptr)
     ptr->next = NULL;
 }
 
-// use only after mark_reachable()
-void mark_reachable_deep(Value *ptr, int size, Value *until)
+// Flag one array descriptor from completed reachability marks, before sweeping.
+void mark_stale_deep(Value *arr, Value *until)
 {
-    ArrPtrList *arr = retriveArrPtr(ptr, &arrPtrList);
-    if (arr != NULL && (!until || ptr != until) && !arr->isReachable) {
+    if (arr->type != ARR_VAL)
+        return;
+
+    ArrPtrList *reg = arr->value.arr.reg;
+    arr->value.arr.isStale = !reg
+        || arr->value.arr.ptr == until
+        || !reg->isReachable;
+}
+
+// Initialize array variables as stale before recomputing their flags.
+static void reset_stale_variables(VarListNode *cur)
+{
+    while (cur != NULL) {
+        if (cur->var.val.type == ARR_VAL)
+            cur->var.val.value.arr.isStale = true;
+        cur = cur->next;
+    }
+}
+
+// Initialize every temporary root as stale, including roots omitted from marking.
+static void reset_stale_temporaries(ArrPtrList *cur)
+{
+    while (cur != NULL) {
+        cur->isStale = true;
+        cur = cur->next;
+    }
+}
+
+void reset_scan_flag()
+{
+    ArrPtrList *cur = &arrPtrList;
+    while (cur->next != NULL) {
+        cur = cur->next;
+        cur->isScanned = false;
+    }
+}
+
+// Reset stale flags, then classify references after all marking and before gc().
+void mark_stale(Value *until, bool include_tmp)
+{
+    // Start a fresh stale pass, including roots omitted from the marking pass.
+    ArrPtrList *allocation = arrPtrList.next;
+    while (allocation != NULL) {
+        size_t i = 0;
+        while (i < allocation->size) {
+            if (allocation->ptr[i].type == ARR_VAL)
+                allocation->ptr[i].value.arr.isStale = true;
+            i++;
+        }
+        allocation = allocation->next;
+    }
+    reset_stale_variables(global.next);
+    reset_stale_variables(local.next);
+    reset_stale_temporaries(tmp_arr.next);
+    int frame = 0;
+    while (frame < call_st_size) {
+        reset_stale_variables(call_st[frame].local.next);
+        reset_stale_temporaries(call_st[frame].tmp_arr.next);
+        frame++;
+    }
+
+    // Scan each buffer once. This covers nested values without recursion,
+    // including cycles and multiple references to the same allocation.
+    allocation = arrPtrList.next;
+    while (allocation != NULL) {
+        size_t i = 0;
+        while (i < allocation->size) {
+            mark_stale_deep(&allocation->ptr[i], until);
+            i++;
+        }
+        allocation = allocation->next;
+    }
+
+    VarListNode *cur = global.next;
+    while (cur != NULL) {
+        mark_stale_deep(&cur->var.val, until);
+        cur = cur->next;
+    }
+
+    if (include_tmp) {
+        ArrPtrList *p = tmp_arr.next;
+        while (p != NULL) {
+            p->isStale = !p->reg || p->ptr == until
+                || !p->reg->isReachable;
+            p = p->next;
+        }
+    }
+
+    cur = local.next;
+    while (cur != NULL) {
+        mark_stale_deep(&cur->var.val, until);
+        cur = cur->next;
+    }
+
+    int i = 0;
+    while (i < call_st_size) {
+        cur = call_st[i].local.next;
+        while (cur != NULL) {
+            mark_stale_deep(&cur->var.val, until);
+            cur = cur->next;
+        }
+
+        ArrPtrList *p = call_st[i].tmp_arr.next;
+        while (p != NULL) {
+            p->isStale = !p->reg || p->ptr == until
+                || !p->reg->isReachable;
+            p = p->next;
+        }
+        i++;
+    }
+}
+
+// Extend a marking pass through nested arrays, excluding until and stopping at cycles.
+void mark_reachable_deep(ArrPtrList *arr, int size, Value *until)
+{
+    if (arr != NULL && (!until || arr->ptr != until) && !arr->isReachable) {
         arr->isReachable = true;
         for (int i = 0; i < size; i++) {
-            if ((ptr + i)->type == ARR_VAL) {
-                mark_reachable_deep((ptr + i)->value.arr.ptr,
-                        (ptr + i)->value.arr.size, until);
+            if (((arr->ptr) + i)->type == ARR_VAL) {
+                mark_reachable_deep(((arr->ptr) + i)->value.arr.reg,
+                        ((arr->ptr) + i)->value.arr.size, until);
             }
         }
     }
 }
 
+// Reset marks and trace roots; include_tmp adds current temporaries, until is excluded.
 void mark_reachable(Value *until, bool include_tmp)
 {
     {
@@ -310,6 +437,7 @@ void mark_reachable(Value *until, bool include_tmp)
             cur->isReachable = false;
         }
     }
+
     VarListNode *cur = &global;
     while (cur->next != NULL) {
         cur = cur->next;
@@ -318,7 +446,7 @@ void mark_reachable(Value *until, bool include_tmp)
             //                                    ,&arrPtrList);
             if ((!until || cur->var.val.value.arr.ptr != until) /*&& arr != NULL*/) {
                 //arr->isReachable = true;
-                mark_reachable_deep(cur->var.val.value.arr.ptr,
+                mark_reachable_deep(cur->var.val.value.arr.reg,
                     cur->var.val.value.arr.size, until);
             }
         }
@@ -331,7 +459,7 @@ void mark_reachable(Value *until, bool include_tmp)
             //                                    ,&arrPtrList);
             if ((!until || cur->ptr != until) /*&& arr != NULL*/) {
                 //arr->isReachable = true;
-                mark_reachable_deep(cur->ptr,
+                mark_reachable_deep(cur->reg,
                     cur->size, until);
             }
         }
@@ -344,7 +472,7 @@ void mark_reachable(Value *until, bool include_tmp)
             //                                    ,&arrPtrList);
             if ((!until || cur->var.val.value.arr.ptr != until) /*&& arr != NULL*/) {
                 //arr->isReachable = true;
-                mark_reachable_deep(cur->var.val.value.arr.ptr,
+                mark_reachable_deep(cur->var.val.value.arr.reg,
                     cur->var.val.value.arr.size, until);
             }
         }
@@ -358,7 +486,7 @@ void mark_reachable(Value *until, bool include_tmp)
                 //                                    ,&arrPtrList);
                 if ((!until || cur->var.val.value.arr.ptr != until) /*&& arr != NULL*/) {
                     //arr->isReachable = true;
-                    mark_reachable_deep(cur->var.val.value.arr.ptr,
+                    mark_reachable_deep(cur->var.val.value.arr.reg,
                         cur->var.val.value.arr.size, until);
                 }
             }
@@ -367,14 +495,14 @@ void mark_reachable(Value *until, bool include_tmp)
         while (p->next != NULL) {
             p = p->next;
             mark_reachable_deep(
-                p->ptr,
+                p->reg,
                 p->size, until
             );
         }
     }
 }
 
-// use after mark_reachable
+// Sweep unmarked buffers and registry nodes after marking reachability and stale flags.
 void gc()
 {
     ArrPtrList *cur = arrPtrList.next;
@@ -440,41 +568,44 @@ bool findVar(char *name) {
     return false;
 }
 
-void del_freed_arr_pointer_in_var_deep(Value *ptr, int size)
+// Zero stale nested references in a live buffer; accessdArr prevents repeated visits.
+void del_freed_arr_pointer_in_var_deep(struct Array *arr)
 {
-    if (!findArrPtr(ptr, &accessdArr)) {
-        insertArrPtr(ptr, size, &accessdArr);
+    Value *ptr = arr->ptr;
+    int size = arr->size;
+    if (!arr->reg->isScanned) {
+        arr->reg->isScanned = true;
         for (int i = 0; i < size; i++) {
             if ((ptr + i)->type == ARR_VAL) {
-                if (!findArrPtr((ptr + i)->value.arr.ptr, &arrPtrList)) {
+                if ((ptr + i)->value.arr.isStale) {
                     (ptr + i)->type = INT_VAL;
                     (ptr + i)->value.intVal = 0;
                 } else {
-                    del_freed_arr_pointer_in_var_deep((ptr + i)->value.arr.ptr,
-                         (ptr + i)->value.arr.size);
+                    del_freed_arr_pointer_in_var_deep(
+                        &(ptr + i)->value.arr
+                    );
                 }
             }
         }
     }
 }
 
+// After sweeping, clear stale variables and nested references and remove stale roots.
 void del_freed_arr_pointer_in_var()
 {
     VarListNode *cur;
     cur = &local;
+    reset_scan_flag();
     while (cur->next != NULL) {
         cur = cur->next;
         if (cur->var.val.type == ARR_VAL) {
-            if (!findArrPtr(cur->var.val.value.arr.ptr, &arrPtrList)) {
+            if (cur->var.val.value.arr.isStale) {
                 cur->var.val = DEF_VAL;
                 continue;
             }
-            free_arr_list(&accessdArr);
             del_freed_arr_pointer_in_var_deep(
-                cur->var.val.value.arr.ptr,
-                cur->var.val.value.arr.size
+                &cur->var.val.value.arr
             );
-            free_arr_list(&accessdArr);
         }
     }
     for (int i = 0; i < call_st_size; i++) {
@@ -482,16 +613,13 @@ void del_freed_arr_pointer_in_var()
         while (cur->next != NULL) {
             cur = cur->next;
             if (cur->var.val.type == ARR_VAL) {
-                if (!findArrPtr(cur->var.val.value.arr.ptr, &arrPtrList)) {
+                if (cur->var.val.value.arr.isStale) {
                     cur->var.val = DEF_VAL;
                     continue;
                 }
-                free_arr_list(&accessdArr);
                 del_freed_arr_pointer_in_var_deep(
-                    cur->var.val.value.arr.ptr,
-                    cur->var.val.value.arr.size
+                    &cur->var.val.value.arr
                 );
-                free_arr_list(&accessdArr);
             }
         }
 
@@ -499,16 +627,19 @@ void del_freed_arr_pointer_in_var()
         ArrPtrList *p = &call_st[i].tmp_arr;
         while (c != NULL) {
             ArrPtrList *next = c->next;
-            if (!findArrPtr(c->ptr, &arrPtrList)) {
+            if (c->isStale) {
                 p->next = next;
                 c->ptr = NULL;
                 c->size = 0;
                 free(c);
             } else {
-                del_freed_arr_pointer_in_var_deep(
-                    c->ptr,
-                    c->size
-                );
+                p = c;
+                struct Array arr = {
+                    .ptr = c->ptr,
+                    .size = c->size,
+                    .reg = c->reg
+                };
+                del_freed_arr_pointer_in_var_deep(&arr);
             }
             c = next;
         }
@@ -517,17 +648,34 @@ void del_freed_arr_pointer_in_var()
     while (cur->next != NULL) {
         cur = cur->next;
         if (cur->var.val.type == ARR_VAL) {
-            if (!findArrPtr(cur->var.val.value.arr.ptr, &arrPtrList)) {
+            if (cur->var.val.value.arr.isStale) {
                 cur->var.val = DEF_VAL;
                 continue;
             }
-            free_arr_list(&accessdArr);
             del_freed_arr_pointer_in_var_deep(
-                cur->var.val.value.arr.ptr,
-                cur->var.val.value.arr.size
+                &cur->var.val.value.arr
             );
-            free_arr_list(&accessdArr);
         }
+    }
+    ArrPtrList *c = tmp_arr.next;
+    ArrPtrList *p = &tmp_arr;
+    while (c != NULL) {
+        ArrPtrList *next = c->next;
+        if (c->isStale) {
+            p->next = next;
+            c->ptr = NULL;
+            c->size = 0;
+            free(c);
+        } else {
+            p = c;
+            struct Array arr = {
+                .ptr = c->ptr,
+                .size = c->size,
+                .reg = c->reg
+            };
+            del_freed_arr_pointer_in_var_deep(&arr);
+        }
+        c = next;
     }
 }
 
@@ -567,6 +715,7 @@ Value modVar(char *name, Value val) {
     ERR("variable not found", VAR_NOT_FOUND);
 }
 
+// Add or update a variable; names and referenced buffers are shared.
 Value insertVar(char *name, Value val, VarListNode *list)
 {
     VarListNode *cur = list;
@@ -585,6 +734,7 @@ Value insertVar(char *name, Value val, VarListNode *list)
     return val;
 }
 
+// Add a variable with shared name/value storage; reject duplicate names in this list.
 Value insertVar_strict(char *name, Value val, VarListNode *list)
 {
     VarListNode *cur = list;
@@ -603,6 +753,7 @@ Value insertVar_strict(char *name, Value val, VarListNode *list)
     return val;
 }
 
+// Remove a variable node; referenced buffers remain registered for later collection.
 Value delVar(char *name)
 {
     VarListNode *cur = &local;
@@ -667,7 +818,7 @@ void copy_stack(Stack *src, Stack* dst) {
         dst->st[i] = src->st[i];
     }
 }
-
+// Deprecated: recursively free unmarked arrays; prefer a single gc() sweep.
 static void free_arr(Value *arr, int size)
 {
     ArrPtrList *p = retriveArrPtr(arr, &arrPtrList);
@@ -773,7 +924,10 @@ Value call(Value *fun, Value *param, int cnt)
             if (need_gc) {
                 mark_reachable(NULL, false);
                 if (ret.type == ARR_VAL)
-                    mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
+                    mark_reachable_deep(ret.value.arr.reg, ret.value.arr.size, NULL);
+                mark_stale(NULL, false);
+                if (ret.type == ARR_VAL)
+                    mark_stale_deep(&ret, NULL);
                 gc();
                 del_freed_arr_pointer_in_var();
             }
@@ -820,7 +974,10 @@ Value call(Value *fun, Value *param, int cnt)
             if (need_gc) {
                 mark_reachable(NULL, false);
                 if (ret.type == ARR_VAL)
-                    mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
+                    mark_reachable_deep(ret.value.arr.reg, ret.value.arr.size, NULL);
+                mark_stale(NULL, false);
+                if (ret.type == ARR_VAL)
+                    mark_stale_deep(&ret, NULL);
                 gc();
                 del_freed_arr_pointer_in_var();
             }
@@ -863,7 +1020,10 @@ Value call(Value *fun, Value *param, int cnt)
     if (need_gc) {
         mark_reachable(NULL, false);
         if (ret.type == ARR_VAL)
-            mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
+            mark_reachable_deep(ret.value.arr.reg, ret.value.arr.size, NULL);
+        mark_stale(NULL, false);
+        if (ret.type == ARR_VAL)
+            mark_stale_deep(&ret, NULL);
         gc();
         del_freed_arr_pointer_in_var();
     }
@@ -883,7 +1043,7 @@ void printArr(Value *val, int depth)
         printf("...");
         return;
     }
-    Value ret = insertArrPtr(val, 1, &accessdArr);
+    Value ret = insertArrPtr(val, 1, NULL, false, &accessdArr);
     printf("[");
     for (int i = 0; i < val->value.arr.size; i++)
     {
@@ -1108,6 +1268,7 @@ Value evalLet(ParseTreeNode *node)
     }
 }
 
+// Allocate and register a zeroed array, then bind it to a variable.
 Value evalDim(ParseTreeNode *node)
 {
     Value v;
@@ -1152,7 +1313,13 @@ Value evalDim(ParseTreeNode *node)
         ERR("out of memory", OUT_OF_MEMORY);
     v.value.arr.size = size.value.intVal;
     v.value.arr.is_new = true;
-    insertArrPtr(v.value.arr.ptr, v.value.arr.size, &arrPtrList);
+    v.value.arr.reg = insertArrPtr(
+        v.value.arr.ptr,
+        v.value.arr.size,
+        NULL,
+        false,
+        &arrPtrList
+    ).value.pointer;
     for (int i = 0; i < size.value.intVal; i++) {
         v.value.arr.ptr[i].type = INT_VAL;
     }
@@ -1620,9 +1787,11 @@ Value evalHome(ParseTreeNode *node)
     return DEF_VAL;
 }
 
+// Execute GC: mark roots, classify stale references, sweep, then clear aliases.
 Value evalGc(ParseTreeNode *node)
 {
     mark_reachable(NULL, false);
+    mark_stale(NULL, false);
     gc();
     del_freed_arr_pointer_in_var();
     pc++;
@@ -1636,6 +1805,7 @@ Value evalEnd(ParseTreeNode *node)
     return DEF_VAL;
 }
 
+// Execute FREE by excluding the target from marking, sweeping, and clearing aliases.
 Value evalFree(ParseTreeNode *node)
 {
     char *name = node->children[0]->token->lexeme;
@@ -1645,8 +1815,10 @@ Value evalFree(ParseTreeNode *node)
         char *name = node->children[0]->token->lexeme;
         Value v = retriveVar(name);
         if (v.type == ARR_VAL) {
-            mark_reachable(v.value.arr.ptr, false);
-            free_arr(v.value.arr.ptr, v.value.arr.size);
+            mark_reachable(v.value.arr.ptr, arg_depth > 0);
+            mark_stale(v.value.arr.ptr, arg_depth > 0);
+            //free_arr(v.value.arr.ptr, v.value.arr.size);
+            gc();
             del_freed_arr_pointer_in_var();
         } else {
             ERR("not an array", INCOMPATIBLE_TYPES);
@@ -1685,8 +1857,10 @@ Value evalFree(ParseTreeNode *node)
         }
         if (ptr->type != ARR_VAL)
             ERR("not an array", INCOMPATIBLE_TYPES);
-        mark_reachable(ptr->value.arr.ptr, false);
-        free_arr(ptr->value.arr.ptr, ptr->value.arr.size);
+        mark_reachable(ptr->value.arr.ptr, arg_depth > 0);
+        mark_stale(ptr->value.arr.ptr, arg_depth > 0);
+        //free_arr(ptr->value.arr.ptr, ptr->value.arr.size);
+        gc();
         del_freed_arr_pointer_in_var();
         if (findArrPtr(base, &arrPtrList)) {
             ptr->type = INT_VAL;
@@ -1790,6 +1964,7 @@ Value evalCall(ParseTreeNode *node)
     return v;
 }
 
+// Execute DEL by removing a variable binding without directly freeing its array.
 Value evalDel(ParseTreeNode *node)
 {
     char *name = node->children[0]->token->lexeme;
@@ -2615,7 +2790,14 @@ skip_builtin1:
                     ERR("out of memory", OUT_OF_MEMORY);
                 v.value.arr.size = size.value.intVal;
                 v.value.arr.is_new = true;
-                insertArrPtr(v.value.arr.ptr, v.value.arr.size, &arrPtrList);
+                v.value.arr.reg = 
+                    insertArrPtr(
+                        v.value.arr.ptr,
+                        v.value.arr.size,
+                        NULL,
+                        false,
+                        &arrPtrList
+                    ).value.pointer;
                 for (int i = 0; i < size.value.intVal; i++) {
                     v.value.arr.ptr[i].type = INT_VAL;
                 }
@@ -2990,51 +3172,67 @@ next_arr_index:
                         insertArrPtr(
                             param[i].value.arr.ptr,
                             param[i].value.arr.size,
+                            param[i].value.arr.reg,
+                            false,
                             &tmp_arr
                         );
                     }
                     if (IS_ERR(param[i])) {
                         Value ret = param[i];
-                        if (tmp_arr.next && is_new)
+                        bool need_gc = tmp_arr.next && is_new;
+                        if (need_gc) {
                             mark_reachable(NULL, arg_depth > 0);
+                            mark_stale(NULL, arg_depth > 0);
+                        }
                         ArrPtrList *cur = tmp_arr.next;
                         ArrPtrList *prev = &tmp_arr;
                         while (cur != NULL && is_new) {
                             ArrPtrList *next = cur->next;
-                            ArrPtrList *ptr = retriveArrPtr(cur->ptr, &arrPtrList);
-                            if (ptr && !ptr->isReachable) {
+                            ArrPtrList *ptr = cur->reg;
+                            if (!ptr->isReachable) {
                                 prev->next = next;
-                                free_arr(cur->ptr, cur->size);
-                                del_freed_arr_pointer_in_var();
                                 free(cur);
                             } else {
+                                //mark_reachable_deep(cur->reg, cur->size, NULL);
                                 prev = cur;
                             }
                             cur = next;
+                        }
+                        if (need_gc){
+                            gc();
+                            del_freed_arr_pointer_in_var();
                         }
                         free(param);
                         return ret;
                     }
                 }
                 Value ret = call(&id, param, cnt);
-                if (tmp_arr.next && is_new)
+                bool need_gc = tmp_arr.next && is_new;
+                if (need_gc)
                     mark_reachable(NULL, arg_depth > 0);
                 if (ret.type == ARR_VAL)
-                    mark_reachable_deep(ret.value.arr.ptr, ret.value.arr.size, NULL);
+                    mark_reachable_deep(ret.value.arr.reg, ret.value.arr.size, NULL);
+                if (need_gc)
+                    mark_stale(NULL, arg_depth > 0);
+                if (ret.type == ARR_VAL)
+                    mark_stale_deep(&ret, NULL);
                 ArrPtrList *cur = tmp_arr.next;
                 ArrPtrList *prev = &tmp_arr;
                 while (cur != NULL && is_new) {
                     ArrPtrList *next = cur->next;
-                    ArrPtrList *ptr = retriveArrPtr(cur->ptr, &arrPtrList);
-                    if (ptr && !ptr->isReachable) {
+                    ArrPtrList *ptr = cur->reg;
+                    if (!ptr->isReachable) {
                         prev->next = next;
-                        free_arr(cur->ptr, cur->size);
-                        del_freed_arr_pointer_in_var();
                         free(cur);
                     } else {
+                        //mark_reachable_deep(cur->reg, cur->size, NULL);
                         prev = cur;
                     }
                     cur = next;
+                }
+                if (need_gc) {
+                    gc();
+                    del_freed_arr_pointer_in_var();
                 }
                 free(param);
                 return ret;

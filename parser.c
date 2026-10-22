@@ -67,6 +67,7 @@ void parse(ParserContext *context)
 }
 */
 
+// Recursively free parse nodes and child arrays; token storage remains owned elsewhere.
 void free_tree(ParseTreeNode *node)
 {
 	for (int i = 0; i < node->childCount; i++) {

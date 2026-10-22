@@ -296,9 +296,12 @@ typedef struct Value {
 			int size;
 			size_t refcnt;
 			bool is_new;
+			struct ArrPtrList *reg;
+			bool isStale;
+			bool isScanned;
 		} arr;
 		int lineNum;
-		struct Value *pointer;
+		void *pointer;
 		char *identi;
 		struct BasFunction *function;
 		FILE *fd_val;
@@ -378,12 +381,16 @@ typedef struct Program {
 	Stack *shadow_st;
 } Program;
 
-// TODO: add a hash index.
 typedef struct ArrPtrList {
 	Value *ptr;
 	size_t size;
 	bool isReachable;
 	struct ArrPtrList *next;
+	// only for tmp_arr.
+	struct ArrPtrList *reg;
+	// only for tmp_arr.
+	bool isStale;
+	bool isScanned;
 } ArrPtrList;
 
 extern int pc;
