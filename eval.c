@@ -230,13 +230,14 @@ int allocate_cnt() {
 }
 
 // Prepend a bookkeeping node and return it as POINTER_VAL; duplicates are unchecked.
-Value insertArrPtr(Value *ptr, int size, ArrPtrList *reg, bool isStale, ArrPtrList *list)
+Value insertArrPtr(Value *ptr, int size, ArrPtrList *reg, Value *param, bool isStale, ArrPtrList *list)
 {
     ArrPtrList *cur = list;
     ArrPtrList *v = calloc(1, sizeof(ArrPtrList));
     v->ptr = ptr;
     v->size = size;
     v->reg = reg;
+    v->param = param;
     /*
     while (cur->next != NULL) {
         cur = cur->next;
@@ -631,6 +632,8 @@ void del_freed_arr_pointer_in_var()
                 p->next = next;
                 c->ptr = NULL;
                 c->size = 0;
+                if (c->param)
+                    *c->param = DEF_VAL;
                 free(c);
             } else {
                 p = c;
@@ -665,6 +668,8 @@ void del_freed_arr_pointer_in_var()
             p->next = next;
             c->ptr = NULL;
             c->size = 0;
+            if (c->param)
+                *c->param = DEF_VAL;
             free(c);
         } else {
             p = c;
@@ -1043,7 +1048,7 @@ void printArr(Value *val, int depth)
         printf("...");
         return;
     }
-    Value ret = insertArrPtr(val, 1, NULL, false, &accessdArr);
+    Value ret = insertArrPtr(val, 1, NULL, NULL, false, &accessdArr);
     printf("[");
     for (int i = 0; i < val->value.arr.size; i++)
     {
@@ -1316,6 +1321,7 @@ Value evalDim(ParseTreeNode *node)
     v.value.arr.reg = insertArrPtr(
         v.value.arr.ptr,
         v.value.arr.size,
+        NULL,
         NULL,
         false,
         &arrPtrList
@@ -2795,6 +2801,7 @@ skip_builtin1:
                         v.value.arr.ptr,
                         v.value.arr.size,
                         NULL,
+                        NULL,
                         false,
                         &arrPtrList
                     ).value.pointer;
@@ -3159,6 +3166,7 @@ next_arr_index:
             else if (id.type == FUN_VAL) {
                 int cnt = node->children[0]->childCount;
                 Value *param = malloc(cnt * sizeof (Value));
+                ArrPtrList **paramReg = malloc(cnt * sizeof (ArrPtrList *));
                 bool is_new = false;
                 for (int i = 0; i < cnt; i++) {
                     arg_depth++;
@@ -3169,13 +3177,15 @@ next_arr_index:
                         if (! is_new && param[i].value.arr.is_new) {
                             is_new = true;
                         }
-                        insertArrPtr(
-                            param[i].value.arr.ptr,
-                            param[i].value.arr.size,
-                            param[i].value.arr.reg,
-                            false,
-                            &tmp_arr
-                        );
+                        paramReg[i] = 
+                            insertArrPtr(
+                                param[i].value.arr.ptr,
+                                param[i].value.arr.size,
+                                param[i].value.arr.reg,
+                                &param[i],
+                                false,
+                                &tmp_arr
+                            ).value.pointer;
                     }
                     if (IS_ERR(param[i])) {
                         Value ret = param[i];
@@ -3191,6 +3201,8 @@ next_arr_index:
                             ArrPtrList *ptr = cur->reg;
                             if (!ptr->isReachable) {
                                 prev->next = next;
+                                if (cur->param)
+                                    *cur->param = DEF_VAL;
                                 free(cur);
                             } else {
                                 //mark_reachable_deep(cur->reg, cur->size, NULL);
@@ -3202,7 +3214,13 @@ next_arr_index:
                             gc();
                             del_freed_arr_pointer_in_var();
                         }
+                        for (int j = 0; j < i; j++) {
+                            if (param[j].type == ARR_VAL) {
+                                paramReg[j]->param = NULL;
+                            }
+                        }
                         free(param);
+                        free(paramReg);
                         return ret;
                     }
                 }
@@ -3223,6 +3241,8 @@ next_arr_index:
                     ArrPtrList *ptr = cur->reg;
                     if (!ptr->isReachable) {
                         prev->next = next;
+                        if (cur->param)
+                            *cur->param = DEF_VAL;
                         free(cur);
                     } else {
                         //mark_reachable_deep(cur->reg, cur->size, NULL);
@@ -3234,7 +3254,13 @@ next_arr_index:
                     gc();
                     del_freed_arr_pointer_in_var();
                 }
+                for (int i = 0; i < cnt; i++) {
+                    if (param[i].type == ARR_VAL) {
+                        paramReg[i]->param = NULL;
+                    }
+                }
                 free(param);
+                free(paramReg);
                 return ret;
             }
         }

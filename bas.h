@@ -386,10 +386,12 @@ typedef struct ArrPtrList {
 	size_t size;
 	bool isReachable;
 	struct ArrPtrList *next;
-	// only for tmp_arr.
+	// used by tmp_arr.
 	struct ArrPtrList *reg;
-	// only for tmp_arr.
+	// used by tmp_arr.
 	bool isStale;
+	// used by tmp_arr
+	struct Value *param; 
 	bool isScanned;
 } ArrPtrList;
 
