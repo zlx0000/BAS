@@ -568,7 +568,7 @@ bool findVar(char *name) {
     return false;
 }
 
-// Zero stale nested references in a live buffer; accessdArr prevents repeated visits.
+// Zero stale nested references in a live buffer;
 void del_freed_arr_pointer_in_var_deep(struct Array *arr)
 {
     Value *ptr = arr->ptr;
