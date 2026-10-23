@@ -30,6 +30,7 @@ let spare_counts = new(W * H * 2)
 let spare_caps = new(W * H * 2)
 let screen_upper = new(W * H)
 let screen_lower = new(W * H)
+
 # Whole sample steps preserve the grid when panning (about 15% of the view).
 let step_x = int(W * 0.15 + 0.5)
 let step_y = int(2 * H * 0.15 + 0.5)
@@ -54,8 +55,7 @@ palette(14) = 214
 palette(15) = 208
 
 fun cursor(row, col)
-    putchar 27
-    print "[", row, ";", col, "H"
+    print "\27[", row, ";", col, "H"
     return 0
 end fun
 
@@ -126,12 +126,14 @@ fun pan(dx, dy)
         done
         y = y + 1
     done
+
     let old_counts = counts
     let old_caps = caps
     counts = spare_counts
     caps = spare_caps
     spare_counts = old_counts
     spare_caps = old_caps
+
     cx = cx + dx * (span / W)
     cy = cy - dy * (span / W)
     dirty = 1
@@ -140,85 +142,85 @@ end fun
 
 fun status(message)
     call cursor(21, 1)
-    putchar 27
-    print "[0m"
-    putchar 27
-    print "[2K"
+    print "\27[0m\27[2K"
     print "Centre ", cx, ", ", cy
+
     call cursor(22, 1)
-    putchar 27
-    print "[2K"
+    print "\27[2K"
     print "Zoom ", 3.5 / span, "x  Iter ", limit
+
     call cursor(23, 1)
-    putchar 27
-    print "[2K"
+    print "\27[2K"
     print "WASD/arrows move  +/- zoom  [/] iterations  R reset  Q quit"
+
     call cursor(24, 1)
-    putchar 27
-    print "[2K", message
+    print "\27[2K", message
+
     # Flush line-buffered terminal output without scrolling the bottom row.
     call cursor(23, 79)
-    putchar 13
-    print "\n"
+    print "\13\n"
     return 0
 end fun
 
 fun render
     call status("Rendering...  Zoom targets the centre of the picture.")
+
     let scale = span / W
     let left = cx - span / 2.0
     let top = cy + scale * H
+
     let y = 0
     do while y < H
         let drawing = 0
         let ci = top - (2 * y + 0.5) * scale
         let x = 0
+
         do while x < W
             let cr = left + (x + 0.5) * scale
             let index = 2 * y * W + x
             let upper = sample(index, cr, ci)
             let lower = sample(index + W, cr, ci - scale)
             let cell = y * W + x
+
             if upper != screen_upper(cell) or lower != screen_lower(cell)
                 if drawing = 0
                     call cursor(y + 1, x + 1)
                 fi
-                putchar 27
-                print "[38;5;", upper, "m"
-                putchar 27
-                print "[48;5;", lower, "m▀"
+
+                print "\27[38;5;", upper, "m"
+                print "\27[48;5;", lower, "m▀"
+
                 screen_upper(cell) = upper
                 screen_lower(cell) = lower
                 drawing = 1
             else
                 drawing = 0
             fi
+
             x = x + 1
         done
-        putchar 27
-        print "[0m"
+
+        print "\27[0m"
         call cursor(y + 1, W + 1)
-        putchar 13
-        print "\n"
+        print "\13\n"
+
         let pressed = getkey
         if pressed != 0
             dirty = 1
             return pressed
         fi
+
         y = y + 1
     done
+
     call status("Ready.  Move towards an edge of the set, then zoom in.")
     return 0
 end fun
 
 call keymode(true)
+
 # Alternate screen, hide cursor and clear once.
-putchar 27
-print "[?1049h"
-putchar 27
-print "[?25l"
-putchar 27
-print "[2J"
+print "\27[?1049h\27[?25l\27[2J"
 
 do while running
     if dirty = 1 and escape_state = 0
@@ -272,34 +274,43 @@ do while running
         if key = 113
             running = 0
         fi
+
         if key = 119
             call pan(0, 0 - step_y)
         fi
+
         if key = 115
             call pan(0, step_y)
         fi
+
         if key = 97
             call pan(0 - step_x, 0)
         fi
+
         if key = 100
             call pan(step_x, 0)
         fi
+
         if key = 43 or key = 61 or key = 122
             span = span / 1.5
             call invalidate
             dirty = 1
         fi
+
         if key = 45 or key = 95 or key = 120
             let previous_span = span
             span = span * 1.5
+
             if span > 8.0
                 span = 8.0
             fi
+
             if span != previous_span
                 call invalidate
                 dirty = 1
             fi
         fi
+
         if key = 93
             limit = limit * 2
             if limit > 3072
@@ -307,6 +318,7 @@ do while running
             fi
             dirty = 1
         fi
+
         if key = 91
             limit = int(limit / 2)
             if limit < 24
@@ -314,6 +326,7 @@ do while running
             fi
             dirty = 1
         fi
+
         if key = 114
             cx = -0.5
             cy = 0.0
@@ -330,11 +343,8 @@ do while running
 done
 
 call keymode(false)
-putchar 27
-print "[0m"
-putchar 27
-print "[?25h"
-putchar 27
-print "[?1049l"
-print "\n"
+
+# Reset colours, restore cursor and return to the normal screen.
+print "\27[0m\27[?25h\27[?1049l\n"
+
 end
