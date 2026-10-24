@@ -182,7 +182,8 @@ typedef struct ParseTreeNode {
 	NodeType type;
 	unsigned int childCount;
 	struct ParseTreeNode **children;
-	struct Value *cachedId;
+	// used by IDENTI node
+	struct Value *reg;
 } ParseTreeNode;
 
 typedef struct ParserContext {
@@ -363,6 +364,8 @@ typedef struct Variable {
 
 typedef struct VarListNode {
 	Variable var;
+	ParseTreeNode **ref;
+	int refSIze;
 	struct VarListNode *next;
 } VarListNode;
 

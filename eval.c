@@ -1090,19 +1090,15 @@ void printVal(Value val)
     switch (val.type) {
         case BOOL_VAL:
             if (val.value.boolVal == true)
-                printf("TRUE\n");
+                printf("TRUE");
             else if (val.value.boolVal == false)
-                printf("FALSE\n");
+                printf("FALSE");
             break;
         case INT_VAL:
             printf("%jd", (intmax_t)val.value.intVal);
-            if (is_repl)
-                printf("\n");
             break;
         case FLOAT_VAL:
             printf("%.17g", val.value.floatVal);
-            if (is_repl)
-                printf("\n");
             break;
         case STRING_VAL:
             printf("%s", val.value.string.str);
@@ -1110,13 +1106,9 @@ void printVal(Value val)
         case ARR_VAL:
             printArr(&val, 0);
             free_arr_list(&accessdArr);
-            if (is_repl)
-                printf("\n");
             break;
         case FD_VAL:
             printf("FD: 0x%lx", val.value.fd_val);
-            if (is_repl)
-                printf("\n");
             break;
     }
 }
