@@ -36,6 +36,7 @@ Stack def_shadow_st;
 bool is_repl = false;
 bool is_exit = false;
 extern bool while_skip;
+extern bool for_skip;
 int argc_g;
 char **argv_g;
 
@@ -351,8 +352,8 @@ repl:
 					goto repl;
 				}
 				if (__unlikely(if_state == IF_EXPECTING_ELSE_OR_FI
-					|| if_state == IF_EXPECTING_FI) || while_skip) {
-					if (is_if_else_or_fi_or_while_or_done(prog.lines[pc]))
+					|| if_state == IF_EXPECTING_FI) || while_skip || for_skip) {
+					if (is_if_else_or_fi_or_while_or_done_or_for_or_next(prog.lines[pc]))
 						ret = evalLine(prog.lines[pc]);
 					else
 						pc++;

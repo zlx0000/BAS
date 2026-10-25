@@ -313,6 +313,7 @@ typedef struct Value {
 			char *identi;
 			int pc;
 			int next;
+			bool skip;
 			union {
 				long intStep;
 				double floatStep;
@@ -406,7 +407,7 @@ extern Stack if_st;
 extern Stack shadow_st;
 
 int lineNum_to_pc(int lineNum);
-bool is_if_else_or_fi_or_while_or_done(ParseTreeNode *node);
+bool is_if_else_or_fi_or_while_or_done_or_for_or_next(ParseTreeNode *node);
 bool is_if_else_or_fi(ParseTreeNode *node);
 void copy_stack(Stack *src, Stack* dst);
 Value push(Stack *st, Value val);

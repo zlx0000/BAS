@@ -64,6 +64,7 @@ Stack shadow_st;
 Stack if_st;
 enum If_State if_state = IF_BEFORE;
 bool while_skip = false;
+bool for_skip = false;
 extern bool in_fun_def;
 extern BasFunction *def_fun;
 char *def_fun_name;
@@ -85,6 +86,7 @@ struct CallStack {
     Stack for_st;
     Stack while_st;
     bool while_skip;
+    bool for_skip;
     Stack if_st;
     Stack shadow_st;
     enum If_State if_state;
@@ -170,7 +172,7 @@ bool is_if_else_or_fi(ParseTreeNode *node)
         || node->children[i]->type == FI);
 }
 
-bool is_if_else_or_fi_or_while_or_done(ParseTreeNode *node)
+bool is_if_else_or_fi_or_while_or_done_or_for_or_next(ParseTreeNode *node)
 {
     unsigned int i = node->childCount - 1;
     return ((node->children[i]->type == IF
@@ -178,7 +180,9 @@ bool is_if_else_or_fi_or_while_or_done(ParseTreeNode *node)
         || node->children[i]->type == ELSE
         || node->children[i]->type == FI
         || node->children[i]->type == DO_WHILE
-        || node->children[i]->type == DONE);
+        || node->children[i]->type == DONE
+        || node->children[i]->type == FOR
+        || node->children[i]->type == NEXT);
 }
 
 void init_eval()
@@ -866,6 +870,7 @@ Value call(Value *fun, Value *param, int cnt)
     //call_st[call_st_size - 1].in_args = in_args;
     call_st[call_st_size - 1].arg_depth = arg_depth;
     call_st[call_st_size - 1].while_skip = while_skip;
+    call_st[call_st_size - 1].for_skip = for_skip;
     call_st[call_st_size - 1].local.next = local.next;
     call_st[call_st_size - 1].tmp_arr.next = tmp_arr.next;
     call_st[call_st_size - 1].pc = pc;
@@ -881,6 +886,7 @@ Value call(Value *fun, Value *param, int cnt)
     //in_args = false;
     arg_depth = 0;
     while_skip = false;
+    for_skip = false;
 
     for (int j = 0; j < fun->value.function->param_size; j++) {
         insertVar(fun->value.function->param[j], param[j], &local);
@@ -888,8 +894,8 @@ Value call(Value *fun, Value *param, int cnt)
     Value ret;
     while (pc >= 0 && pc < fun->value.function->lineCount) {
         if (__unlikely(if_state == IF_EXPECTING_ELSE_OR_FI
-			|| if_state == IF_EXPECTING_FI || while_skip)) {
-			if (is_if_else_or_fi_or_while_or_done(fun->value.function->lines[pc]))
+			|| if_state == IF_EXPECTING_FI || while_skip || for_skip)) {
+			if (is_if_else_or_fi_or_while_or_done_or_for_or_next(fun->value.function->lines[pc]))
 				ret = evalLine(fun->value.function->lines[pc]);
 			else
 				pc++;
@@ -901,6 +907,7 @@ Value call(Value *fun, Value *param, int cnt)
             //in_args = call_st[call_st_size - 1].in_args;
             arg_depth = call_st[call_st_size - 1].arg_depth;
             while_skip = call_st[call_st_size - 1].while_skip;
+            for_skip = call_st[call_st_size - 1].for_skip;
             cur_fun = call_st[call_st_size - 1].cur_fun;
             copy_stack(&call_st[call_st_size - 1].for_st, &for_st);
             copy_stack(&call_st[call_st_size - 1].while_st, &while_st);
@@ -951,6 +958,7 @@ Value call(Value *fun, Value *param, int cnt)
             //in_args = call_st[call_st_size - 1].in_args;
             arg_depth = call_st[call_st_size - 1].arg_depth;
             while_skip = call_st[call_st_size - 1].while_skip;
+            for_skip = call_st[call_st_size - 1].for_skip;
             cur_fun = call_st[call_st_size - 1].cur_fun;
             copy_stack(&call_st[call_st_size - 1].for_st, &for_st);
             copy_stack(&call_st[call_st_size - 1].while_st, &while_st);
@@ -1001,6 +1009,7 @@ Value call(Value *fun, Value *param, int cnt)
     //in_args = call_st[call_st_size - 1].in_args;
     arg_depth = call_st[call_st_size - 1].arg_depth;
     while_skip = call_st[call_st_size - 1].while_skip;
+    for_skip = call_st[call_st_size - 1].for_skip;
     cur_fun = call_st[call_st_size - 1].cur_fun;
     copy_stack(&call_st[call_st_size - 1].for_st, &for_st);
     copy_stack(&call_st[call_st_size - 1].while_st, &while_st);
@@ -1370,7 +1379,7 @@ Value evalIf(ParseTreeNode *node)
             push(&shadow_st, frame);
         }
         if (if_state == IF_EXPECTING_ELSE_OR_FI
-            || if_state == IF_EXPECTING_FI || while_skip) {
+            || if_state == IF_EXPECTING_FI || while_skip || for_skip) {
             Value frame = {
                 .type = IF_FRAME,
                 .value.ifFrame = {
@@ -1566,6 +1575,25 @@ Value evalFi(ParseTreeNode *node)
 Value evalFor(ParseTreeNode *node)
 {
     char *id = node->children[0]->token->lexeme;
+    {
+        if (__unlikely(if_state == IF_EXPECTING_ELSE_OR_FI
+		    || if_state == IF_EXPECTING_FI) || while_skip || for_skip) {
+            Value ctx = {
+                .type = FOR_CTX,
+                .value.forCtx = {
+                    .identi = id,
+                    .pc = pc,
+                    .next = -1,
+                    .skip = for_skip,
+                    .step.intStep = 0
+                },
+            };
+            for_skip = true;
+            ERR_RETURN_EVAL(push(&for_st, ctx));
+            pc++;
+            return DEF_VAL;
+        }
+    }
     Value from = evalExpr(node->children[2]);
     ERR_RETURN_EVAL(from);
     Value to = evalExpr(node->children[3]);
@@ -1577,6 +1605,9 @@ Value evalFor(ParseTreeNode *node)
         ERR_RETURN_EVAL(step);
         if (step.type != INT_VAL)
             ERR("not a integer", INCOMPATIBLE_TYPES);
+        if (step.value.intVal == 0) {
+            ERR("setp can't be zero", ERR_VAL_NULL);
+        }
     } else {
         step = (Value) {
             .type = INT_VAL,
@@ -1589,17 +1620,33 @@ Value evalFor(ParseTreeNode *node)
             .identi = id,
             .pc = pc,
             .next = -1,
+            .skip = for_skip,
             .step.intStep = step.value.intVal,
         },
     };
     Value top = peek(&for_st);
+    // not in a for loop
     if (top.type == ERR_VAL
         && top.value.errVal == STACK_UNDERFLOW) {
         ERR_RETURN_EVAL(push(&for_st, ctx));
         insertVar(id, from, (in_fun ? &local : &global));
+        if (__unlikely(if_state == IF_EXPECTING_ELSE_OR_FI
+		    || if_state == IF_EXPECTING_FI) || while_skip || for_skip) {
+            for_skip = true;
+            pc++;
+            return DEF_VAL;
+        }
+        else if ((step.value.intVal > 0 && to.value.intVal < from.value.intVal) ||
+                 (step.value.intVal < 0 && to.value.intVal > from.value.intVal)) {
+            for_skip = true;
+            pc++;
+            return DEF_VAL;
+        }
         pc++;
     }
+    // in a for loop
     else if (__likely(top.type == FOR_CTX)) {
+        // same loop
         if (__likely(top.value.forCtx.pc == pc)) {
             if (__likely(strcasecmp(top.value.forCtx.identi, id) == 0)) {
                 Value curVar = retriveVar(top.value.forCtx.identi);
@@ -1616,13 +1663,39 @@ Value evalFor(ParseTreeNode *node)
                 ERR("stack error", ERR_VAL_NULL);
             }
         } else {
+            //different loop
             ERR_RETURN_EVAL(push(&for_st, ctx));
             insertVar(id, from, (in_fun ? &local : &global));
+            if (__unlikely(if_state == IF_EXPECTING_ELSE_OR_FI
+		        || if_state == IF_EXPECTING_FI) || while_skip || for_skip) {
+                for_skip = true;
+                pc++;
+                return DEF_VAL;
+            }
+            else if ((step.value.intVal > 0 && to.value.intVal < from.value.intVal) ||
+                 (step.value.intVal < 0 && to.value.intVal > from.value.intVal)) {
+                for_skip = true;
+                pc++;
+                return DEF_VAL;
+            }
             pc++;
         }
     } else {
+        // not in a for loop
         ERR_RETURN_EVAL(push(&for_st,ctx));
         insertVar(id, from, (in_fun ? &local : &global));
+        if (__unlikely(if_state == IF_EXPECTING_ELSE_OR_FI
+		    || if_state == IF_EXPECTING_FI) || while_skip || for_skip) {
+            for_skip = true;
+            pc++;
+            return DEF_VAL;
+        }
+        else if ((step.value.intVal > 0 && to.value.intVal < from.value.intVal) ||
+                 (step.value.intVal < 0 && to.value.intVal > from.value.intVal)) {
+            for_skip = true;
+            pc++;
+            return DEF_VAL;
+        }
         pc++;
     }
     return step;
@@ -1630,6 +1703,18 @@ Value evalFor(ParseTreeNode *node)
 
 Value evalNext(ParseTreeNode *node)
 {
+    if (for_skip) {
+        Value top = peek(&for_st);
+        if (top.type != FOR_CTX)
+            ERR("not in a for loop", ERR_VAL_NULL);
+        char *id = node->children[0]->token->lexeme;
+        if (__unlikely(strcasecmp(top.value.forCtx.identi, id) != 0))
+            ERR("iterator does not match", ERR_VAL_NULL);
+        for_skip = top.value.forCtx.skip;
+        ERR_RETURN_EVAL(pop(&for_st));
+        pc++;
+        return top;
+    }
     Value top = peek(&for_st);
     if (top.type != FOR_CTX)
         ERR("not in a for loop", ERR_VAL_NULL);
@@ -1659,7 +1744,7 @@ Value evalDoWhile(ParseTreeNode *node)
     frame.value.whileCtx.start = pc;
     Value top = peek(&while_st);
     if (__unlikely(if_state == IF_EXPECTING_ELSE_OR_FI
-		|| if_state == IF_EXPECTING_FI) || while_skip) {
+		|| if_state == IF_EXPECTING_FI) || while_skip || for_skip) {
         if (top.type == WHILE_CTX && top.value.whileCtx.start == pc) {
             while_skip = true;
             pc++;
