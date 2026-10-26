@@ -109,6 +109,7 @@ int main(int argc, char **argv)
 	//prog.lines = (ParseTreeNode **)calloc(16384, sizeof (ParseTreeNode *));
 	//prog.shadow_st = (Stack *)calloc(16384, sizeof (Stack));
 #ifndef WIN32
+	rl_bind_key('\t', rl_insert);
 	rl_variable_bind("enable-bracketed-paste", "off");
 	rl_attempted_completion_function = bas_completion;
 	using_history();
@@ -227,6 +228,10 @@ repl:
 			free(t);
 			if (p)
 				free_tree(p);
+			if (!is_repl) {
+				if (f) fclose(f);
+				return 0;
+			}
 		}
 		if (p && !ctx.err) {
 			if (in_fun_def) {
