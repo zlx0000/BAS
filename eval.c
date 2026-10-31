@@ -1117,7 +1117,7 @@ void printVal(Value val)
             free_arr_list(&accessdArr);
             break;
         case FD_VAL:
-            printf("FD: 0x%lx", val.value.fd_val);
+            printf("FD: %p", val.value.fd_val);
             break;
     }
 }
