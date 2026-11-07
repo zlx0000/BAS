@@ -508,14 +508,6 @@ ParseTreeNode *parseElifStatement(ParserContext *context)
 	node->children[0] = parseExpr(context);
 	ERR_RET(node->children[0]);
 	node->childCount++;
-	if (IN_RANGE && context->tokenPtr->type == KEYWORD_TOKEN &&
-		strcasecmp(context->tokenPtr->lexeme, "THEN") == 0) {
-		CONSUME_TOKEN;
-		node->children = realloc(node->children, 2*sizeof(uintptr_t));
-		node->children[1] = parseLinenum(context); //3
-		ERR_RET(node->children[1]); //3
-		node->childCount++;
-	}
 	return node;
 }
 

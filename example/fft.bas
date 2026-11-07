@@ -1,186 +1,116 @@
-LET PI = 3.141592653589793
+#!/usr/bin/env bas
+
+# In-place radix-2 FFT. size must be a positive power of two.
+# Set inverse to 1 for a normalized inverse transform, or 0 for a forward FFT.
+fun fft(ar, ai, size, inverse)
+    let pi = 3.141592653589793
+    let direction = -1.0
+    if inverse
+        direction = 1.0
+    fi
+
+    # Put the input in bit-reversed order.
+    let j = 0
+    for i = 1 to size - 1
+        let bit = size / 2
+        do while j >= bit
+            j = j - bit
+            bit = bit / 2
+        done
+        j = j + bit
+
+        if i < j
+            let tmp = ar(i)
+            ar(i) = ar(j)
+            ar(j) = tmp
+
+            tmp = ai(i)
+            ai(i) = ai(j)
+            ai(j) = tmp
+        fi
+    next i
+
+    # Combine successively larger groups of samples.
+    let m = 2
+    do while m <= size
+        let half = m / 2
+        let angle = direction * 2.0 * pi / m
+        let wmre = cos(angle)
+        let wmim = sin(angle)
+
+        for j = 0 to size - 1 step m
+            let wre = 1.0
+            let wim = 0.0
+
+            for k = 0 to half - 1
+                let apos = j + k
+                let bpos = apos + half
+                let tre = wre * ar(bpos) - wim * ai(bpos)
+                let tim = wre * ai(bpos) + wim * ar(bpos)
+                let ure = ar(apos)
+                let uim = ai(apos)
+
+                ar(apos) = ure + tre
+                ai(apos) = uim + tim
+                ar(bpos) = ure - tre
+                ai(bpos) = uim - tim
+
+                let nwre = wre * wmre - wim * wmim
+                wim = wre * wmim + wim * wmre
+                wre = nwre
+            next k
+        next j
+
+        m = m * 2
+    done
+
+    if inverse
+        let inv_size = 1.0 / size
+        for i = 0 to size - 1
+            ar(i) = ar(i) * inv_size
+            ai(i) = ai(i) * inv_size
+        next i
+    fi
+    return 0
+end fun
+
+fun print_samples(ar, ai, count)
+    for i = 0 to count - 1
+        print i, " ", ar(i), " ", ai(i), "\n"
+    next i
+    return 0
+end fun
+
+let pi = 3.141592653589793
+let n = 15
+let size = 1
+for i = 1 to n
+    size = size * 2
+next i
+
+let ar = new(size)
+let ai = new(size)
+let freq = 5
+for i = 0 to size - 1
+    ar(i) = sin(2.0 * pi * freq * i / size)
+    ai(i) = 0.0
+next i
+
+let printsize = size
+if printsize > 32
+    printsize = 32
+fi
 
-LET N = 15
-LET SIZE = 1
+print "INPUT\n"
+let _ = print_samples(ar, ai, printsize)
 
-FOR I = 1 TO N
-    LET SIZE = SIZE * 2
-NEXT I
+let _ = fft(ar, ai, size, 0)
+print "FFT\n"
+let _ = print_samples(ar, ai, printsize)
 
-DIM AR(SIZE)
-DIM AI(SIZE)
+let _ = fft(ar, ai, size, 1)
+print "IFFT\n"
+let _ = print_samples(ar, ai, printsize)
 
-LET FREQ = 5
-
-FOR I = 0 TO SIZE - 1
-    LET AR(I) = SINF(2.0 * PI * FREQ * I / SIZE)
-    LET AI(I) = 0.0
-NEXT I
-
-LET PRINTSIZE = SIZE
-
-IF PRINTSIZE > 32
-    LET PRINTSIZE = 32
-FI
-
-PRINT "INPUT"
-
-FOR I = 0 TO PRINTSIZE - 1
-    PRINT I, AR(I), AI(I)
-NEXT I
-
-LET RET = 1
-GOTO 3000
-
-
-100 GOTO 1000
-
-
-200 PRINT "FFT"
-
-FOR I = 0 TO PRINTSIZE - 1
-    PRINT I, AR(I), AI(I)
-NEXT I
-
-LET RET = 2
-GOTO 3000
-
-
-300 GOTO 2000
-
-
-400 LET INV_SIZE = 1.0 / SIZE
-
-FOR I = 0 TO SIZE - 1
-    LET AR(I) = AR(I) * INV_SIZE
-    LET AI(I) = AI(I) * INV_SIZE
-NEXT I
-
-PRINT "IFFT"
-
-FOR I = 0 TO PRINTSIZE - 1
-    PRINT I, AR(I), AI(I)
-NEXT I
-
-FREE AR
-FREE AI
-
-GOTO 9999
-
-
-1000 LET M = 2
-
-1010 IF M > SIZE THEN 200
-
-LET ANGLE = -2.0 * PI / M
-LET WMRE = COSF(ANGLE)
-LET WMIM = SINF(ANGLE)
-
-FOR J = 0 TO SIZE - 1 STEP M
-
-    LET WRE = 1.0
-    LET WIM = 0.0
-
-    FOR K = 0 TO M / 2 - 1
-
-        LET APOS = J + K
-        LET BPOS = APOS + M / 2
-
-        LET TRE = WRE * AR(BPOS) - WIM * AI(BPOS)
-        LET TIM = WRE * AI(BPOS) + WIM * AR(BPOS)
-
-        LET URE = AR(APOS)
-        LET UIM = AI(APOS)
-
-        LET AR(APOS) = URE + TRE
-        LET AI(APOS) = UIM + TIM
-
-        LET AR(BPOS) = URE - TRE
-        LET AI(BPOS) = UIM - TIM
-
-        LET NWRE = WRE * WMRE - WIM * WMIM
-        LET WIM = WRE * WMIM + WIM * WMRE
-        LET WRE = NWRE
-
-    NEXT K
-
-NEXT J
-
-LET M = M * 2
-GOTO 1010
-
-
-2000 LET M = 2
-
-2010 IF M > SIZE THEN 400
-
-LET ANGLE = 2.0 * PI / M
-LET WMRE = COSF(ANGLE)
-LET WMIM = SINF(ANGLE)
-
-FOR J = 0 TO SIZE - 1 STEP M
-
-    LET WRE = 1.0
-    LET WIM = 0.0
-
-    FOR K = 0 TO M / 2 - 1
-
-        LET APOS = J + K
-        LET BPOS = APOS + M / 2
-
-        LET TRE = WRE * AR(BPOS) - WIM * AI(BPOS)
-        LET TIM = WRE * AI(BPOS) + WIM * AR(BPOS)
-
-        LET URE = AR(APOS)
-        LET UIM = AI(APOS)
-
-        LET AR(APOS) = URE + TRE
-        LET AI(APOS) = UIM + TIM
-
-        LET AR(BPOS) = URE - TRE
-        LET AI(BPOS) = UIM - TIM
-
-        LET NWRE = WRE * WMRE - WIM * WMIM
-        LET WIM = WRE * WMIM + WIM * WMRE
-        LET WRE = NWRE
-
-    NEXT K
-
-NEXT J
-
-LET M = M * 2
-GOTO 2010
-
-
-3000 IF SIZE = 1 THEN 3900
-
-LET J = 0
-
-FOR I = 1 TO SIZE - 1
-
-    LET BIT = SIZE / 2
-
-3010 IF J < BIT THEN 3020
-    LET J = J - BIT
-    LET BIT = BIT / 2
-    GOTO 3010
-
-3020 LET J = J + BIT
-
-    IF I < J
-        LET TMP = AR(I)
-        LET AR(I) = AR(J)
-        LET AR(J) = TMP
-
-        LET TMP = AI(I)
-        LET AI(I) = AI(J)
-        LET AI(J) = TMP
-    FI
-
-NEXT I
-
-3900 IF RET = 1 THEN 100
-GOTO 300
-
-
-9999 LET DONE = 1
+free ar
+free ai
