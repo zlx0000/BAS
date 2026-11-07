@@ -415,12 +415,10 @@ fun draw
     call screen_row(24)
     if over != 0
         print "GAME OVER - R: restart, Q: quit"
+    elif paused != 0
+        print "PAUSED - P: resume, Q: quit"
     else
-        if paused != 0
-            print "PAUSED - P: resume, Q: quit"
-        else
-            print "Clear lines to increase the level."
-        fi
+        print "Clear lines to increase the level."
     fi
     call erase_tail
     # Flush line-buffered stdout with a newline safely at the TOP of the screen.
@@ -445,30 +443,26 @@ fun decode_key(ch)
             return 0
         fi
         # An isolated Escape must not swallow the next ordinary letter.
-    else
-        if escape_state = 2
-            escape_age = 0
-            if ch >= 64 and ch <= 126
-                escape_state = 0
-                if ch = 65
-                    return 119
-                fi
-                if ch = 66
-                    return 115
-                fi
-                if ch = 67
-                    return 100
-                fi
-                if ch = 68
-                    return 97
-                fi
-            else
-                if ch < 32 or ch > 63
-                    escape_state = 0
-                fi
+    elif escape_state = 2
+        escape_age = 0
+        if ch >= 64 and ch <= 126
+            escape_state = 0
+            if ch = 65
+                return 119
             fi
-            return 0
+            if ch = 66
+                return 115
+            fi
+            if ch = 67
+                return 100
+            fi
+            if ch = 68
+                return 97
+            fi
+        elif ch < 32 or ch > 63
+            escape_state = 0
         fi
+        return 0
     fi
     # Fold ordinary ASCII uppercase letters, after decoding arrow suffixes.
     if ch >= 65 and ch <= 90

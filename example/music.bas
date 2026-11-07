@@ -1,8 +1,8 @@
 #!/usr/bin/env bas
 
 let i=0
-dim notes1(8)
-dim notes2(8)
+let notes1 = new(8)
+let notes2 = new(8)
 
 notes1(0) = 81
 notes1(1) = 106

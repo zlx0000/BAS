@@ -102,15 +102,15 @@ if printsize > 32
 fi
 
 print "INPUT\n"
-let _ = print_samples(ar, ai, printsize)
+call print_samples(ar, ai, printsize)
 
-let _ = fft(ar, ai, size, 0)
+call fft(ar, ai, size, 0)
 print "FFT\n"
-let _ = print_samples(ar, ai, printsize)
+call print_samples(ar, ai, printsize)
 
-let _ = fft(ar, ai, size, 1)
+call fft(ar, ai, size, 1)
 print "IFFT\n"
-let _ = print_samples(ar, ai, printsize)
+call print_samples(ar, ai, printsize)
 
 free ar
 free ai

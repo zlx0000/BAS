@@ -50,7 +50,7 @@ fun print_tree(t, d)
 				d_arr(d) = 0
 			fi
 
-			let _ = print_tree(t(i), d+1)
+			call print_tree(t(i), d+1)
 		fi
 	next i
 	t = 0
@@ -64,7 +64,7 @@ if d > 20 or d < 1
 	end
 fi
 let tree = build(d)
-let _ = print_tree(tree, 1)
+call print_tree(tree, 1)
 free tree
 goto 1
 

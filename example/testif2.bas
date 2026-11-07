@@ -1,25 +1,20 @@
-let f=1
-goto 10
-1 let a=3
-f=0
+#!/usr/bin/env bas
 
-if a<=1
-	print 1
-else
-	if a<=2
-		print 2
-	else
-		if a<=3
-			print 3
-		else
-			if a<=4
-				print 4
-			else
-				if a<=5
-					print 5
-				fi
-			fi
-		fi
-	fi
-fi
-10 if f then 1
+# An elif chain executes only the first matching branch.
+# Exercise the first, middle, last and fallback branches.
+for a = 0 to 6
+    print "a = ", a, ": "
+    if a <= 1
+        print "at most one\n"
+    elif a <= 2
+        print "two\n"
+    elif a <= 3
+        print "three\n"
+    elif a <= 4
+        print "four\n"
+    elif a <= 5
+        print "five\n"
+    else
+        print "above five\n"
+    fi
+next a

@@ -26,7 +26,7 @@ do while n < x
 done
 end fun
 
-let _ = f(10)
+call f(10)
 
 let x = 3
 let n = 1

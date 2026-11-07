@@ -1,6 +1,6 @@
 1 LET N = 20
 
-10 DIM A(N)
+10 LET A = NEW(N)
 11 FOR K=0 to N-1
 12 LET A(K) = N - K
 13 NEXT K

@@ -10,8 +10,8 @@ BAS began as a BASIC-like interpreter and evolved into a small general-purpose l
 
 ## Features
 
-- Functions and recursion
-- `if / else / fi`
+- Functions, recursion, and `call` for discarded results
+- `if / elif / else / fi`
 - `for / next` and `do while / done`
 - Nested arrays with `new(n)`
 - Arrays usable as trees, lists and graphs
@@ -71,7 +71,7 @@ fun print_tree(t, d)
 				print "└─"
 				d_arr(d) = 0
 			fi
-			let _ = print_tree(t(i), d+1)
+			call print_tree(t(i), d+1)
 		fi
 	next i
 	t = 0
@@ -80,7 +80,7 @@ end fun
 
 let depth = 8
 let tree = build(depth)
-let _ = print_tree(tree, 1)
+call print_tree(tree, 1)
 free tree
 ```
 

@@ -237,32 +237,24 @@ do while running
                 escape_state = 1
                 key = 0
             fi
+        elif escape_state = 1
+            escape_state = 0
+            if key = 91 or key = 79
+                escape_state = 2
+                key = 0
+            fi
         else
-            if escape_state = 1
-                escape_state = 0
-                if key = 91 or key = 79
-                    escape_state = 2
-                    key = 0
-                fi
+            escape_state = 0
+            if key = 65
+                key = 119
+            elif key = 66
+                key = 115
+            elif key = 67
+                key = 100
+            elif key = 68
+                key = 97
             else
-                escape_state = 0
-                if key = 65
-                    key = 119
-                else
-                    if key = 66
-                        key = 115
-                    else
-                        if key = 67
-                            key = 100
-                        else
-                            if key = 68
-                                key = 97
-                            else
-                                key = 0
-                            fi
-                        fi
-                    fi
-                fi
+                key = 0
             fi
         fi
 

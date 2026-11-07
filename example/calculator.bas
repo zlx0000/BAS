@@ -82,14 +82,14 @@ fun number
 end fun
 
 fun primary
-    let ignored = skip_space
+    call skip_space
     if peek = 40
         pos = pos + 1
         let value = expression
         if failed
             return 0
         fi
-        ignored = skip_space
+        call skip_space
         if peek != 41
             return fail("Expected ')'")
         fi
@@ -100,7 +100,7 @@ fun primary
 end fun
 
 fun unary
-    let ignored = skip_space
+    call skip_space
     if peek = 43 or peek = 45
         let op = peek
         let at = pos
@@ -116,7 +116,7 @@ end fun
 
 fun term
     let value = unary
-    let ignored = skip_space
+    call skip_space
     do while (not failed) and (peek = 42 or peek = 47)
         let op = peek
         let at = pos
@@ -126,14 +126,14 @@ fun term
             return 0
         fi
         value = node(op, value, rhs, at)
-        ignored = skip_space
+        call skip_space
     done
     return value
 end fun
 
 fun expression
     let value = term
-    let ignored = skip_space
+    call skip_space
     do while (not failed) and (peek = 43 or peek = 45)
         let op = peek
         let at = pos
@@ -143,7 +143,7 @@ fun expression
             return 0
         fi
         value = node(op, value, rhs, at)
-        ignored = skip_space
+        call skip_space
     done
     return value
 end fun
@@ -158,9 +158,9 @@ fun parse(text, length)
     error = ""
     error_pos = 0
     let value = expression
-    let ignored = skip_space
+    call skip_space
     if (not failed) and pos != limit
-        ignored = fail("Unexpected character")
+        call fail("Unexpected character")
     fi
     if failed
         return 0
@@ -186,13 +186,11 @@ fun print_tree(t, d)
     fi
     if kind = -43
         print "pos\n"
+    elif kind = -45
+        print "neg\n"
     else
-        if kind = -45
-            print "neg\n"
-        else
-            putchar kind
-            print "\n"
-        fi
+        putchar kind
+        print "\n"
     fi
 
     # A unary operator has only its left child.
@@ -218,7 +216,7 @@ fun print_tree(t, d)
                 print "└─"
                 d_arr(d) = 0
             fi
-            let ignored = print_tree(t(i), d + 1)
+            call print_tree(t(i), d + 1)
         fi
     next i
     t = 0
@@ -273,7 +271,7 @@ fun show(text, length)
     let tree = parse(text, length)
     if not failed
         print "AST:\n"
-        let ignored = print_tree(tree, 1)
+        call print_tree(tree, 1)
         let result = evaluate(tree)
         if not failed
             print "Result: ", result, "\n"
@@ -307,12 +305,10 @@ do while running
     done
     if overflow
         print "Error: line exceeds 256 characters\n"
+    elif used = 0
+        running = false
     else
-        if used = 0
-            running = false
-        else
-            let ignored = show(buffer, used)
-        fi
+        call show(buffer, used)
     fi
     if ch = -1
         running = false
