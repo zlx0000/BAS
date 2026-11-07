@@ -80,7 +80,7 @@ static const char *node_type_to_string(NodeType type)
 			return "LINENUM";
 		case INTEGER:
 			return "INTEGER";
-		case FLOAT:
+		case _FLOAT:
 			return "FLOAT";
 		case INTEGERIDENT:
 			return "INTEGERIDENT";
@@ -106,7 +106,7 @@ static const char *node_type_to_string(NodeType type)
 			return "PRINT";
 		case PRINT_LIST:
 			return "PRINT_LIST";
-		case INPUT:
+		case _INPUT:
 			return "INPUT";
 		case INPUT_LIST:
 			return "INPUT_LIST";

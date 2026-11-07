@@ -309,6 +309,10 @@ ParseTreeNode *parseStatement(ParserContext *context)
 			node = parseIfStatement(context);
 			ERR_RET_NOFREE(node);
 		}
+		else if (strcasecmp(context->tokenPtr->lexeme, "ELIF") == 0) {
+			node = parseElifStatement(context);
+			ERR_RET_NOFREE(node);
+		}
 		else if (strcasecmp(context->tokenPtr->lexeme, "ELSE") == 0) {
 			node = parseElseStatement(context);
 			ERR_RET_NOFREE(node);
@@ -473,6 +477,32 @@ ParseTreeNode *parseIfStatement(ParserContext *context)
 	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
 		strcasecmp(context->tokenPtr->lexeme, "IF") != 0)
 			ERR("Expected IF token.\n");
+	CONSUME_TOKEN;
+	node->children = malloc(sizeof(uintptr_t));
+	node->children[0] = parseExpr(context);
+	ERR_RET(node->children[0]);
+	node->childCount++;
+	if (IN_RANGE && context->tokenPtr->type == KEYWORD_TOKEN &&
+		strcasecmp(context->tokenPtr->lexeme, "THEN") == 0) {
+		CONSUME_TOKEN;
+		node->children = realloc(node->children, 2*sizeof(uintptr_t));
+		node->children[1] = parseLinenum(context); //3
+		ERR_RET(node->children[1]); //3
+		node->childCount++;
+	}
+	return node;
+}
+
+ParseTreeNode *parseElifStatement(ParserContext *context)
+{
+	ParseTreeNode *node =
+		(ParseTreeNode *)calloc(1, sizeof(ParseTreeNode));
+	node->childCount = 0;
+	node->type = ELIF;
+	node->token = context->tokenPtr;
+	if (!IN_RANGE || context->tokenPtr->type != KEYWORD_TOKEN ||
+		strcasecmp(context->tokenPtr->lexeme, "ELIF") != 0)
+			ERR("Expected ELIF token.\n");
 	CONSUME_TOKEN;
 	node->children = malloc(sizeof(uintptr_t));
 	node->children[0] = parseExpr(context);

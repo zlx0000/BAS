@@ -169,15 +169,18 @@ bool is_if_else_or_fi(ParseTreeNode *node)
     return ((node->children[i]->type == IF
              && node->children[i]->childCount == 1)
         || node->children[i]->type == ELSE
+        || node->children[i]->type == ELIF
         || node->children[i]->type == FI);
 }
 
+// this is shit
 bool is_if_else_or_fi_or_while_or_done_or_for_or_next(ParseTreeNode *node)
 {
     unsigned int i = node->childCount - 1;
     return ((node->children[i]->type == IF
              && node->children[i]->childCount == 1)
         || node->children[i]->type == ELSE
+        || node->children[i]->type == ELIF
         || node->children[i]->type == FI
         || node->children[i]->type == DO_WHILE
         || node->children[i]->type == DONE
@@ -1171,6 +1174,8 @@ Value evalLine(ParseTreeNode *node)
             return evalPrint(statement);
         case IF:
             return evalIf(statement);
+        case ELIF:
+            return evalElif(statement);
         case ELSE:
             return evalElse(statement);
         case FI:
@@ -1486,6 +1491,85 @@ Value evalIf(ParseTreeNode *node)
     }
 }
 
+Value evalElif(ParseTreeNode *node)
+{
+    if (!in_fun) {
+        Value top = peek(&shadow_st);
+        if (top.type != IF_FRAME)
+            ERR("not in a if statement", INCOMPATIBLE_TYPES);
+        Value frame = {
+            .type = IF_FRAME,
+            .value.ifFrame = {
+                .entry = pc,
+                .state = IF_IN_ELIF,
+            },
+        };
+        pop(&shadow_st);
+        push(&shadow_st, frame);
+    }
+    if (pc < 0) {
+        return DEF_VAL;
+    }
+    Value top = peek(&if_st);
+    if (top.type != IF_FRAME)
+        ERR("not in a if statement", INCOMPATIBLE_TYPES);
+    switch (top.value.ifFrame.state) {
+        case IF_BEFORE:
+        case IF_CONT:
+            ERR("not in a IF statement", ERR_VAL_NULL);
+        case IF_IN_ELIF:
+        case IF_SKIP_ELSE: {
+            Value frame = {
+                .type = IF_FRAME,
+                .value.ifFrame = {
+                    .entry = top.value.ifFrame.entry,
+                    .state = IF_EXPECTING_FI
+                },
+            };
+            if_state = IF_EXPECTING_FI;
+            pop(&if_st);
+            push(&if_st, frame);
+            break;
+        }
+        case IF_EXPECTING_ELSE_OR_FI: {
+            ParseTreeNode *expr = node->children[0];
+            Value v = evalExpr(expr);
+            bool flag = false;
+            enum ValueType t = v.type;
+            switch (t) {
+                case BOOL_VAL:
+                    flag = v.value.boolVal;
+                    break;
+                case INT_VAL:
+                    flag = v.value.intVal;
+                    break;
+                case FLOAT_VAL:
+                    flag = v.value.floatVal;
+                    break;
+                default:
+                    ERR("incompatible types", INCOMPATIBLE_TYPES);
+            }
+            if (flag) {
+                Value frame = {
+                    .type = IF_FRAME,
+                    .value.ifFrame = {
+                        .entry = top.value.ifFrame.entry,
+                        .state = IF_IN_ELIF
+                    },
+                };
+                if_state = IF_IN_ELIF;
+                pop(&if_st);
+                push(&if_st, frame);
+                break;
+            }
+        }
+        case IF_EXPECTING_FI:
+            break;
+    }
+    pc++;
+    return DEF_VAL;
+}
+
 Value evalElse(ParseTreeNode *node)
 {
     if (!in_fun) {
@@ -1512,6 +1596,7 @@ Value evalElse(ParseTreeNode *node)
         case IF_BEFORE:
         case IF_CONT:
             ERR("not in a IF statement", ERR_VAL_NULL);
+        case IF_IN_ELIF:
         case IF_SKIP_ELSE: {
                 Value frame = {
                     .type = IF_FRAME,

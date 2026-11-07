@@ -57,7 +57,7 @@
 # define __unlikely(cond)	__builtin_expect ((cond), 0)
 # define __likely(cond)	__builtin_expect ((cond), 1)
 
-static char *keywords[] = {"LET", "PRINT", "INPUT", "IF", "ELSE", "FI", "THEN", "FOR", "TO",
+static char *keywords[] = {"LET", "PRINT", "INPUT", "IF", "ELIF", "ELSE", "FI", "THEN", "FOR", "TO",
                   	 "STEP", "NEXT", "DO WHILE", "DONE", "GOTO", "GOSUB", "RETURN", "RETURN", "END",
                   	 "REM", "AND", "OR", "NOT", "DIM", "PUTCHAR", "CLEAR", "HOME", "SLEEP",
 					 "DELETE", "FREE", "FUN", "END FUN", "RETURN", "GC", "CALL"};
@@ -107,6 +107,7 @@ typedef enum NodeType {
 	LET,
 	DIM,
 	IF,
+	ELIF,
 	THEN,
 	ELSE,
 	FI,
@@ -212,6 +213,7 @@ ParseTreeNode *parseStatement(ParserContext *context);
 ParseTreeNode *parseLetStatement(ParserContext *context);
 ParseTreeNode *parseExpr(ParserContext *context);
 ParseTreeNode *parseIfStatement(ParserContext *context);
+ParseTreeNode *parseElifStatement(ParserContext *context);
 ParseTreeNode *parseElseStatement(ParserContext *context);
 ParseTreeNode *parseFiStatement(ParserContext *context);
 ParseTreeNode *parseForStatement(ParserContext *context);
@@ -328,6 +330,7 @@ typedef struct Value {
 			enum If_State {
 				IF_STATE_NULL,
 				IF_BEFORE,
+				IF_IN_ELIF,
 				IF_SKIP_ELSE,
 				IF_EXPECTING_ELSE_OR_FI,
 				IF_EXPECTING_FI,
@@ -422,6 +425,7 @@ Value evalPutChar(ParseTreeNode *node);
 Value evalDim(ParseTreeNode *node);
 Value evalLet(ParseTreeNode *node);
 Value evalIf(ParseTreeNode *node);
+Value evalElif(ParseTreeNode *node);
 Value evalElse(ParseTreeNode *node);
 Value evalFi(ParseTreeNode *node);
 Value evalFor(ParseTreeNode *node);
