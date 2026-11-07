@@ -183,8 +183,7 @@ fun print_tree(t, d)
         print t(1), "\n"
         t = 0
         return 0
-    fi
-    if kind = -43
+    elif kind = -43
         print "pos\n"
     elif kind = -45
         print "neg\n"
@@ -232,27 +231,21 @@ fun evaluate(tree)
     let left = evaluate(tree(1))
     if failed
         return 0
-    fi
-    if kind = -43
+    elif kind = -43
         return left
-    fi
-    if kind = -45
+    elif kind = -45
         return -left
     fi
     let right = evaluate(tree(2))
     if failed
         return 0
-    fi
-    if kind = 43
+    elif kind = 43
         return left + right
-    fi
-    if kind = 45
+    elif kind = 45
         return left - right
-    fi
-    if kind = 42
+    elif kind = 42
         return left * right
-    fi
-    if right = 0
+    elif right = 0
         pos = tree(3)
         return fail("Division by zero")
     fi

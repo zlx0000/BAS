@@ -127,8 +127,7 @@ fun fits(x, y, r)
                 let by = y + b
                 if bx < 0 or bx >= W or by >= H
                     return 0
-                fi
-                if by >= 0
+                elif by >= 0
                     if board(by * W + bx) != 0
                         return 0
                     fi
@@ -272,46 +271,34 @@ end fun
 # Start a line at an explicit screen coordinate.
 # No write reaches column 80, including on the bottom row: no wrap or scroll.
 fun screen_row(row)
-    putchar 27
-    print "[", row, ";1H"
-    putchar 27
-    print "[0m"
+    print "\27[", row, ";1H\27[0m"
     return 0
 end fun
 
 fun erase_tail
-    putchar 27
-    print "[K"
+    print "\27[K"
     return 0
 end fun
 
 fun block(ink)
     if ink = -1
-        putchar 27
-        print "[90m.."
+        print "\27[90m..\27[0m"
     else
-        putchar 27
-        print "[", color(ink - 1), "m[]"
+        print "\27[", color(ink - 1), "m[]\27[0m"
     fi
-    putchar 27
-    print "[0m"
     return 0
 end fun
 
 fun sidebar(row)
     if row = 0
         print "    Score: ", score
-    fi
-    if row = 1
+    elif row = 1
         print "    Lines: ", lines
-    fi
-    if row = 2
+    elif row = 2
         print "    Level: ", 1 + int(lines / 10)
-    fi
-    if row = 4
+    elif row = 4
         print "    Next:"
-    fi
-    if row >= 5 and row <= 8
+    elif row >= 5 and row <= 8
         print "    "
         let x = 0
         do while x < 4
@@ -322,29 +309,21 @@ fun sidebar(row)
             fi
             x = x + 1
         done
-    fi
-    if row = 10
+    elif row = 10
         print "    A/D or Left/Right: move"
-    fi
-    if row = 11
+    elif row = 11
         print "    W / Up: rotate clockwise"
-    fi
-    if row = 12
+    elif row = 12
         print "    X: rotate counterclockwise"
-    fi
-    if row = 13
+    elif row = 13
         print "    S / Down: soft drop"
-    fi
-    if row = 14
+    elif row = 14
         print "    Space: hard drop"
-    fi
-    if row = 15
+    elif row = 15
         print "    P: pause    Q: quit"
-    fi
-    if row = 16
+    elif row = 16
         print "    R: restart after game over"
-    fi
-    if row = 18
+    elif row = 18
         print "    .. = landing position"
     fi
     return 0
@@ -435,8 +414,7 @@ fun decode_key(ch)
         escape_state = 1
         escape_age = 0
         return 0
-    fi
-    if escape_state = 1
+    elif escape_state = 1
         escape_state = 0
         if ch = 91 or ch = 79
             escape_state = 2
@@ -449,14 +427,11 @@ fun decode_key(ch)
             escape_state = 0
             if ch = 65
                 return 119
-            fi
-            if ch = 66
+            elif ch = 66
                 return 115
-            fi
-            if ch = 67
+            elif ch = 67
                 return 100
-            fi
-            if ch = 68
+            elif ch = 68
                 return 97
             fi
         elif ch < 32 or ch > 63
@@ -475,45 +450,37 @@ fun handle_key(ch)
     if ch = 113
         running = 0
         return 0
-    fi
-    if over != 0
+    elif over != 0
         if ch = 114
             call restart
         fi
         return 0
-    fi
-    if ch = 112
+    elif ch = 112
         paused = 1 - paused
         gravity = 0
         dirty = 1
         return 0
-    fi
-    if paused != 0
+    elif paused != 0
         return 0
-    fi
-    if ch = 97
+    elif ch = 97
         if fits(px - 1, py, rotation) != 0
             px = px - 1
             dirty = 1
         fi
-    fi
-    if ch = 100
+    elif ch = 100
         if fits(px + 1, py, rotation) != 0
             px = px + 1
             dirty = 1
         fi
-    fi
-    if ch = 119
+    elif ch = 119
         if turn_piece(1) != 0
             dirty = 1
         fi
-    fi
-    if ch = 120
+    elif ch = 120
         if turn_piece(-1) != 0
             dirty = 1
         fi
-    fi
-    if ch = 115
+    elif ch = 115
         if fits(px, py + 1, rotation) != 0
             py = py + 1
             score = score + 1
@@ -522,8 +489,7 @@ fun handle_key(ch)
         fi
         gravity = 0
         dirty = 1
-    fi
-    if ch = 32
+    elif ch = 32
         do while fits(px, py + 1, rotation) != 0
             py = py + 1
             score = score + 2
@@ -537,11 +503,7 @@ end fun
 # Enter the alternate screen and hide the cursor.
 call restart
 call keymode(true)
-putchar 27
-print "[?1049h"
-putchar 27
-print "[?25l"
-clear
+print "\27[?1049h\27[?25l\27[H\27[2J"
 call draw
 dirty = 0
 
@@ -590,10 +552,5 @@ done
 
 # Restore the original terminal before printing the final result.
 call keymode(false)
-putchar 27
-print "[0m"
-putchar 27
-print "[?25h"
-putchar 27
-print "[?1049l"
+print "\27[0m\27[?25h\27[?1049l"
 print "Final score: ", score, "   Lines: ", lines, "\n"

@@ -141,24 +141,19 @@ fun pan(dx, dy)
 end fun
 
 fun status(message)
-    call cursor(21, 1)
-    print "\27[0m\27[2K"
+    print "\27[21;1H\27[0m\27[2K"
     print "Centre ", cx, ", ", cy
 
-    call cursor(22, 1)
-    print "\27[2K"
+    print "\27[22;1H\27[2K"
     print "Zoom ", 3.5 / span, "x  Iter ", limit
 
-    call cursor(23, 1)
-    print "\27[2K"
+    print "\27[23;1H\27[2K"
     print "WASD/arrows move  +/- zoom  [/] iterations  R reset  Q quit"
 
-    call cursor(24, 1)
-    print "\27[2K", message
+    print "\27[24;1H\27[2K", message
 
     # Flush line-buffered terminal output without scrolling the bottom row.
-    call cursor(23, 79)
-    print "\13\n"
+    print "\27[23;79H\13\n"
     return 0
 end fun
 
@@ -187,8 +182,7 @@ fun render
                     call cursor(y + 1, x + 1)
                 fi
 
-                print "\27[38;5;", upper, "m"
-                print "\27[48;5;", lower, "m▀"
+                print "\27[38;5;", upper, "m\27[48;5;", lower, "m▀"
 
                 screen_upper(cell) = upper
                 screen_lower(cell) = lower
@@ -200,9 +194,7 @@ fun render
             x = x + 1
         done
 
-        print "\27[0m"
-        call cursor(y + 1, W + 1)
-        print "\13\n"
+        print "\27[0m\27[", y + 1, ";", W + 1, "H\13\n"
 
         let pressed = getkey
         if pressed != 0
@@ -265,31 +257,19 @@ do while running
 
         if key = 113
             running = 0
-        fi
-
-        if key = 119
+        elif key = 119
             call pan(0, 0 - step_y)
-        fi
-
-        if key = 115
+        elif key = 115
             call pan(0, step_y)
-        fi
-
-        if key = 97
+        elif key = 97
             call pan(0 - step_x, 0)
-        fi
-
-        if key = 100
+        elif key = 100
             call pan(step_x, 0)
-        fi
-
-        if key = 43 or key = 61 or key = 122
+        elif key = 43 or key = 61 or key = 122
             span = span / 1.5
             call invalidate
             dirty = 1
-        fi
-
-        if key = 45 or key = 95 or key = 120
+        elif key = 45 or key = 95 or key = 120
             let previous_span = span
             span = span * 1.5
 
@@ -301,25 +281,19 @@ do while running
                 call invalidate
                 dirty = 1
             fi
-        fi
-
-        if key = 93
+        elif key = 93
             limit = limit * 2
             if limit > 3072
                 limit = 3072
             fi
             dirty = 1
-        fi
-
-        if key = 91
+        elif key = 91
             limit = int(limit / 2)
             if limit < 24
                 limit = 24
             fi
             dirty = 1
-        fi
-
-        if key = 114
+        elif key = 114
             cx = -0.5
             cy = 0.0
             span = 3.5
