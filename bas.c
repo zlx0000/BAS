@@ -211,8 +211,9 @@ repl:
 			cur++;
 	}
 	*cur = '\0';
+	size_t capacity = strlen(str) + 1;
 	Token *tokens =
-	(Token *)calloc(1, sizeof(Token) * MAX_TOKEN);
+	(Token *)calloc(1, sizeof(Token) * capacity);
 	int len = lexer(str, tokens, prog.lineCount);
 	free(str);
 	if (len > 0) {
