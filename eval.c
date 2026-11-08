@@ -236,6 +236,17 @@ int allocate_cnt() {
     return cnt;
 }
 
+#ifdef WIN32
+static int xp_fseek(FILE *fp, int64_t offset, int origin)
+{
+    if (offset < LONG_MIN || offset > LONG_MAX) {
+        errno = ERANGE;
+        return -1;
+    }
+    return fseek(fp, (long)offset, origin);
+}
+#endif
+
 // Prepend a bookkeeping node and return it as POINTER_VAL; duplicates are unchecked.
 Value insertArrPtr(Value *ptr, int size, ArrPtrList *reg, Value *param, bool isStale, ArrPtrList *list)
 {
@@ -3189,7 +3200,7 @@ skip_builtin1:
                 FILE *fd = fd_v.value.fd_val;
 #ifdef WIN32
 #ifdef _WIN32_WINNT && _WIN32_WINNT <= 0x0501
-                if (_fseek(fd, off, SEEK_SET) != 0) {
+                if (xp_fseek(fd, off, SEEK_SET) != 0) {
                     ERR("seek failed", ERR_VAL_NULL);
                 }
 #else
@@ -3240,9 +3251,15 @@ skip_builtin1:
 			    int64_t off = (int64_t)off_v.value.intVal;
 			    FILE *fd = fd_v.value.fd_val;
 #ifdef WIN32
-			    if (_fseeki64(fd, off, SEEK_SET) != 0) {
-			        ERR("seek failed", ERR_VAL_NULL);
-			    }
+#ifdef _WIN32_WINNT && _WIN32_WINNT <= 0x0501
+                if (xp_fseek(fd, off, SEEK_SET) != 0) {
+                    ERR("seek failed", ERR_VAL_NULL);
+                }
+#else
+                if (_fseeki64(fd, off, SEEK_SET) != 0) {
+                    ERR("seek failed", ERR_VAL_NULL);
+                }
+#endif
 #else
 			    if (fseeko(fd, (off_t)off, SEEK_SET) != 0) {
 			        ERR("seek failed", ERR_VAL_NULL);
