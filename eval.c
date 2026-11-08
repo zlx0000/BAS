@@ -1085,7 +1085,7 @@ void printArr(Value *val, int depth)
                 break;
             case INT_VAL:
 #if defined(_WIN32) && defined(_WIN32_WINNT) && (_WIN32_WINNT <= 0x0501)
-                printf("%I64D", (intmax_t)ptr->value.intVal);
+                printf("%I64d", (intmax_t)ptr->value.intVal);
 #else           
                 printf("%jd", (intmax_t)ptr->value.intVal);
 #endif
@@ -1123,7 +1123,7 @@ void printVal(Value val)
             break;
         case INT_VAL:
 #if defined(_WIN32) && defined(_WIN32_WINNT) && (_WIN32_WINNT <= 0x0501)
-            printf("%I64D", (intmax_t)val.value.intVal);
+            printf("%I64d", (intmax_t)val.value.intVal);
 #else           
             printf("%jd", (intmax_t)val.value.intVal);
 #endif
@@ -2906,7 +2906,7 @@ Value evalPrimary(ParseTreeNode *node)
                 v.type = INT_VAL;
                 intmax_t input = 0;
 #if defined(_WIN32) && defined(_WIN32_WINNT) && (_WIN32_WINNT <= 0x0501)
-                scanf("%I64D", &input);
+                scanf("%I64d", &input);
 #else           
                 scanf("%jd", &input);
 #endif
