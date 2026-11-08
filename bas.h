@@ -30,6 +30,7 @@
 #include <windows.h>
 #include <errno.h>
 #include <limits.h>
+#define __USE_MINGW_ANSI_STDIO 1
 #else
 #include <termios.h>
 #include <poll.h>
