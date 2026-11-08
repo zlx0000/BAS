@@ -1089,7 +1089,6 @@ void printArr(Value *val, int depth)
 #else           
                 printf("%jd", (intmax_t)ptr->value.intVal);
 #endif
-                printf("%jd", (intmax_t)ptr->value.intVal);
                 break;
             case FLOAT_VAL:
                 printf("%.17g", ptr->value.floatVal);
