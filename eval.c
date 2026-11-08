@@ -3188,7 +3188,7 @@ skip_builtin1:
                 int64_t off = (int64_t)off_v.value.intVal;
                 FILE *fd = fd_v.value.fd_val;
 #ifdef WIN32
-#ifdef WIN32_WINNT && WIN32_WINNT <= 0x0501
+#ifdef _WIN32_WINNT && _WIN32_WINNT <= 0x0501
                 if (_fseek(fd, off, SEEK_SET) != 0) {
                     ERR("seek failed", ERR_VAL_NULL);
                 }
