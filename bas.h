@@ -28,6 +28,8 @@
 #ifdef WIN32
 #include <conio.h>
 #include <windows.h>
+#include <errno.h>
+#include <limits.h>
 #else
 #include <termios.h>
 #include <poll.h>
