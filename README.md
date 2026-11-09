@@ -10,7 +10,7 @@ BAS began as a BASIC-like interpreter and evolved into a small general-purpose l
 
 ## Features
 
-- Functions, recursion, and `call` for discarded results
+- Functions and recursion
 - `if / elif / else / fi`
 - `for / next` and `do while / done`
 - Nested arrays with `new(n)`
