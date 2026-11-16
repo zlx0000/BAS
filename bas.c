@@ -115,6 +115,9 @@ int main(int argc, char **argv)
 	using_history();
     read_history(".bas_history");
 #endif
+#ifdef WIN32
+    SetConsoleOutputCP(CP_UTF8);
+#endif
 	/*
 	for (int i = 0; i < 16384; i++) {
 		prog.shadow_st->size = -1;

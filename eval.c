@@ -29,7 +29,9 @@
 #define ERR_RETURN_EVAL(err) {if (__unlikely(IS_ERR(err))) return ERRVAL(err.value.errVal);}
 #define DEF_VAL ((Value){.type = INT_VAL, .value.intVal = 0})
 #define NO_BUILT_IN_NAMES \
-        if (strcasecmp(name, "COS") == 0 \
+        if (strcasecmp(name, "NEW") == 0 \
+        || strcasecmp(name, "LEN") == 0 \
+        || strcasecmp(name, "COS") == 0 \
         || strcasecmp(name, "SIN") == 0 \
         || strcasecmp(name, "COSF") == 0 \
         || strcasecmp(name, "SINF") == 0 \
@@ -42,7 +44,6 @@
         || strcasecmp(name, "FALSE") == 0 \
         || strcasecmp(name, "ARGC") == 0 \
         || strcasecmp(name, "ARGV") == 0 \
-        || strcasecmp(name, "NEW") == 0 \
         || strcasecmp(name, "FOPEN") == 0 \
         || strcasecmp(name, "GETCHAR") == 0 \
         || strcasecmp(name, "GETINT") == 0 \
@@ -2993,6 +2994,18 @@ skip_builtin1:
                 for (int i = 0; i < size.value.intVal; i++) {
                     v.value.arr.ptr[i].type = INT_VAL;
                 }
+                return v;
+            }
+            else if (strcasecmp(name, "LEN") == 0) {
+                if(node->children[0]->childCount < 1) {
+                    ERR("too few args", ERR_VAL_NULL);
+                }
+                Value arr = evalExpr(node->children[0]->children[0]);
+                if (arr.type != ARR_VAL) {
+                    ERR("not a file", INCOMPATIBLE_TYPES);
+                }
+                v.type = INT_VAL;
+                v.value.intVal = arr.value.arr.size;
                 return v;
             }
             else if (strcasecmp(name, "COS") == 0) {
